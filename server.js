@@ -4,8 +4,9 @@ const cors = require('cors');
 const path = require('path');
 const { createServer } = require('http');
 const { Server } = require('socket.io');
-const scanRouter = require('./routes/scan');
+const scanRouter   = require('./routes/scan');
 const reportRouter = require('./routes/report');
+const gateRouter   = require('./routes/gate');
 const logger = require('./utils/logger');
 const { AppError } = require('./utils/errors');
 
@@ -59,6 +60,7 @@ app.get('/health', (req, res) => {
 });
 
 app.use('/api/scan', scanRouter);
+app.use('/api/gate', gateRouter);
 app.use('/api', reportRouter);
 
 app.use((req, res) => {

@@ -1,9 +1,11 @@
 const express = require('express');
-const router = express.Router();
-const { randomUUID } = require('crypto');          // Node 18+ built-in — UUID v4 equivalent
-const { validateDomain } = require('../utils/validators');
+const router  = express.Router();
+const { randomUUID }            = require('crypto');
+const { validateDomain }        = require('../utils/validators');
 const { AppError, ValidationError } = require('../utils/errors');
-const logger = require('../utils/logger');
+const logger                    = require('../utils/logger');
+const { sendConfirmationEmail } = require('../utils/emailService');
+const { appendSubmissionToCSV } = require('../utils/csvExporter');
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -68,8 +70,8 @@ router.post('/', async (req, res, next) => {
 });
 
 // ── POST /api/scan/submit-gate ────────────────────────────────────────────────
-// Captures lead details before showing full results.
-// Validates, stores in memory, and returns a gateId for the session.
+// Captures lead details, fires confirmation email + CSV export (both non-blocking),
+// and returns immediately so the UI doesn't wait on SMTP.
 router.post('/submit-gate', async (req, res, next) => {
   try {
     const {
@@ -81,39 +83,66 @@ router.post('/submit-gate', async (req, res, next) => {
       dataIncidents,
       itManagement,
       confidence,
+      scanScore,    // optional — sent by frontend after scan completes
+      scanResults,  // optional — { ssl, headers, dns, subdomains, tech, gdpr }
     } = req.body;
 
-    if (!domain)                    throw new ValidationError('Domain is required');
-    if (!email)                     throw new ValidationError('Email is required');
-    if (!EMAIL_RE.test(email))      throw new ValidationError('Invalid email format');
+    if (!domain)               throw new ValidationError('Domain is required');
+    if (!email)                throw new ValidationError('Email is required');
+    if (!EMAIL_RE.test(email)) throw new ValidationError('Invalid email format');
 
-    const gateId = randomUUID();
+    const gateId    = randomUUID();
+    const timestamp = new Date().toISOString();
 
     const submission = {
       gateId,
       domain:        String(domain).trim(),
-      name:          name        ? String(name).trim()        : '',
+      name:          name         ? String(name).trim()         : '',
       email:         String(email).trim().toLowerCase(),
-      firmName:      firmName    ? String(firmName).trim()    : '',
-      mainConcern:   mainConcern ? String(mainConcern).trim() : '',
+      firmName:      firmName     ? String(firmName).trim()     : '',
+      mainConcern:   mainConcern  ? String(mainConcern).trim()  : '',
       dataIncidents: Boolean(dataIncidents),
       itManagement:  itManagement ? String(itManagement).trim() : '',
       confidence:    Number.isFinite(Number(confidence)) ? Number(confidence) : null,
-      submittedAt:   new Date().toISOString(),
+      submittedAt:   timestamp,
     };
 
     gateSubmissions.set(gateId, submission);
 
     console.log(`[GATE] Submission: ${submission.email} | ${submission.domain} | ${submission.mainConcern}`);
 
+    // ── Fire-and-forget: email confirmation ──────────────────────────────────
+    // Don't await — SMTP latency must not block the HTTP response.
+    sendConfirmationEmail(submission.email, submission.domain, scanScore ?? null);
+
+    // ── Fire-and-forget: CSV export ──────────────────────────────────────────
+    const results = scanResults || {};
+    appendSubmissionToCSV({
+      submissionId:  gateId,
+      timestamp,
+      domain:        submission.domain,
+      email:         submission.email,
+      name:          submission.name,
+      firmName:      submission.firmName,
+      mainConcern:   submission.mainConcern,
+      itManagement:  submission.itManagement,
+      dataIncidents: submission.dataIncidents ? 'Yes' : 'No',
+      confidence:    submission.confidence ?? '',
+      scanScore:     typeof scanScore === 'number' ? scanScore : '',
+      ssl:           results.ssl?.status?.toUpperCase()        || '',
+      headers:       results.headers?.status?.toUpperCase()    || '',
+      dns:           results.dns?.status?.toUpperCase()        || '',
+      subdomains:    results.subdomains?.status?.toUpperCase() || '',
+      tech:          results.tech?.status?.toUpperCase()       || '',
+      gdpr:          results.gdpr?.status?.toUpperCase()       || '',
+    }).catch(err => logger.error(`[GATE] CSV write failed: ${err.message}`));
+
     return res.status(200).json({
-      success: true,
-      message: 'Thank you for your details',
-      gateId,
+      success:      true,
+      message:      'Check your email for confirmation',
+      submissionId: gateId,
     });
   } catch (err) {
-    // Pass ValidationErrors (400) through the global handler unchanged;
-    // wrap anything else in a plain 500 so the message stays controlled.
     if (err instanceof AppError) return next(err);
     next(new AppError('Submission failed', 500));
   }
