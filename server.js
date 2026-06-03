@@ -34,10 +34,8 @@ function isAllowedOrigin(origin) {
 }
 
 const corsOptions = {
-  origin: (origin, cb) =>
-    isAllowedOrigin(origin)
-      ? cb(null, true)
-      : cb(new Error(`CORS: origin not allowed — ${origin}`)),
+  // cb(null, false) → cors package returns 403; cb(new Error) → leaks as 500
+  origin: (origin, cb) => cb(null, isAllowedOrigin(origin)),
   credentials: true,
 };
 
@@ -47,6 +45,7 @@ const httpServer = createServer(app);
 const io = new Server(httpServer, { cors: corsOptions });
 
 app.use(cors(corsOptions));
+app.options('*', cors(corsOptions)); // explicit preflight handler for all routes
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
