@@ -1,35 +1,38 @@
-const Mailgun   = require('mailgun.js');
-const FormData  = require('form-data');
-const logger    = require('./logger');
-
-const mailgun = new Mailgun(FormData);
-
-function getClient() {
-  return mailgun.client({
-    username: 'api',
-    key: process.env.MAILGUN_API_KEY,
-    // EU region: uncomment if your Mailgun domain is on the EU endpoint
-    // url: 'https://api.eu.mailgun.net',
-  });
-}
+const nodemailer = require('nodemailer');
+const logger     = require('./logger');
 
 async function sendConfirmationEmail(email, domain, scanScore) {
-  if (!process.env.MAILGUN_API_KEY || !process.env.MAILGUN_DOMAIN) {
-    logger.warn('[EMAIL] MAILGUN_API_KEY or MAILGUN_DOMAIN not configured — skipping confirmation email');
+  const user   = process.env.SMTP_USER;
+  const pass   = process.env.SMTP_PASS;
+  const host   = process.env.SMTP_HOST   || 'mail.privateemail.com';
+  const port   = Number(process.env.SMTP_PORT) || 587;
+  const secure = process.env.SMTP_SECURE === 'true';
+
+  if (!user || !pass) {
+    logger.warn('[EMAIL] SMTP_USER or SMTP_PASS not set — skipping confirmation email');
     return;
   }
 
   const scoreDisplay = typeof scanScore === 'number' ? `${scanScore}/100` : 'N/A';
-  const from         = `Soterius Scanner <noreply@${process.env.MAILGUN_DOMAIN}>`;
 
-  logger.info(`[EMAIL] Mailgun domain: ${process.env.MAILGUN_DOMAIN}`);
+  logger.info(`[EMAIL] SMTP config — host: ${host} | port: ${port} | secure: ${secure} | user: ${user}`);
   logger.info(`[EMAIL] Sending to: ${email} | domain: ${domain} | score: ${scoreDisplay}`);
 
+  const transporter = nodemailer.createTransport({ host, port, secure, auth: { user, pass } });
+
   try {
-    const mg   = getClient();
-    const result = await mg.messages.create(process.env.MAILGUN_DOMAIN, {
-      from,
-      to:      [email],
+    logger.info('[EMAIL] Verifying SMTP connection...');
+    await transporter.verify();
+    logger.info('[EMAIL] SMTP connection OK');
+  } catch (err) {
+    logger.error(`[EMAIL] SMTP connection failed — ${err.message} | code: ${err.code}`);
+    return;
+  }
+
+  try {
+    const info = await transporter.sendMail({
+      from:    `"Soterius Scanner" <${user}>`,
+      to:      email,
       subject: `Soterius Scan Complete: ${domain}`,
       text: [
         `Thank you for scanning ${domain}.`,
@@ -59,11 +62,9 @@ async function sendConfirmationEmail(email, domain, scanScore) {
         </div>
       `,
     });
-
-    logger.info(`[EMAIL] Successfully sent to ${email} — Mailgun ID: ${result.id}`);
+    logger.info(`[EMAIL] Successfully sent to ${email} — Message ID: ${info.messageId}`);
   } catch (err) {
-    logger.error(`[EMAIL] Failed to send to ${email} — ${err.message}`);
-    logger.error(`[EMAIL] Status: ${err.status || 'none'} | Details: ${JSON.stringify(err.details || err.response || 'none')}`);
+    logger.error(`[EMAIL] Send failed — ${err.message} | code: ${err.code} | response: ${err.response || 'none'}`);
   }
 }
 
