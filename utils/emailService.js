@@ -22,6 +22,11 @@ async function sendConfirmationEmail(email, domain, scanScore) {
 
   const scoreDisplay = typeof scanScore === 'number' ? `${scanScore}/100` : 'N/A';
 
+  logger.info('[EMAIL] SMTP config — host: ' + (process.env.SMTP_HOST || 'mail.privateemail.com') +
+    ' | port: ' + (process.env.SMTP_PORT || 587) +
+    ' | user: ' + process.env.SMTP_USER);
+  logger.info('[EMAIL] Sending to: ' + email + ' | domain: ' + domain + ' | score: ' + scoreDisplay);
+
   try {
     await transporter.sendMail({
       from:    `"Soterius Scanner" <${process.env.SMTP_USER}>`,
@@ -55,9 +60,10 @@ async function sendConfirmationEmail(email, domain, scanScore) {
         </div>
       `,
     });
-    logger.info(`[EMAIL] Confirmation sent to ${email} for ${domain}`);
+    logger.info(`[EMAIL] Successfully sent to ${email} for ${domain}`);
   } catch (err) {
-    logger.error(`[EMAIL] Failed to send to ${email}: ${err.message}`);
+    logger.error(`[EMAIL] Failed to send to ${email} — ${err.message}`);
+    logger.error(`[EMAIL] Error code: ${err.code || 'none'} | Response: ${err.response || 'none'}`);
   }
 }
 
