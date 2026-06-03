@@ -13,10 +13,15 @@ const { AppError } = require('./utils/errors');
 // ALLOWED_ORIGINS is a comma-separated list of exact origins or glob patterns.
 // Use '*' as a wildcard for a single domain segment, e.g.:
 //   https://soterius-*.vercel.app  → matches any Vercel preview deployment
-const CORS_ORIGINS = (process.env.ALLOWED_ORIGINS || 'http://localhost:5173')
-  .split(',')
-  .map(s => s.trim())
-  .filter(Boolean);
+const DEFAULT_ORIGINS = [
+  'http://localhost:5173',
+  'https://soterius-frontend.vercel.app',
+  'https://soterius-*.vercel.app',
+];
+
+const CORS_ORIGINS = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',').map(s => s.trim()).filter(Boolean)
+  : DEFAULT_ORIGINS;
 
 function isAllowedOrigin(origin) {
   if (!origin) return true; // non-browser: health checks, Postman, server-to-server
