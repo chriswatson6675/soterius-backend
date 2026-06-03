@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Soterius GDPR Compliance Report</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, Helvetica, sans-serif; font-size: 13px; color: #1f2937; background: #fff; line-height: 1.5; }
+    .page-break { page-break-before: always; break-before: page; }
+    .no-break   { page-break-inside: avoid; break-inside: avoid; }
+
+    /* ── Cover ── */
+    .cover { padding: 40px 56px 32px; border-bottom: 4px solid #2563eb; margin-bottom: 28px; }
+    .cover-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 40px; }
+    .cover-logo { font-size: 20px; font-weight: 800; color: #2563eb; }
+    .cover-meta-right { text-align: right; font-size: 11px; color: #9ca3af; line-height: 1.8; }
+    .cover-body { text-align: center; }
+    .cover-title { font-size: 26px; font-weight: 800; color: #1f2937; margin-bottom: 4px; letter-spacing: -0.5px; }
+    .cover-subtitle { font-size: 13px; color: #6b7280; margin-bottom: 28px; }
+    .cover-domain { display: inline-block; background: #eff6ff; border: 2px solid #2563eb; border-radius: 8px; padding: 8px 24px; font-size: 18px; font-weight: 700; color: #1d4ed8; margin-bottom: 24px; }
+    .cover-score-row { display: flex; align-items: center; justify-content: center; gap: 24px; margin-bottom: 20px; }
+    .score-circle { width: 90px; height: 90px; border-radius: 50%; border: 5px solid {{scoreColor}}; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .score-num { font-size: 30px; font-weight: 800; color: {{scoreColor}}; line-height: 1; }
+    .score-den { font-size: 11px; color: #9ca3af; }
+    .risk-pill { display: inline-block; padding: 6px 18px; border-radius: 99px; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; background: {{riskBg}}; color: {{riskColor}}; }
+    .cover-details { display: flex; justify-content: center; gap: 40px; font-size: 12px; color: #374151; margin-top: 4px; }
+    .cover-detail-item .lbl { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: #9ca3af; display: block; margin-bottom: 1px; }
+
+    /* ── Section wrapper ── */
+    .section { padding: 0 56px; margin-bottom: 28px; }
+    .section-title { font-size: 14px; font-weight: 800; color: #1f2937; text-transform: uppercase; letter-spacing: 0.07em; padding-bottom: 8px; border-bottom: 2px solid #2563eb; margin-bottom: 16px; }
+    .section-desc { font-size: 12px; color: #6b7280; margin-bottom: 14px; }
+
+    /* ── Executive summary metrics ── */
+    .exec-grid { display: flex; gap: 20px; align-items: flex-start; }
+    .exec-score { text-align: center; flex-shrink: 0; }
+    .exec-right { flex: 1; }
+    .exec-intro { font-size: 12px; color: #374151; line-height: 1.7; margin-bottom: 14px; }
+    .metrics-row { display: flex; gap: 8px; }
+    .metric-box { flex: 1; padding: 10px 6px; border-radius: 6px; border: 1px solid #e5e7eb; text-align: center; }
+    .metric-num { font-size: 20px; font-weight: 800; color: #1f2937; }
+    .metric-lbl { font-size: 10px; color: #9ca3af; margin-top: 1px; text-transform: uppercase; letter-spacing: 0.04em; }
+
+    /* ── Key findings banners ── */
+    .findings-banner { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 6px; font-size: 12px; font-weight: 700; margin-bottom: 12px; }
+    .findings-banner-critical { background: #fee2e2; color: #7f1d1d; border-left: 4px solid #dc2626; }
+    .findings-banner-advisory { background: #fef9c3; color: #78350f; border-left: 4px solid #d97706; margin-top: 20px; }
+
+    /* ── Disclaimer ── */
+    .disclaimer { padding: 0 56px; border-top: 1px solid #e5e7eb; padding-top: 14px; margin-top: 20px; }
+    .disclaimer p { font-size: 10px; color: #9ca3af; line-height: 1.7; }
+  </style>
+</head>
+<body>
+
+<!-- ════════════════════ SECTION 1: COVER PAGE ════════════════════ -->
+<div class="cover no-break">
+  <div class="cover-top">
+    <div class="cover-logo">🔒 Soterius</div>
+    <div class="cover-meta-right">
+      Report ID: {{reportId}}<br />
+      Scan Date: {{timestamp}}<br />
+      Valid for 30 days
+    </div>
+  </div>
+  <div class="cover-body">
+    <div class="cover-title">GDPR Compliance Audit Report</div>
+    <div class="cover-subtitle">Automated security and privacy compliance scan</div>
+    <div class="cover-domain">{{domain}}</div>
+    <div class="cover-score-row">
+      <div class="score-circle">
+        <div class="score-num">{{overallScore}}</div>
+        <div class="score-den">/ 100</div>
+      </div>
+      <div>
+        <div class="risk-pill">{{riskLabel}}</div>
+        <div style="font-size:12px;color:#6b7280;margin-top:6px">Overall Compliance Score</div>
+      </div>
+    </div>
+    <div class="cover-details">
+      <div class="cover-detail-item"><span class="lbl">Report Generated</span>{{generatedDate}}</div>
+      <div class="cover-detail-item"><span class="lbl">Total Issues Found</span>{{totalIssues}}</div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════ SECTION 2: EXECUTIVE SUMMARY ════════════════════ -->
+<div class="section page-break">
+  <div class="section-title">Executive Summary</div>
+  <div class="exec-grid">
+    <div class="exec-score no-break">
+      <div class="score-circle" style="margin:0 auto 8px">
+        <div class="score-num">{{overallScore}}</div>
+        <div class="score-den">/ 100</div>
+      </div>
+      <div class="risk-pill">{{riskLabel}}</div>
+    </div>
+    <div class="exec-right">
+      <p class="exec-intro">
+        This report presents the results of an automated security and GDPR compliance scan of
+        <strong>{{domain}}</strong>, conducted on {{timestamp}}. Seven independent checks were
+        performed covering HTTPS security, HTTP security headers, email authentication,
+        open port exposure, subdomain enumeration, technology disclosure, and GDPR
+        compliance requirements. Results reflect the publicly observable state of the
+        website at the time of scan.
+      </p>
+      <div class="metrics-row">
+        <div class="metric-box"><div class="metric-num">7</div><div class="metric-lbl">Checks Run</div></div>
+        <div class="metric-box" style="border-color:#86efac"><div class="metric-num" style="color:#16a34a">{{passCount}}</div><div class="metric-lbl">Passed</div></div>
+        <div class="metric-box" style="border-color:#fcd34d"><div class="metric-num" style="color:#d97706">{{warnCount}}</div><div class="metric-lbl">Warnings</div></div>
+        <div class="metric-box" style="border-color:#fca5a5"><div class="metric-num" style="color:#dc2626">{{failCount}}</div><div class="metric-lbl">Failed</div></div>
+        <div class="metric-box"><div class="metric-num" style="color:#475569">{{errorCount}}</div><div class="metric-lbl">Errors</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════ SECTION 3: KEY FINDINGS ════════════════════ -->
+<div class="section page-break">
+  <div class="section-title">Key Findings</div>
+  <p class="section-desc">Issues are classified as Critical (failed checks requiring immediate action) or Advisory (warnings to address within 30 days).</p>
+
+  <div class="findings-banner findings-banner-critical">⛔ CRITICAL ISSUES — Address Immediately (within 7 days)</div>
+  {{criticalFindings}}
+
+  <div class="findings-banner findings-banner-advisory">⚠️ ADVISORY ISSUES — Plan to Address (within 30 days)</div>
+  {{advisoryFindings}}
+</div>
+
+<!-- ════════════════════ SECTION 4: DETAILED SCAN RESULTS ════════════════════ -->
+<div class="section page-break">
+  <div class="section-title">Detailed Scan Results</div>
+  <p class="section-desc">Each of the seven scanners is documented below with its status, specific findings, business impact, a real-world SME example, and step-by-step remediation guidance.</p>
+  {{scannerCards}}
+</div>
+
+<!-- ════════════════════ SECTION 5: RECOMMENDATIONS ════════════════════ -->
+<div class="section page-break">
+  <div class="section-title">Recommendations — Action Plan</div>
+  <p class="section-desc">Issues ordered by priority. Addresses the question: "What do we fix first, how long will it take, and who does it?"</p>
+  {{priorityRecommendations}}
+</div>
+
+<!-- ════════════════════ SECTION 6: COMPLIANCE CHECKLIST ════════════════════ -->
+<div class="section">
+  <div class="section-title">GDPR &amp; Security Compliance Checklist</div>
+  <p class="section-desc">A quick-reference summary of the key compliance requirements assessed in this scan.</p>
+  {{complianceChecklist}}
+</div>
+
+<!-- ════════════════════ SECTION 7: FOOTER SECTIONS ════════════════════ -->
+<div class="section page-break">
+
+  <!-- 7A: Risk Assessment Summary -->
+  <div class="section-title">Risk Assessment Summary</div>
+  <p class="section-desc">Issue count by severity level and overall risk classification.</p>
+  {{riskMatrix}}
+
+  <!-- 7B: Remediation Timeline -->
+  <div class="section-title" style="margin-top:24px">Remediation Timeline</div>
+  <p class="section-desc">A suggested timeline for addressing all identified issues.</p>
+  {{remediationTimeline}}
+
+  <!-- 7C: Next Steps -->
+  <div class="section-title" style="margin-top:24px">Next Steps</div>
+  <p class="section-desc">Recommended actions after reviewing this report.</p>
+  {{nextSteps}}
+
+</div>
+
+<!-- ════════════════════ DISCLAIMER ════════════════════ -->
+<div class="disclaimer no-break">
+  <p>
+    <strong>Disclaimer:</strong> This report was generated by Soterius automated scanning tools and is provided for informational purposes only. It does not constitute legal advice and does not guarantee GDPR compliance or freedom from regulatory action. Results reflect the publicly observable state of the website at the time of scan and may not capture all security vulnerabilities or compliance issues. Some findings may require professional interpretation. Always consult a qualified security professional or legal advisor for comprehensive compliance guidance. Rescan recommended every 90 days for active monitoring.
+  </p>
+  <p style="margin-top:6px">
+    Generated: {{generatedDate}} &nbsp;|&nbsp; Report ID: {{reportId}} &nbsp;|&nbsp; Valid for 30 days from scan date.
+  </p>
+</div>
+
+</body>
+</html>
