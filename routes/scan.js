@@ -109,11 +109,13 @@ router.post('/submit-gate', async (req, res, next) => {
 
     gateSubmissions.set(gateId, submission);
 
-    console.log(`[GATE] Submission: ${submission.email} | ${submission.domain} | ${submission.mainConcern}`);
+    console.log(`[GATE] Submission received for: ${submission.domain} | email: ${submission.email} | id: ${gateId}`);
 
     // ── Fire-and-forget: email confirmation ──────────────────────────────────
     // Don't await — SMTP latency must not block the HTTP response.
+    console.log(`[GATE] About to send confirmation email to: ${submission.email}`);
     sendConfirmationEmail(submission.email, submission.domain, scanScore ?? null);
+    console.log(`[GATE] Email function called (fire-and-forget — check [EMAIL] logs for result)`);
 
     // ── Fire-and-forget: CSV export ──────────────────────────────────────────
     const results = scanResults || {};
