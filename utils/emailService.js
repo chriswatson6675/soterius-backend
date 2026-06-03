@@ -22,10 +22,24 @@ async function sendConfirmationEmail(email, domain, scanScore) {
 
   try {
     logger.info('[EMAIL] Verifying SMTP connection...');
-    await transporter.verify();
+    await Promise.race([
+      transporter.verify(),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('SMTP_VERIFY_TIMEOUT')), 5000)
+      ),
+    ]);
     logger.info('[EMAIL] SMTP connection OK');
   } catch (err) {
-    logger.error(`[EMAIL] SMTP connection failed — ${err.message} | code: ${err.code}`);
+    if (err.message === 'SMTP_VERIFY_TIMEOUT') {
+      logger.error('[EMAIL] SMTP verify timed out after 5s — host may be unreachable or port blocked');
+    } else {
+      logger.error('[EMAIL] SMTP connection failed:');
+      logger.error(`[EMAIL]   message : ${err.message}`);
+      logger.error(`[EMAIL]   code    : ${err.code    || 'none'}`);
+      logger.error(`[EMAIL]   command : ${err.command || 'none'}`);
+      logger.error(`[EMAIL]   response: ${err.response|| 'none'}`);
+      logger.error(`[EMAIL]   full    : ${JSON.stringify(err, Object.getOwnPropertyNames(err))}`);
+    }
     return;
   }
 
