@@ -3,10 +3,11 @@ const logger     = require('./logger');
 
 // Transporter is created once at module load.
 // If SMTP credentials are missing it won't throw — sendConfirmationEmail guards for that.
+// Host/port can be overridden via SMTP_HOST / SMTP_PORT env vars for easy provider switching.
 const transporter = nodemailer.createTransport({
-  host:   'smtp.gmail.com',
-  port:   465,
-  secure: true,
+  host:   process.env.SMTP_HOST || 'mail.privateemail.com',
+  port:   Number(process.env.SMTP_PORT) || 587,
+  secure: false,   // false = STARTTLS on port 587; set SMTP_PORT=465 + SMTP_SECURE=true for SSL
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
