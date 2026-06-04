@@ -17,6 +17,7 @@
     "mailgun.js": "^13.2.0",
     "nodemailer": "^8.0.10",
     "puppeteer": "^21.5.0",
+    "resend": "^6.12.4",
     "socket.io": "^4.6.1"
   },
   "devDependencies": {

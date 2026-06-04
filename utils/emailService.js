@@ -1,52 +1,23 @@
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 const logger     = require('./logger');
 
 async function sendConfirmationEmail(email, domain, scanScore) {
-  const user   = process.env.SMTP_USER;
-  const pass   = process.env.SMTP_PASS;
-  const host   = process.env.SMTP_HOST   || 'mail.privateemail.com';
-  const port   = Number(process.env.SMTP_PORT) || 587;
-  const secure = process.env.SMTP_SECURE === 'true';
-
-  if (!user || !pass) {
-    logger.warn('[EMAIL] SMTP_USER or SMTP_PASS not set — skipping confirmation email');
+  if (!process.env.RESEND_API_KEY) {
+    logger.warn('[EMAIL] RESEND_API_KEY not set — skipping confirmation email');
     return;
   }
 
   const scoreDisplay = typeof scanScore === 'number' ? `${scanScore}/100` : 'N/A';
+  const from         = process.env.EMAIL_FROM || 'Soterius Scanner <noreply@soterius.co.uk>';
 
-  logger.info(`[EMAIL] SMTP config — host: ${host} | port: ${port} | secure: ${secure} | user: ${user}`);
-  logger.info(`[EMAIL] Sending to: ${email} | domain: ${domain} | score: ${scoreDisplay}`);
-
-  const transporter = nodemailer.createTransport({ host, port, secure, auth: { user, pass } });
+  logger.info(`[EMAIL] Sending via Resend to: ${email} | domain: ${domain} | score: ${scoreDisplay}`);
 
   try {
-    logger.info('[EMAIL] Verifying SMTP connection...');
-    await Promise.race([
-      transporter.verify(),
-      new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('SMTP_VERIFY_TIMEOUT')), 5000)
-      ),
-    ]);
-    logger.info('[EMAIL] SMTP connection OK');
-  } catch (err) {
-    if (err.message === 'SMTP_VERIFY_TIMEOUT') {
-      logger.error('[EMAIL] SMTP verify timed out after 5s — host may be unreachable or port blocked');
-    } else {
-      logger.error('[EMAIL] SMTP connection failed:');
-      logger.error(`[EMAIL]   message : ${err.message}`);
-      logger.error(`[EMAIL]   code    : ${err.code    || 'none'}`);
-      logger.error(`[EMAIL]   command : ${err.command || 'none'}`);
-      logger.error(`[EMAIL]   response: ${err.response|| 'none'}`);
-      logger.error(`[EMAIL]   full    : ${JSON.stringify(err, Object.getOwnPropertyNames(err))}`);
-    }
-    return;
-  }
+    const resend = new Resend(process.env.RESEND_API_KEY);
 
-  try {
-    const info = await transporter.sendMail({
-      from:    `"Soterius Scanner" <${user}>`,
-      to:      email,
+    const { data, error } = await resend.emails.send({
+      from,
+      to:      [email],
       subject: `Soterius Scan Complete: ${domain}`,
       text: [
         `Thank you for scanning ${domain}.`,
@@ -76,9 +47,17 @@ async function sendConfirmationEmail(email, domain, scanScore) {
         </div>
       `,
     });
-    logger.info(`[EMAIL] Successfully sent to ${email} — Message ID: ${info.messageId}`);
+
+    if (error) {
+      logger.error(`[EMAIL] Resend API error — ${error.message}`);
+      logger.error(`[EMAIL] Error details: ${JSON.stringify(error)}`);
+      return;
+    }
+
+    logger.info(`[EMAIL] Successfully sent via Resend — Message ID: ${data.id}`);
   } catch (err) {
-    logger.error(`[EMAIL] Send failed — ${err.message} | code: ${err.code} | response: ${err.response || 'none'}`);
+    logger.error(`[EMAIL] Resend threw an exception — ${err.message}`);
+    logger.error(`[EMAIL] Full error: ${JSON.stringify(err, Object.getOwnPropertyNames(err))}`);
   }
 }
 
