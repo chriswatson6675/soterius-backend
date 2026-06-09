@@ -21,9 +21,8 @@ const HEADERS = [
   { id: 'scanScore',     title: 'Scan Score'      },
   { id: 'ssl',           title: 'SSL'             },
   { id: 'headers',       title: 'Headers'         },
-  { id: 'dns',           title: 'DNS/DMARC'       },
-  { id: 'subdomains',    title: 'Subdomains'      },
-  { id: 'tech',          title: 'Tech'            },
+  { id: 'email_sec',     title: 'Email Security'  },
+  { id: 'vulnComp',      title: 'Vuln Components' },
   { id: 'gdpr',          title: 'GDPR'            },
 ];
 
