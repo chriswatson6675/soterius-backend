@@ -10,6 +10,9 @@ const gateRouter   = require('./routes/gate');
 const logger = require('./utils/logger');
 const { AppError } = require('./utils/errors');
 
+console.log('SUPABASE_URL:', process.env.SUPABASE_URL);
+console.log('SUPABASE_ANON_KEY:', process.env.SUPABASE_ANON_KEY ? 'SET' : 'NOT SET');
+
 // ── CORS origin whitelist ─────────────────────────────────────────────────────
 // ALLOWED_ORIGINS is a comma-separated list of exact origins or glob patterns.
 // Use '*' as a wildcard for a single domain segment, e.g.:
