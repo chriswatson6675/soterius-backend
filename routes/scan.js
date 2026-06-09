@@ -158,9 +158,9 @@ router.post('/submit-gate', async (req, res, next) => {
       gateFormData,
     );
     if (!dbResult.success) {
-      logger.error(`[GATE] Supabase write failed: ${dbResult.error}`);
+      console.log(`[GATE] Supabase write FAILED: ${dbResult.error}`);
     } else {
-      logger.info(`[GATE] Submission saved to Supabase: ${dbResult.id}`);
+      console.log(`[GATE] Supabase write OK — id: ${dbResult.id}`);
     }
 
     return res.status(200).json({
