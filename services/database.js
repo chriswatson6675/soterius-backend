@@ -38,9 +38,25 @@ async function saveSubmission(email, domain, scanScore, riskLevel, scannerResult
       .select('id')
       .single();
 
-    if (error) return { success: false, error: error.message };
+    if (error) {
+      console.error('[SUPABASE-ERROR] Insert failed:', {
+        message: error.message,
+        code:    error.code,
+        details: error.details,
+        hint:    error.hint,
+        fullError: error,
+      });
+      return { success: false, error: error.message };
+    }
     return { success: true, id: data.id };
   } catch (err) {
+    console.error('[SUPABASE-ERROR] saveSubmission failed:', {
+      message: err.message,
+      code:    err.code,
+      details: err.details,
+      hint:    err.hint,
+      fullError: err,
+    });
     return { success: false, error: err.message };
   }
 }
