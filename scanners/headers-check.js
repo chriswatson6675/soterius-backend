@@ -7,17 +7,12 @@ function parseHstsMaxAge(value) {
   return m ? parseInt(m[1], 10) : 0;
 }
 
-function cspIsRestrictive(value) {
-  return value && !/unsafe-inline|unsafe-eval/i.test(value);
-}
-
 function failAll(msg) {
   return [
-    { name: 'HSTS present',                                    status: 'FAIL', details: msg, timeToFix: '5 minutes' },
-    { name: 'Content Security Policy present and restrictive', status: 'FAIL', details: msg, timeToFix: '30 minutes' },
-    { name: 'X-Frame-Options set',                            status: 'FAIL', details: msg, timeToFix: '5 minutes' },
-    { name: 'X-Content-Type-Options set',                     status: 'FAIL', details: msg, timeToFix: '5 minutes' },
-    { name: 'Referrer-Policy set',                            status: 'FAIL', details: msg, timeToFix: '5 minutes' },
+    { name: 'HSTS present',              status: 'FAIL', details: msg, timeToFix: '5 minutes' },
+    { name: 'X-Frame-Options set',       status: 'FAIL', details: msg, timeToFix: '5 minutes' },
+    { name: 'X-Content-Type-Options set', status: 'FAIL', details: msg, timeToFix: '5 minutes' },
+    { name: 'Referrer-Policy set',       status: 'FAIL', details: msg, timeToFix: '5 minutes' },
   ];
 }
 
@@ -33,11 +28,10 @@ module.exports = async function headersCheck(domain) {
     return failAll(`Could not fetch headers: ${err.message}`);
   }
 
-  const hsts  = h['strict-transport-security'];
-  const csp   = h['content-security-policy'];
-  const xfo   = h['x-frame-options'];
-  const xcto  = h['x-content-type-options'];
-  const rp    = h['referrer-policy'];
+  const hsts = h['strict-transport-security'];
+  const xfo  = h['x-frame-options'];
+  const xcto = h['x-content-type-options'];
+  const rp   = h['referrer-policy'];
 
   const hstsAge = parseHstsMaxAge(hsts);
 
@@ -51,16 +45,6 @@ module.exports = async function headersCheck(domain) {
           ? `HSTS enabled (max-age=${hstsAge}s)`
           : `HSTS present but max-age ${hstsAge}s is below the recommended ${HSTS_MIN_MAX_AGE}s`,
       timeToFix: !hsts ? '5 minutes' : hstsAge >= HSTS_MIN_MAX_AGE ? null : '5 minutes',
-    },
-    {
-      name:   'Content Security Policy present and restrictive',
-      status: !csp ? 'FAIL' : cspIsRestrictive(csp) ? 'PASS' : 'WARNING',
-      details: !csp
-        ? 'Content-Security-Policy header missing — site is vulnerable to XSS injection'
-        : cspIsRestrictive(csp)
-          ? 'CSP present and does not permit unsafe-inline or unsafe-eval'
-          : "CSP present but allows 'unsafe-inline' or 'unsafe-eval' — weakens XSS protection",
-      timeToFix: !csp ? '30 minutes' : cspIsRestrictive(csp) ? null : '30 minutes',
     },
     {
       name:   'X-Frame-Options set',

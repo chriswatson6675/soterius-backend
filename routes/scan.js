@@ -21,12 +21,12 @@ const gdprCheck      = require('../scanners/gdpr-check');
 const SCANNERS = [
   { key: 'ssl',      name: 'SSL/TLS Encryption',      fn: sslCheck,       expectedChecks: 4, pts: { PASS: 10, WARNING:  5, FAIL: 0 } }, // max 40
   { key: 'email',    name: 'Email Security',           fn: emailSecurity,  expectedChecks: 3, pts: { PASS:  8, WARNING:  4, FAIL: 0 } }, // max 24
-  { key: 'headers',  name: 'Security Headers',         fn: headersCheck,   expectedChecks: 5, pts: { PASS:  6, WARNING:  3, FAIL: 0 } }, // max 30
+  { key: 'headers',  name: 'Security Headers',         fn: headersCheck,   expectedChecks: 4, pts: { PASS:  5, WARNING:  3, FAIL: 0 } }, // max 20
   { key: 'vulnComp', name: 'Vulnerable Components',    fn: vulnComponents, expectedChecks: 3, pts: { PASS:  4, WARNING:  2, FAIL: 0 } }, // max 12
   { key: 'gdpr',     name: 'GDPR / Cookie Compliance', fn: gdprCheck,      expectedChecks: 6, pts: { PASS:  2, WARNING:  1, FAIL: 0 } }, // max 12
 ];
 
-const MAX_POINTS = 118; // SSL(40)+Email(24)+Headers(30)+Vuln(12)+GDPR(12)
+const MAX_POINTS = 108; // SSL(40)+Email(24)+Headers(20)+Vuln(12)+GDPR(12)
 
 // ── POST /api/scan ────────────────────────────────────────────────────────────
 
