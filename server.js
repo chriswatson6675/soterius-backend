@@ -65,6 +65,11 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+app.get('/api/test', (req, res) => {
+  console.log('[TEST] GET /api/test was called');
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
 app.use('/api/scan', scanRouter);
 app.use('/api/gate', gateRouter);
 app.use('/api', reportRouter);
