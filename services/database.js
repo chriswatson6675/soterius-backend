@@ -1,4 +1,5 @@
 const { createClient } = require('@supabase/supabase-js');
+const ws = require('ws');
 
 let supabase;
 
@@ -7,7 +8,7 @@ function getClient() {
     const url = process.env.SUPABASE_URL;
     const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (!url || !key) throw new Error('SUPABASE_URL and SUPABASE_ANON_KEY env vars are required');
-    supabase = createClient(url, key);
+    supabase = createClient(url, key, { realtime: { transport: ws } });
   }
   return supabase;
 }
