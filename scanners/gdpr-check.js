@@ -88,6 +88,8 @@ const DATA_RIGHTS_RE = [
 const DPO_MENTION_RE = /data\s+protection\s+officer|dpo\b/i;
 const DPO_CONTACT_RE = /(?:data\s+protection\s+officer|dpo)[^<]{0,300}?([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/is;
 
+const MANUAL_VERIFY = 'Manual verification required on paid tier';
+
 // ── HTTP helpers ──────────────────────────────────────────────────────────────
 
 async function fetchPage(url) {
@@ -106,23 +108,22 @@ module.exports = async function gdprCheck(domain) {
   try {
     homeBody = await fetchPage(`https://${domain}`);
   } catch (err) {
-    const msg = `Could not load homepage: ${err.message}`;
     return [
-      { name: 'Cookies and trackers identified',       status: 'FAIL', details: msg, timeToFix: 'N/A' },
-      { name: 'Privacy policy link accessible',        status: 'FAIL', details: msg, timeToFix: '30 minutes' },
-      { name: 'Privacy policy content readable',       status: 'FAIL', details: msg, timeToFix: '30 minutes' },
-      { name: 'Data subject rights documented',        status: 'FAIL', details: msg, timeToFix: '1 hour' },
-      { name: 'DPO contact information provided',      status: 'FAIL', details: msg, timeToFix: '30 minutes' },
-      { name: 'Cookie consent banner visible',         status: 'FAIL', details: msg, timeToFix: '1 hour' },
+      { name: 'Cookies and trackers identified',  status: 'WARNING', details: MANUAL_VERIFY, timeToFix: null },
+      { name: 'Privacy policy link accessible',   status: 'WARNING', details: MANUAL_VERIFY, timeToFix: null },
+      { name: 'Privacy policy content readable',  status: 'WARNING', details: MANUAL_VERIFY, timeToFix: null },
+      { name: 'Data subject rights documented',   status: 'WARNING', details: MANUAL_VERIFY, timeToFix: null },
+      { name: 'DPO contact information provided', status: 'WARNING', details: MANUAL_VERIFY, timeToFix: null },
+      { name: 'Cookie consent banner visible',    status: 'WARNING', details: MANUAL_VERIFY, timeToFix: null },
     ];
   }
 
   // Step 2: detect trackers & cookie banner on homepage
-  const trackers    = TRACKERS.filter(t => t.pattern.test(homeBody)).map(t => t.name);
-  const hasBanner   = detectCookieBanner(homeBody);
+  const trackers  = TRACKERS.filter(t => t.pattern.test(homeBody)).map(t => t.name);
+  const hasBanner = detectCookieBanner(homeBody);
 
   // Step 3: privacy policy link — check main body first (excluding consent containers)
-  const strippedHome = stripConsentContainers(homeBody);
+  const strippedHome   = stripConsentContainers(homeBody);
   const policyInMain   = detectPrivacyLink(strippedHome);
   const policyInBanner = !policyInMain && detectPrivacyLink(homeBody);
   const policyFound    = policyInMain || policyInBanner;
@@ -150,35 +151,30 @@ module.exports = async function gdprCheck(domain) {
   // Step 5: evaluate each check
 
   // Check 1 — Cookies usage identified
-  const cookiesKnown   = trackers.length > 0 || hasBanner;
-  const cookieStatus   = cookiesKnown ? 'PASS' : policyFound ? 'WARNING' : 'FAIL';
-  const cookieDetails  = trackers.length > 0
+  const cookiesKnown  = trackers.length > 0 || hasBanner;
+  const cookieStatus  = cookiesKnown ? 'PASS' : 'WARNING';
+  const cookieDetails = trackers.length > 0
     ? `Tracking scripts identified: ${trackers.join(', ')}`
     : hasBanner
       ? 'Cookie consent banner detected — cookies in use are disclosed'
-      : policyFound
-        ? 'No explicit cookie/tracker scripts found on homepage — check privacy policy for cookie list'
-        : 'No cookies, trackers, or consent mechanism detected on homepage';
+      : MANUAL_VERIFY;
 
   // Check 2 — Privacy policy link
-  const policyLinkStatus  = !policyFound ? 'FAIL' : policyInMain ? 'PASS' : 'WARNING';
+  const policyLinkStatus  = !policyFound ? 'WARNING' : policyInMain ? 'PASS' : 'WARNING';
   const policyLinkDetails = !policyFound
-    ? 'No privacy policy link found on the homepage — required by GDPR'
+    ? MANUAL_VERIFY
     : policyInMain
       ? `Privacy policy link found in page body${policyUrl ? ` (${policyUrl})` : ''}`
-      : `Privacy policy link found only within cookie/consent banner — should also appear in main navigation or footer`;
+      : 'Privacy policy link found only within cookie/consent banner — should also appear in main navigation or footer';
 
   // Check 3 — Policy content readable
   let policyReadStatus, policyReadDetails;
-  if (!policyFound) {
-    policyReadStatus  = 'FAIL';
-    policyReadDetails = 'No privacy policy found to evaluate';
+  if (!policyFound || policyFailed) {
+    policyReadStatus  = 'WARNING';
+    policyReadDetails = MANUAL_VERIFY;
   } else if (policyIsPdf) {
     policyReadStatus  = 'WARNING';
     policyReadDetails = `Privacy policy is a PDF — machine-readable HTML version is preferred (${policyUrl})`;
-  } else if (policyFailed) {
-    policyReadStatus  = 'FAIL';
-    policyReadDetails = `Privacy policy URL found (${policyUrl}) but the page could not be fetched`;
   } else if (!policyBody) {
     policyReadStatus  = 'WARNING';
     policyReadDetails = 'Privacy policy URL identified but content could not be extracted from homepage context';
@@ -188,39 +184,39 @@ module.exports = async function gdprCheck(domain) {
   }
 
   // Check 4 — Data subject rights
-  const hasRights      = DATA_RIGHTS_RE.some(p => p.test(searchBody));
-  const rightsStatus   = hasRights ? 'PASS' : (policyFound ? 'WARNING' : 'FAIL');
-  const rightsDetails  = hasRights
+  const hasRights     = DATA_RIGHTS_RE.some(p => p.test(searchBody));
+  const rightsStatus  = hasRights ? 'PASS' : 'WARNING';
+  const rightsDetails = hasRights
     ? 'Data subject rights language found in the privacy policy'
     : policyFound
       ? 'Privacy policy found but no data subject rights information detected (right to access, erasure, portability, etc.)'
-      : 'No data subject rights documentation found';
+      : MANUAL_VERIFY;
 
   // Check 5 — DPO contact
-  const dpoMentioned   = DPO_MENTION_RE.test(searchBody);
-  const dpoContactM    = searchBody.match(DPO_CONTACT_RE);
-  const dpoEmail       = dpoContactM?.[1] ?? null;
-  const dpoStatus      = dpoEmail ? 'PASS' : dpoMentioned ? 'WARNING' : 'FAIL';
-  const dpoDetails     = dpoEmail
+  const dpoMentioned  = DPO_MENTION_RE.test(searchBody);
+  const dpoContactM   = searchBody.match(DPO_CONTACT_RE);
+  const dpoEmail      = dpoContactM?.[1] ?? null;
+  const dpoStatus     = dpoEmail ? 'PASS' : 'WARNING';
+  const dpoDetails    = dpoEmail
     ? `DPO contact information found: ${dpoEmail}`
     : dpoMentioned
       ? 'Data Protection Officer mentioned but no contact email or form link found'
-      : 'No Data Protection Officer information found — required under GDPR Article 37 for many organisations';
+      : MANUAL_VERIFY;
 
   // Check 6 — Cookie consent banner
-  const bannerStatus  = hasBanner ? 'PASS' : 'FAIL';
+  const bannerStatus  = hasBanner ? 'PASS' : 'WARNING';
   const bannerDetails = hasBanner
     ? 'Cookie consent mechanism detected on homepage'
     : trackers.length > 0
-      ? `Tracking scripts active (${trackers.join(', ')}) but no cookie consent banner detected — GDPR requires opt-in consent before tracking`
-      : 'No cookie consent banner detected — required if the site sets any non-essential cookies';
+      ? `Tracking scripts active (${trackers.join(', ')}) but no cookie consent banner detected — upgrade to verify`
+      : MANUAL_VERIFY;
 
   return [
-    { name: 'Cookies and trackers identified',  status: cookieStatus,      details: cookieDetails,      timeToFix: cookieStatus      === 'PASS' ? null : '1 hour'     },
-    { name: 'Privacy policy link accessible',   status: policyLinkStatus,  details: policyLinkDetails,  timeToFix: policyLinkStatus  === 'PASS' ? null : '30 minutes' },
-    { name: 'Privacy policy content readable',  status: policyReadStatus,  details: policyReadDetails,  timeToFix: policyReadStatus  === 'PASS' ? null : '1 hour'     },
-    { name: 'Data subject rights documented',   status: rightsStatus,      details: rightsDetails,      timeToFix: rightsStatus      === 'PASS' ? null : '2 hours'    },
-    { name: 'DPO contact information provided', status: dpoStatus,         details: dpoDetails,         timeToFix: dpoStatus         === 'PASS' ? null : '30 minutes' },
-    { name: 'Cookie consent banner visible',    status: bannerStatus,      details: bannerDetails,      timeToFix: bannerStatus      === 'PASS' ? null : '1 hour'     },
+    { name: 'Cookies and trackers identified',  status: cookieStatus,      details: cookieDetails,      timeToFix: cookieStatus      === 'PASS' ? null : null },
+    { name: 'Privacy policy link accessible',   status: policyLinkStatus,  details: policyLinkDetails,  timeToFix: policyLinkStatus  === 'PASS' ? null : null },
+    { name: 'Privacy policy content readable',  status: policyReadStatus,  details: policyReadDetails,  timeToFix: policyReadStatus  === 'PASS' ? null : null },
+    { name: 'Data subject rights documented',   status: rightsStatus,      details: rightsDetails,      timeToFix: rightsStatus      === 'PASS' ? null : null },
+    { name: 'DPO contact information provided', status: dpoStatus,         details: dpoDetails,         timeToFix: dpoStatus         === 'PASS' ? null : null },
+    { name: 'Cookie consent banner visible',    status: bannerStatus,      details: bannerDetails,      timeToFix: bannerStatus      === 'PASS' ? null : null },
   ];
 };
