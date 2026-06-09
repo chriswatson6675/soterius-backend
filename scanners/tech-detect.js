@@ -1,68 +1,99 @@
 const axios = require('axios');
 
-const SIGNATURES = [
-  { name: 'WordPress',        pattern: /wp-content|wp-includes|wordpress/i,    category: 'CMS' },
-  { name: 'Drupal',           pattern: /drupal|sites\/default/i,                category: 'CMS' },
-  { name: 'Joomla',           pattern: /joomla|\/components\/com_/i,            category: 'CMS' },
-  { name: 'Shopify',          pattern: /cdn\.shopify\.com|shopify/i,            category: 'E-Commerce' },
-  { name: 'Wix',              pattern: /wix\.com|wixstatic/i,                   category: 'Website Builder' },
-  { name: 'React',            pattern: /react\.production\.min\.js|__reactFiber|_reactRootContainer/i, category: 'Framework' },
-  { name: 'Angular',          pattern: /ng-version|angular\.min\.js/i,          category: 'Framework' },
-  { name: 'Vue.js',           pattern: /vue\.min\.js|__vue__|vue\.runtime/i,    category: 'Framework' },
-  { name: 'Next.js',          pattern: /__NEXT_DATA__|_next\/static/i,           category: 'Framework' },
-  { name: 'jQuery',           pattern: /jquery\.min\.js|jquery-\d/i,            category: 'Library' },
-  { name: 'Bootstrap',        pattern: /bootstrap\.min\.css|bootstrap\.bundle/i, category: 'UI Library' },
-  { name: 'Google Analytics', pattern: /google-analytics\.com\/analytics|gtag\('config'/i, category: 'Analytics' },
-  { name: 'Google Tag Manager', pattern: /googletagmanager\.com\/gtm\.js/i,     category: 'Analytics' },
-  { name: 'Cloudflare',       pattern: /cloudflare/i,                            category: 'CDN' },
-];
+const WP_VERSION_RE  = /<meta[^>]+name=["']generator["'][^>]+content=["']WordPress\s+([0-9.]+)/i;
+const GENERATOR_RE   = /<meta[^>]+name=["']generator["'][^>]+content=["']([^"']+)/i;
+const OLD_JQUERY_RE  = /jquery[/-](1\.[0-9]+\.[0-9]+|2\.[0-9]+\.[0-9]+)(?:\.min)?\.js/i;
+const VERSION_NUM_RE = /[\d]+\.[\d]+/;
 
-async function techDetect(domain) {
-  const url = `https://${domain}`;
+module.exports = async function vulnerableComponentsCheck(domain) {
+  let body = '', headers = {};
+  try {
+    const res = await axios.get(`https://${domain}`, {
+      timeout: 10000, maxRedirects: 5, validateStatus: () => true,
+      headers: { 'User-Agent': 'Soterius-Scanner/1.0' },
+    });
+    body    = res.data?.toString() || '';
+    headers = res.headers;
+  } catch (err) {
+    const msg = `Could not fetch page: ${err.message}`;
+    return [
+      { name: 'No known CVEs in detected software',               status: 'FAIL', details: msg, timeToFix: 'N/A' },
+      { name: 'Framework and CMS versions not publicly disclosed', status: 'FAIL', details: msg, timeToFix: 'N/A' },
+      { name: 'No outdated third-party libraries detected',        status: 'FAIL', details: msg, timeToFix: 'N/A' },
+    ];
+  }
 
-  const response = await axios.get(url, {
-    timeout: 10000,
-    maxRedirects: 5,
-    validateStatus: () => true,
-    headers: { 'User-Agent': 'SecureVault-Scanner/1.0' },
-  });
+  // ── Check 1: Known CVEs in detected CMS ──────────────────────────────────────
+  const wpMatch   = body.match(WP_VERSION_RE);
+  const wpVersion = wpMatch?.[1] ?? null;
+  let cveStatus  = 'PASS';
+  let cveDetails = 'No CMS or framework versions with known CVEs detected';
 
-  const body = response.data?.toString() || '';
-  const headers = response.headers;
-
-  const detected = [];
-  for (const sig of SIGNATURES) {
-    if (sig.pattern.test(body)) {
-      detected.push({ name: sig.name, category: sig.category, source: 'body' });
+  if (wpVersion) {
+    const [major, minor] = wpVersion.split('.').map(Number);
+    if (major < 6 || (major === 6 && minor < 4)) {
+      cveStatus  = 'FAIL';
+      cveDetails = `WordPress ${wpVersion} has known CVEs — update to the latest version immediately`;
+    } else {
+      cveStatus  = 'WARNING';
+      cveDetails = `WordPress ${wpVersion} detected in page source — confirm it is up to date`;
     }
   }
 
-  // Server header
-  if (headers['server']) {
-    detected.push({ name: headers['server'], category: 'Server', source: 'header' });
-  }
-  // X-Powered-By header
-  if (headers['x-powered-by']) {
-    detected.push({ name: headers['x-powered-by'], category: 'Backend', source: 'header' });
+  // ── Check 2: Version numbers in server headers / meta ────────────────────────
+  const serverHeader = headers['server'] || '';
+  const poweredBy    = headers['x-powered-by'] || '';
+  const generatorRaw = body.match(GENERATOR_RE)?.[1] ?? '';
+
+  const versionInServer  = serverHeader && VERSION_NUM_RE.test(serverHeader);
+  const versionInPowered = poweredBy    && VERSION_NUM_RE.test(poweredBy);
+
+  let disclosureStatus  = 'PASS';
+  let disclosureDetails = 'No version numbers found in server headers or page meta';
+
+  if (versionInServer || versionInPowered) {
+    disclosureStatus  = 'FAIL';
+    const items = [
+      versionInServer  && `Server: ${serverHeader}`,
+      versionInPowered && `X-Powered-By: ${poweredBy}`,
+    ].filter(Boolean);
+    disclosureDetails = `Version numbers exposed in HTTP headers (${items.join(', ')}) — remove to reduce targeted attack risk`;
+  } else if (serverHeader || poweredBy || generatorRaw) {
+    disclosureStatus  = 'WARNING';
+    const items = [
+      serverHeader && `Server: ${serverHeader}`,
+      poweredBy    && `X-Powered-By: ${poweredBy}`,
+      generatorRaw && `Generator: ${generatorRaw}`,
+    ].filter(Boolean);
+    disclosureDetails = `Tech stack visible but no version numbers: ${items.join(', ')} — consider removing`;
   }
 
-  const issues = [];
-  if (detected.some(t => t.name === 'WordPress')) {
-    issues.push('WordPress detected — ensure plugins are up to date');
-  }
-  if (headers['x-powered-by']) {
-    issues.push(`Server technology disclosed via X-Powered-By: ${headers['x-powered-by']}`);
-  }
+  // ── Check 3: Outdated third-party JS libraries ───────────────────────────────
+  const jqMatch   = body.match(OLD_JQUERY_RE);
+  const jqVersion = jqMatch?.[1] ?? null;
+  const libStatus  = jqVersion ? 'FAIL' : 'PASS';
+  const libDetails = jqVersion
+    ? `jQuery ${jqVersion} detected — pre-3.x versions have known XSS and prototype pollution vulnerabilities`
+    : 'No outdated JavaScript library versions detected in page source';
 
-  return {
-    module: 'tech',
-    status: issues.length > 0 ? 'warn' : 'pass',
-    details: {
-      detected,
-      count: detected.length,
+  return [
+    {
+      name:      'No known CVEs in detected software',
+      status:    cveStatus,
+      details:   cveDetails,
+      timeToFix: cveStatus === 'PASS' ? null : cveStatus === 'WARNING' ? '1 hour' : '2 hours',
     },
-    issues,
-  };
-}
-
-module.exports = techDetect;
+    {
+      name:      'Framework and CMS versions not publicly disclosed',
+      status:    disclosureStatus,
+      details:   disclosureDetails,
+      timeToFix: disclosureStatus === 'PASS' ? null : '15 minutes',
+    },
+    {
+      name:      'No outdated third-party libraries detected',
+      status:    libStatus,
+      details:   libDetails,
+      timeToFix: libStatus === 'PASS' ? null : '30 minutes',
+    },
+  ];
+};

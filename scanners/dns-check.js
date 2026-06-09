@@ -1,64 +1,66 @@
 const dns = require('dns').promises;
 
-async function getTxtRecords(domain) {
-  try {
-    return await dns.resolveTxt(domain);
-  } catch {
-    return [];
-  }
+async function getTxt(domain) {
+  try { return await dns.resolveTxt(domain); }
+  catch { return []; }
 }
 
-async function dnsCheck(domain) {
-  const records = await getTxtRecords(domain);
-  const flat = records.map(r => r.join(''));
+module.exports = async function emailSecurityCheck(domain) {
+  const rootTxt  = (await getTxt(domain)).map(r => r.join(''));
+  const spf      = rootTxt.find(r => r.startsWith('v=spf1'));
 
-  const spfRecord = flat.find(r => r.startsWith('v=spf1'));
-  const dmarcRecord = (await getTxtRecords(`_dmarc.${domain}`)).map(r => r.join('')).find(r => r.startsWith('v=DMARC1'));
+  const dmarcTxt   = (await getTxt(`_dmarc.${domain}`)).map(r => r.join(''));
+  const dmarc      = dmarcTxt.find(r => r.startsWith('v=DMARC1'));
+  const dmarcPolicy = dmarc?.match(/p=(\w+)/)?.[1]?.toLowerCase() ?? null;
 
-  // DKIM requires a selector — check common selectors across major providers
-  // Google Workspace: google | Microsoft 365: selector1, selector2
-  // Mailchimp/Mandrill: k1, k2 | Generic: default, mail, dkim, smtp, mimecast
-  const dkimSelectors = [
-    'google', 'selector1', 'selector2',
-    'default', 'mail', 'k1', 'k2',
-    'dkim', 'smtp', 'mimecast',
+  const DKIM_SELECTORS = [
+    'google', 'selector1', 'selector2', 'default', 'mail',
+    'k1', 'k2', 'dkim', 'smtp', 'mimecast',
   ];
   let dkimRecord = null;
-  for (const selector of dkimSelectors) {
-    const res = await getTxtRecords(`${selector}._domainkey.${domain}`);
-    const found = res.map(r => r.join('')).find(r => r.includes('p='));
+  for (const sel of DKIM_SELECTORS) {
+    const res = (await getTxt(`${sel}._domainkey.${domain}`)).map(r => r.join(''));
+    const found = res.find(r => r.includes('p='));
     if (found) { dkimRecord = found; break; }
   }
 
-  const dmarcPolicy = dmarcRecord?.match(/p=(\w+)/)?.[1]?.toLowerCase() ?? null;
+  // SPF validity: +all or ?all are dangerously permissive
+  const spfPermissive = spf && /[+?]all/.test(spf);
 
-  const issues = [];
-  if (!spfRecord)  issues.push('No SPF record found');
-  if (!dkimRecord) issues.push('No DKIM record found (checked common selectors)');
-
-  // DMARC policy levels:
-  //   reject / quarantine → actively blocks spoofed mail (PASS)
-  //   none               → monitoring only, no enforcement (WARN)
-  //   missing entirely   → no protection at all (FAIL)
-  if (!dmarcRecord) {
-    issues.push('No DMARC record found');
-  } else if (dmarcPolicy === 'none' || !dmarcPolicy) {
-    issues.push(`DMARC policy is "${dmarcPolicy ?? 'none'}" — monitoring only, spoofed emails are not blocked`);
-  }
-
-  const hasFail = !spfRecord || !dmarcRecord;
-  const status  = issues.length === 0 ? 'pass' : hasFail ? 'fail' : 'warn';
-
-  return {
-    module: 'dns',
-    status,
-    details: {
-      spf:   { found: !!spfRecord,   record: spfRecord  || null },
-      dkim:  { found: !!dkimRecord,  record: dkimRecord ? '[key present]' : null },
-      dmarc: { found: !!dmarcRecord, record: dmarcRecord || null, policy: dmarcPolicy },
+  return [
+    {
+      name:   'SPF record present and valid',
+      status: !spf ? 'FAIL' : spfPermissive ? 'WARNING' : 'PASS',
+      details: !spf
+        ? 'No SPF record found — anyone can send email claiming to be from this domain'
+        : spfPermissive
+          ? `SPF record is too permissive: ${spf} — change to "~all" or "-all"`
+          : `SPF record configured: ${spf}`,
+      timeToFix: !spf ? '15 minutes' : spfPermissive ? '15 minutes' : null,
     },
-    issues,
-  };
-}
-
-module.exports = dnsCheck;
+    {
+      name:   'DKIM configured',
+      status: dkimRecord ? 'PASS' : 'FAIL',
+      details: dkimRecord
+        ? 'DKIM key found — outbound emails are cryptographically signed'
+        : 'No DKIM record found (checked 10 common selectors) — emails cannot be verified by recipients',
+      timeToFix: dkimRecord ? null : '30 minutes',
+    },
+    {
+      name:   'DMARC policy enforced',
+      status: !dmarc ? 'FAIL'
+        : dmarcPolicy === 'reject' || dmarcPolicy === 'quarantine' ? 'PASS'
+        : 'WARNING',
+      details: !dmarc
+        ? 'No DMARC record found — spoofed emails from this domain will be delivered'
+        : dmarcPolicy === 'reject'
+          ? 'DMARC p=reject — spoofed emails are blocked outright'
+          : dmarcPolicy === 'quarantine'
+            ? 'DMARC p=quarantine — spoofed emails are sent to spam'
+            : `DMARC p=none — monitoring only, spoofed emails are still delivered (change to p=quarantine or p=reject)`,
+      timeToFix: !dmarc ? '15 minutes'
+        : (dmarcPolicy === 'reject' || dmarcPolicy === 'quarantine') ? null
+        : '15 minutes',
+    },
+  ];
+};

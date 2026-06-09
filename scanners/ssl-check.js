@@ -1,77 +1,75 @@
 const tls = require('tls');
 
 const TLS_VERSIONS = { TLSv1: 1, 'TLSv1.1': 2, 'TLSv1.2': 3, 'TLSv1.3': 4 };
-const WEAK_CIPHERS = ['RC4', 'DES', '3DES', 'MD5', 'NULL', 'EXPORT', 'anon'];
 
-function checkCipherStrength(cipher) {
-  if (!cipher) return 'unknown';
-  const name = cipher.name || '';
-  if (WEAK_CIPHERS.some(w => name.includes(w))) return 'weak';
-  if (name.includes('AES_256') || name.includes('CHACHA20')) return 'strong';
-  return 'acceptable';
+function failAll(msg) {
+  return [
+    { name: 'Certificate valid and trusted',  status: 'FAIL', details: msg, timeToFix: '15 minutes' },
+    { name: 'Certificate not expired',         status: 'FAIL', details: msg, timeToFix: '15 minutes' },
+    { name: 'TLS version 1.2 or higher',       status: 'FAIL', details: msg, timeToFix: '30 minutes' },
+    { name: 'Certificate valid for 60+ days',  status: 'FAIL', details: msg, timeToFix: '15 minutes' },
+  ];
 }
 
-function sslCheck(domain) {
+module.exports = function sslCheck(domain) {
   return new Promise((resolve) => {
-    const options = { host: domain, port: 443, servername: domain, rejectUnauthorized: false, timeout: 10000 };
+    const options = {
+      host: domain, port: 443, servername: domain,
+      rejectUnauthorized: false, timeout: 10000,
+    };
 
     const socket = tls.connect(options, () => {
       try {
-        const cert = socket.getPeerCertificate(true);
-        const protocol = socket.getProtocol();
-        const cipher = socket.getCipher();
+        const cert       = socket.getPeerCertificate(true);
+        const protocol   = socket.getProtocol();
         const authorized = socket.authorized;
 
-        const validFrom = new Date(cert.valid_from);
-        const validTo = new Date(cert.valid_to);
-        const now = new Date();
-        // Math.ceil avoids off-by-one when expiry time-of-day hasn't passed yet today
-        const daysUntilExpiry = Math.ceil((validTo - now) / (1000 * 60 * 60 * 24));
-        const isExpired = daysUntilExpiry <= 0;
-
-        const tlsVersion = TLS_VERSIONS[protocol] || 0;
-        const tlsOk = tlsVersion >= TLS_VERSIONS['TLSv1.2'];
-
-        const issues = [];
-        if (isExpired) issues.push('Certificate has expired');
-        if (!authorized) issues.push('Certificate not trusted');
-        if (!tlsOk) issues.push(`Weak TLS version: ${protocol}`);
-        if (checkCipherStrength(cipher) === 'weak') issues.push(`Weak cipher: ${cipher?.name}`);
+        const validTo          = new Date(cert.valid_to);
+        const now              = new Date();
+        const daysUntilExpiry  = Math.ceil((validTo - now) / (1000 * 60 * 60 * 24));
+        const isExpired        = daysUntilExpiry <= 0;
+        const tlsOk            = (TLS_VERSIONS[protocol] || 0) >= TLS_VERSIONS['TLSv1.2'];
 
         socket.destroy();
-        resolve({
-          module: 'ssl',
-          status: isExpired ? 'fail' : issues.length === 0 ? 'pass' : 'warn',
-          details: {
-            valid: !isExpired,
-            authorized,
-            validFrom: validFrom.toISOString(),
-            validTo: validTo.toISOString(),
-            daysUntilExpiry,
-            subject: cert.subject,
-            issuer: cert.issuer,
-            protocol,
-            tlsVersionOk: tlsOk,
-            cipher: cipher?.name,
-            cipherStrength: checkCipherStrength(cipher),
+        resolve([
+          {
+            name:      'Certificate valid and trusted',
+            status:    authorized ? 'PASS' : 'FAIL',
+            details:   authorized
+              ? 'Certificate is valid and trusted by a recognised CA'
+              : 'Certificate is not trusted — browsers will show a security warning',
+            timeToFix: authorized ? null : '15 minutes',
           },
-          issues,
-        });
+          {
+            name:      'Certificate not expired',
+            status:    isExpired ? 'FAIL' : 'PASS',
+            details:   isExpired
+              ? `Certificate expired ${Math.abs(daysUntilExpiry)} day(s) ago`
+              : `Valid until ${validTo.toDateString()} (${daysUntilExpiry} days remaining)`,
+            timeToFix: isExpired ? '15 minutes' : null,
+          },
+          {
+            name:      'TLS version 1.2 or higher',
+            status:    tlsOk ? 'PASS' : 'FAIL',
+            details:   `Using ${protocol}${!tlsOk ? ' — upgrade to TLS 1.2 or 1.3 in your server config' : ''}`,
+            timeToFix: tlsOk ? null : '30 minutes',
+          },
+          {
+            name:   'Certificate valid for 60+ days',
+            status: daysUntilExpiry > 60 ? 'PASS' : daysUntilExpiry > 30 ? 'WARNING' : 'FAIL',
+            details: isExpired
+              ? 'Certificate has expired'
+              : `${daysUntilExpiry} days until expiry`,
+            timeToFix: daysUntilExpiry > 60 ? null : daysUntilExpiry > 30 ? '2 weeks' : '15 minutes',
+          },
+        ]);
       } catch (err) {
         socket.destroy();
-        resolve({ module: 'ssl', status: 'error', error: err.message });
+        resolve(failAll(`SSL inspection failed: ${err.message}`));
       }
     });
 
-    socket.on('error', (err) => {
-      resolve({ module: 'ssl', status: 'fail', issues: [`Cannot connect: ${err.message}`], details: {} });
-    });
-
-    socket.setTimeout(10000, () => {
-      socket.destroy();
-      resolve({ module: 'ssl', status: 'error', error: 'Connection timed out' });
-    });
+    socket.on('error',  (err) => resolve(failAll(`Cannot connect via HTTPS: ${err.message}`)));
+    socket.setTimeout(10000, () => { socket.destroy(); resolve(failAll('Connection timed out')); });
   });
-}
-
-module.exports = sslCheck;
+};

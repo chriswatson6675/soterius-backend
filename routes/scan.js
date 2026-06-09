@@ -9,60 +9,76 @@ const { appendSubmissionToCSV } = require('../utils/csvExporter');
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-// In-memory gate submission store.
-// Phase 2: replace with a database insert.
-// Data does not persist across server restarts.
+// In-memory gate submission store (no persistence across restarts)
 const gateSubmissions = new Map();
 
-const sslCheck = require('../scanners/ssl-check');
-const headersCheck = require('../scanners/headers-check');
-const dnsCheck = require('../scanners/dns-check');
-// const portScan = require('../scanners/port-scan'); // DISABLED: Port scanning removed from free tier (paid feature)
-const subdomains = require('../scanners/subdomains');
-const techDetect = require('../scanners/tech-detect');
-const gdprCheck = require('../scanners/gdpr-check');
+const sslCheck       = require('../scanners/ssl-check');
+const headersCheck   = require('../scanners/headers-check');
+const emailSecurity  = require('../scanners/dns-check');
+const vulnComponents = require('../scanners/tech-detect');
+const passwordCheck  = require('../scanners/password-check');
+const infraCheck     = require('../scanners/infra-check');
+const gdprCheck      = require('../scanners/gdpr-check');
+
+const SCANNERS = [
+  { key: 'ssl',      name: 'SSL/TLS Encryption',       fn: sslCheck,       expectedChecks: 4 },
+  { key: 'vulnComp', name: 'Vulnerable Components',     fn: vulnComponents, expectedChecks: 3 },
+  { key: 'email',    name: 'Email Security',            fn: emailSecurity,  expectedChecks: 3 },
+  { key: 'headers',  name: 'Security Headers',          fn: headersCheck,   expectedChecks: 5 },
+  { key: 'password', name: 'Password Security',         fn: passwordCheck,  expectedChecks: 4 },
+  { key: 'infra',    name: 'Infrastructure Exposure',   fn: infraCheck,     expectedChecks: 3 },
+  { key: 'gdpr',     name: 'GDPR / Cookie Compliance',  fn: gdprCheck,      expectedChecks: 6 },
+];
+
+const POINTS     = { PASS: 6, WARNING: 3, FAIL: 0 };
+const MAX_POINTS = 168; // 28 checks × 6
+
+// ── POST /api/scan ────────────────────────────────────────────────────────────
 
 router.post('/', async (req, res, next) => {
   try {
     const { domain } = req.body;
 
-    if (!domain) {
-      throw new ValidationError('domain is required');
-    }
-    if (!validateDomain(domain)) {
-      throw new ValidationError(`Invalid domain: ${domain}`);
-    }
+    if (!domain)             throw new ValidationError('domain is required');
+    if (!validateDomain(domain)) throw new ValidationError(`Invalid domain: ${domain}`);
 
     logger.info(`Scan started for ${domain}`);
 
-    const [ssl, headers, dns, subs, tech, gdpr] = await Promise.allSettled([
-      sslCheck(domain),
-      headersCheck(domain),
-      dnsCheck(domain),
-      // portScan(domain), // DISABLED
-      subdomains(domain),
-      techDetect(domain),
-      gdprCheck(domain),
-    ]);
+    const raw = await Promise.allSettled(SCANNERS.map(s => s.fn(domain)));
 
-    const results = {
-      ssl: ssl.status === 'fulfilled' ? ssl.value : { module: 'ssl', status: 'error', error: ssl.reason?.message },
-      headers: headers.status === 'fulfilled' ? headers.value : { module: 'headers', status: 'error', error: headers.reason?.message },
-      dns: dns.status === 'fulfilled' ? dns.value : { module: 'dns', status: 'error', error: dns.reason?.message },
-      // ports: ports.status === 'fulfilled' ? ports.value : { module: 'ports', status: 'error', error: ports.reason?.message }, // DISABLED
-      subdomains: subs.status === 'fulfilled' ? subs.value : { module: 'subdomains', status: 'error', error: subs.reason?.message },
-      tech: tech.status === 'fulfilled' ? tech.value : { module: 'tech', status: 'error', error: tech.reason?.message },
-      gdpr: gdpr.status === 'fulfilled' ? gdpr.value : { module: 'gdpr', status: 'error', error: gdpr.reason?.message },
-    };
+    const scanners = SCANNERS.map((def, i) => {
+      const checks = raw[i].status === 'fulfilled'
+        ? raw[i].value
+        : [{ name: 'Scanner error', status: 'FAIL', details: raw[i].reason?.message || 'Unknown error', timeToFix: 'N/A' }];
 
-    logger.info(`Scan complete for ${domain}`);
+      const maxPts    = def.expectedChecks * 6;
+      const earnedPts = checks.reduce((sum, c) => sum + (POINTS[c.status] ?? 0), 0);
+
+      return {
+        name:   def.name,
+        score:  maxPts > 0 ? Math.round((earnedPts / maxPts) * 100) : 0,
+        checks,
+      };
+    });
+
+    const totalPoints = scanners.reduce(
+      (sum, s) => sum + s.checks.reduce((cs, c) => cs + (POINTS[c.status] ?? 0), 0),
+      0
+    );
+    const score     = Math.round((totalPoints / MAX_POINTS) * 100);
+    const riskLevel = score >= 80 ? 'GREEN' : score >= 50 ? 'AMBER' : 'RED';
+
+    logger.info(`Scan complete for ${domain} — score: ${score} (${riskLevel})`);
 
     res.json({
-      success: true,
+      success:     true,
       domain,
-      scannedAt: new Date().toISOString(),
-      results,
-      pdfUrl: null,
+      scannedAt:   new Date().toISOString(),
+      score,
+      riskLevel,
+      totalPoints,
+      maxPoints:   MAX_POINTS,
+      scanners,
     });
   } catch (err) {
     next(err);
@@ -84,7 +100,7 @@ router.post('/submit-gate', async (req, res, next) => {
       itManagement,
       confidence,
       scanScore,    // optional — sent by frontend after scan completes
-      scanResults,  // optional — { ssl, headers, dns, subdomains, tech, gdpr }
+      scanResults,  // optional — array of scanner objects from new format
     } = req.body;
 
     if (!domain)               throw new ValidationError('Domain is required');
@@ -112,13 +128,17 @@ router.post('/submit-gate', async (req, res, next) => {
     console.log(`[GATE] Submission received for: ${submission.domain} | email: ${submission.email} | id: ${gateId}`);
 
     // ── Fire-and-forget: email confirmation ──────────────────────────────────
-    // Don't await — SMTP latency must not block the HTTP response.
     console.log(`[GATE] About to send confirmation email to: ${submission.email}`);
     sendConfirmationEmail(submission.email, submission.domain, scanScore ?? null);
     console.log(`[GATE] Email function called (fire-and-forget — check [EMAIL] logs for result)`);
 
     // ── Fire-and-forget: CSV export ──────────────────────────────────────────
-    const results = scanResults || {};
+    // scanResults is now an array of { name, score, checks[] }
+    const scannerMap = {};
+    if (Array.isArray(scanResults)) {
+      scanResults.forEach(s => { scannerMap[s.name] = s.score ?? ''; });
+    }
+
     appendSubmissionToCSV({
       submissionId:  gateId,
       timestamp,
@@ -131,12 +151,13 @@ router.post('/submit-gate', async (req, res, next) => {
       dataIncidents: submission.dataIncidents ? 'Yes' : 'No',
       confidence:    submission.confidence ?? '',
       scanScore:     typeof scanScore === 'number' ? scanScore : '',
-      ssl:           results.ssl?.status?.toUpperCase()        || '',
-      headers:       results.headers?.status?.toUpperCase()    || '',
-      dns:           results.dns?.status?.toUpperCase()        || '',
-      subdomains:    results.subdomains?.status?.toUpperCase() || '',
-      tech:          results.tech?.status?.toUpperCase()       || '',
-      gdpr:          results.gdpr?.status?.toUpperCase()       || '',
+      ssl:           scannerMap['SSL/TLS Encryption']       ?? '',
+      headers:       scannerMap['Security Headers']         ?? '',
+      email_sec:     scannerMap['Email Security']           ?? '',
+      vulnComp:      scannerMap['Vulnerable Components']    ?? '',
+      password:      scannerMap['Password Security']        ?? '',
+      infra:         scannerMap['Infrastructure Exposure']  ?? '',
+      gdpr:          scannerMap['GDPR / Cookie Compliance'] ?? '',
     }).catch(err => logger.error(`[GATE] CSV write failed: ${err.message}`));
 
     return res.status(200).json({

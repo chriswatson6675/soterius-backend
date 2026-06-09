@@ -8,7 +8,7 @@ async function sendConfirmationEmail(email, domain, scanScore) {
   }
 
   const scoreDisplay = typeof scanScore === 'number' ? `${scanScore}/100` : 'N/A';
-  const from         = 'onboarding@resend.dev';
+  const from         = 'noreply@mail.soterius.co.uk';
 
   logger.info(`[EMAIL] Sending via Resend to: ${email} | domain: ${domain} | score: ${scoreDisplay}`);
 
