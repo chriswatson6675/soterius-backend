@@ -16,22 +16,18 @@ const sslCheck       = require('../scanners/ssl-check');
 const headersCheck   = require('../scanners/headers-check');
 const emailSecurity  = require('../scanners/dns-check');
 const vulnComponents = require('../scanners/tech-detect');
-const passwordCheck  = require('../scanners/password-check');
-const infraCheck     = require('../scanners/infra-check');
 const gdprCheck      = require('../scanners/gdpr-check');
 
 const SCANNERS = [
-  { key: 'ssl',      name: 'SSL/TLS Encryption',       fn: sslCheck,       expectedChecks: 4 },
-  { key: 'vulnComp', name: 'Vulnerable Components',     fn: vulnComponents, expectedChecks: 3 },
-  { key: 'email',    name: 'Email Security',            fn: emailSecurity,  expectedChecks: 3 },
-  { key: 'headers',  name: 'Security Headers',          fn: headersCheck,   expectedChecks: 5 },
-  { key: 'password', name: 'Password Security',         fn: passwordCheck,  expectedChecks: 4 },
-  { key: 'infra',    name: 'Infrastructure Exposure',   fn: infraCheck,     expectedChecks: 3 },
-  { key: 'gdpr',     name: 'GDPR / Cookie Compliance',  fn: gdprCheck,      expectedChecks: 6 },
+  { key: 'ssl',      name: 'SSL/TLS Encryption',      fn: sslCheck,       expectedChecks: 4 },
+  { key: 'vulnComp', name: 'Vulnerable Components',    fn: vulnComponents, expectedChecks: 3 },
+  { key: 'email',    name: 'Email Security',           fn: emailSecurity,  expectedChecks: 3 },
+  { key: 'headers',  name: 'Security Headers',         fn: headersCheck,   expectedChecks: 5 },
+  { key: 'gdpr',     name: 'GDPR / Cookie Compliance', fn: gdprCheck,      expectedChecks: 6 },
 ];
 
 const POINTS     = { PASS: 6, WARNING: 3, FAIL: 0 };
-const MAX_POINTS = 168; // 28 checks × 6
+const MAX_POINTS = 126; // 21 checks × 6
 
 // ── POST /api/scan ────────────────────────────────────────────────────────────
 
@@ -151,12 +147,10 @@ router.post('/submit-gate', async (req, res, next) => {
       dataIncidents: submission.dataIncidents ? 'Yes' : 'No',
       confidence:    submission.confidence ?? '',
       scanScore:     typeof scanScore === 'number' ? scanScore : '',
-      ssl:           scannerMap['SSL/TLS Encryption']       ?? '',
-      headers:       scannerMap['Security Headers']         ?? '',
-      email_sec:     scannerMap['Email Security']           ?? '',
-      vulnComp:      scannerMap['Vulnerable Components']    ?? '',
-      password:      scannerMap['Password Security']        ?? '',
-      infra:         scannerMap['Infrastructure Exposure']  ?? '',
+      ssl:           scannerMap['SSL/TLS Encryption']      ?? '',
+      headers:       scannerMap['Security Headers']        ?? '',
+      email_sec:     scannerMap['Email Security']          ?? '',
+      vulnComp:      scannerMap['Vulnerable Components']   ?? '',
       gdpr:          scannerMap['GDPR / Cookie Compliance'] ?? '',
     }).catch(err => logger.error(`[GATE] CSV write failed: ${err.message}`));
 
