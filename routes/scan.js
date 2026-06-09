@@ -5,12 +5,10 @@ const { validateDomain }        = require('../utils/validators');
 const { AppError, ValidationError } = require('../utils/errors');
 const logger                    = require('../utils/logger');
 const { sendConfirmationEmail } = require('../utils/emailService');
-const { appendSubmissionToCSV } = require('../utils/csvExporter');
+const { saveSubmission }        = require('../services/database');
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-// In-memory gate submission store (no persistence across restarts)
-const gateSubmissions = new Map();
 
 const sslCheck       = require('../scanners/ssl-check');
 const headersCheck   = require('../scanners/headers-check');
@@ -117,8 +115,6 @@ router.post('/submit-gate', async (req, res, next) => {
       submittedAt:   timestamp,
     };
 
-    gateSubmissions.set(gateId, submission);
-
     console.log(`[GATE] Submission received for: ${submission.domain} | email: ${submission.email} | id: ${gateId}`);
 
     // ── Fire-and-forget: email confirmation ──────────────────────────────────
@@ -126,31 +122,46 @@ router.post('/submit-gate', async (req, res, next) => {
     sendConfirmationEmail(submission.email, submission.domain, scanScore ?? null);
     console.log(`[GATE] Email function called (fire-and-forget — check [EMAIL] logs for result)`);
 
-    // ── Fire-and-forget: CSV export ──────────────────────────────────────────
-    // scanResults is now an array of { name, score, checks[] }
+    // ── Fire-and-forget: Supabase persistence ────────────────────────────────
     const scannerMap = {};
     if (Array.isArray(scanResults)) {
-      scanResults.forEach(s => { scannerMap[s.name] = s.score ?? ''; });
+      scanResults.forEach(s => { scannerMap[s.name] = s.score ?? null; });
     }
 
-    appendSubmissionToCSV({
-      submissionId:  gateId,
-      timestamp,
-      domain:        submission.domain,
-      email:         submission.email,
+    const riskLevel = typeof scanScore === 'number'
+      ? (scanScore >= 80 ? 'GREEN' : scanScore >= 50 ? 'AMBER' : 'RED')
+      : null;
+
+    const scanDetails = {
+      ssl:       scannerMap['SSL/TLS Encryption']       ?? null,
+      headers:   scannerMap['Security Headers']         ?? null,
+      email_sec: scannerMap['Email Security']           ?? null,
+      vulnComp:  scannerMap['Vulnerable Components']    ?? null,
+      gdpr:      scannerMap['GDPR / Cookie Compliance'] ?? null,
+    };
+
+    const gateFormData = {
       name:          submission.name,
       firmName:      submission.firmName,
       mainConcern:   submission.mainConcern,
       itManagement:  submission.itManagement,
-      dataIncidents: submission.dataIncidents ? 'Yes' : 'No',
-      confidence:    submission.confidence ?? '',
-      scanScore:     typeof scanScore === 'number' ? scanScore : '',
-      ssl:           scannerMap['SSL/TLS Encryption']      ?? '',
-      headers:       scannerMap['Security Headers']        ?? '',
-      email_sec:     scannerMap['Email Security']          ?? '',
-      vulnComp:      scannerMap['Vulnerable Components']   ?? '',
-      gdpr:          scannerMap['GDPR / Cookie Compliance'] ?? '',
-    }).catch(err => logger.error(`[GATE] CSV write failed: ${err.message}`));
+      dataIncidents: submission.dataIncidents,
+      confidence:    submission.confidence,
+    };
+
+    const dbResult = await saveSubmission(
+      submission.email,
+      submission.domain,
+      typeof scanScore === 'number' ? scanScore : null,
+      riskLevel,
+      scanDetails,
+      gateFormData,
+    );
+    if (!dbResult.success) {
+      logger.error(`[GATE] Supabase write failed: ${dbResult.error}`);
+    } else {
+      logger.info(`[GATE] Submission saved to Supabase: ${dbResult.id}`);
+    }
 
     return res.status(200).json({
       success:      true,
