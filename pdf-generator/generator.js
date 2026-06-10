@@ -868,7 +868,7 @@ function buildRemediationTimeline(results) {
   }
   const ongoing = [
     'Set up SSL certificate monitoring and auto-renewal',
-    'Schedule quarterly security audit (use SecureVault or similar tool)',
+    'Schedule a quarterly Soterius security re-scan to track improvements',
     'Monthly: update CMS plugins, themes, and dependencies',
     'Annually: review and update privacy policy and cookie consent',
   ];
@@ -897,7 +897,7 @@ function buildNextSteps() {
     'Implement fixes starting with Critical (red) items first',
     'Schedule a follow-up scan in 30 days to verify all fixes are in place',
     'Set up SSL certificate monitoring to prevent unexpected expiry',
-    'Contact SecureVault if you need help interpreting or acting on any findings',
+    'Contact Soterius if you need help interpreting or acting on any findings',
   ];
   return `<ol style="padding-left:18px;margin:0">
     ${steps.map(s => `<li style="font-size:12px;color:#374151;margin-bottom:6px;line-height:1.6">${sanitize(s)}</li>`).join('')}
@@ -967,7 +967,7 @@ async function generatePDF(scanData) {
       displayHeaderFooter: true,
       headerTemplate: '<div></div>',
       footerTemplate: `<div style="font-family:Arial,sans-serif;font-size:9px;color:#9ca3af;width:100%;text-align:center;padding:0 15mm">
-        SecureVault GDPR Compliance Report &mdash; Page <span class="pageNumber"></span> of <span class="totalPages"></span>
+        Soterius Security Report &mdash; Page <span class="pageNumber"></span> of <span class="totalPages"></span>
       </div>`,
       margin: { top: '12mm', bottom: '18mm', left: '15mm', right: '15mm' },
     });
