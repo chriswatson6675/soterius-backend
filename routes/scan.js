@@ -5,7 +5,9 @@ const { validateDomain }        = require('../utils/validators');
 const { AppError, ValidationError } = require('../utils/errors');
 const logger                    = require('../utils/logger');
 const { sendConfirmationEmail } = require('../utils/emailService');
-const { saveSubmission }        = require('../services/database');
+const { saveSubmission, getSubmissionById } = require('../services/database');
+const { generatePDF }           = require('../pdf-generator/generator');
+const { adaptScannersForPDF }   = require('../utils/pdfAdapter');
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -117,12 +119,7 @@ router.post('/submit-gate', async (req, res, next) => {
 
     console.log(`[GATE] Submission received for: ${submission.domain} | email: ${submission.email} | id: ${gateId}`);
 
-    // ── Fire-and-forget: email confirmation ──────────────────────────────────
-    console.log(`[GATE] About to send confirmation email to: ${submission.email}`);
-    sendConfirmationEmail(submission.email, submission.domain, scanScore ?? null);
-    console.log(`[GATE] Email function called (fire-and-forget — check [EMAIL] logs for result)`);
-
-    // ── Fire-and-forget: Supabase persistence ────────────────────────────────
+    // ── Supabase persistence ──────────────────────────────────────────────────
     const scannerMap = {};
     if (Array.isArray(scanResults)) {
       scanResults.forEach(s => { scannerMap[s.name] = s.score ?? null; });
@@ -156,12 +153,19 @@ router.post('/submit-gate', async (req, res, next) => {
       riskLevel,
       scanDetails,
       gateFormData,
+      Array.isArray(scanResults) ? scanResults : null,
     );
     if (!dbResult.success) {
       console.log(`[GATE] Supabase write FAILED: ${dbResult.error}`);
     } else {
       console.log(`[GATE] Supabase write OK — id: ${dbResult.id}`);
     }
+
+    // ── Fire-and-forget: confirmation email with PDF link ─────────────────────
+    const pdfLink = dbResult.success
+      ? `${process.env.BACKEND_URL}/api/scan/download-pdf/${dbResult.id}`
+      : null;
+    sendConfirmationEmail(submission.email, submission.domain, scanScore ?? null, pdfLink);
 
     return res.status(200).json({
       success:      true,
@@ -171,6 +175,42 @@ router.post('/submit-gate', async (req, res, next) => {
   } catch (err) {
     if (err instanceof AppError) return next(err);
     next(new AppError('Submission failed', 500));
+  }
+});
+
+// ── GET /api/scan/download-pdf/:submissionId ──────────────────────────────────
+router.get('/download-pdf/:submissionId', async (req, res, next) => {
+  try {
+    const submission = await getSubmissionById(req.params.submissionId);
+    if (!submission) return res.status(404).json({ success: false, error: 'Report not found' });
+
+    let rawScanResults;
+    try {
+      rawScanResults = typeof submission.scan_details === 'string'
+        ? JSON.parse(submission.scan_details)
+        : submission.scan_details;
+    } catch {
+      rawScanResults = null;
+    }
+
+    const results = adaptScannersForPDF(Array.isArray(rawScanResults) ? rawScanResults : []);
+
+    const pdf = await generatePDF({
+      domain:       submission.domain,
+      timestamp:    submission.created_at,
+      overallScore: submission.scan_score ?? submission.score ?? 0,
+      riskLevel:    (submission.risk_level || 'medium').toLowerCase(),
+      results,
+    });
+
+    const safeDomain = (submission.domain || 'report').replace(/[^a-zA-Z0-9.-]/g, '-');
+    const dateStr    = new Date().toISOString().split('T')[0];
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${safeDomain}-security-report-${dateStr}.pdf"`);
+    res.setHeader('Content-Length', pdf.length);
+    res.send(pdf);
+  } catch (err) {
+    next(err);
   }
 });
 

@@ -1,13 +1,22 @@
 const { Resend } = require('resend');
 const logger     = require('./logger');
 
-async function sendConfirmationEmail(email, domain, scanScore) {
+async function sendConfirmationEmail(email, domain, scanScore, pdfLink) {
   if (!process.env.RESEND_API_KEY) {
     logger.warn('[EMAIL] RESEND_API_KEY not set — skipping confirmation email');
     return;
   }
 
-  const scoreDisplay = typeof scanScore === 'number' ? `${scanScore}/100` : 'N/A';
+  const scoreDisplay  = typeof scanScore === 'number' ? `${scanScore}/100` : 'N/A';
+  const pdfButtonHtml = pdfLink
+    ? `<p>
+        <a href="${pdfLink}"
+           style="display:inline-block;padding:10px 20px;background:#dc2626;color:#fff;text-decoration:none;border-radius:4px;font-weight:bold">
+          Download PDF Report →
+        </a>
+       </p>`
+    : '';
+  const pdfTextLine = pdfLink ? `\nDownload your report: ${pdfLink}\n` : '';
   const from         = 'noreply@mail.soterius.co.uk';
 
   logger.info(`[EMAIL] Sending via Resend to: ${email} | domain: ${domain} | score: ${scoreDisplay}`);
@@ -23,8 +32,7 @@ async function sendConfirmationEmail(email, domain, scanScore) {
         `Thank you for scanning ${domain}.`,
         `Your security score: ${scoreDisplay}`,
         '',
-        'Your full report is ready — visit https://soterius-frontend.vercel.app to run a new scan.',
-        '',
+        pdfTextLine,
         'If you have questions, reply to this email.',
         '',
         '— The Soterius Team',
@@ -34,6 +42,7 @@ async function sendConfirmationEmail(email, domain, scanScore) {
           <h2 style="color:#185FA5">Your Security Scan is Complete</h2>
           <p>Thank you for scanning <strong>${domain}</strong>.</p>
           <p>Your security score: <strong style="font-size:1.2em">${scoreDisplay}</strong></p>
+          ${pdfButtonHtml}
           <p>
             <a href="https://soterius-frontend.vercel.app"
                style="display:inline-block;padding:10px 20px;background:#185FA5;color:#fff;text-decoration:none;border-radius:4px">
