@@ -10,10 +10,6 @@ const gateRouter   = require('./routes/gate');
 const logger = require('./utils/logger');
 const { AppError } = require('./utils/errors');
 
-console.log('=== SERVER STARTUP ===');
-console.log('SUPABASE_URL:', process.env.SUPABASE_URL);
-console.log('SUPABASE_ANON_KEY:', process.env.SUPABASE_ANON_KEY ? 'SET' : 'NOT SET');
-console.log('SUPABASE_SERVICE_ROLE_KEY:', process.env.SUPABASE_SERVICE_ROLE_KEY ? 'SET' : 'NOT SET');
 
 // ── CORS origin whitelist ─────────────────────────────────────────────────────
 // ALLOWED_ORIGINS is a comma-separated list of exact origins or glob patterns.
@@ -65,10 +61,6 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-app.get('/api/test', (req, res) => {
-  console.log('[TEST] GET /api/test was called');
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
-});
 
 app.use('/api/scan', scanRouter);
 app.use('/api/gate', gateRouter);
