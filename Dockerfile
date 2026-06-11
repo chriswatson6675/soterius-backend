@@ -1,8 +1,7 @@
-FROM node:20-slim
+FROM node:22-slim
 
-# Install the OS-level libraries that Chrome needs to run.
-# Puppeteer downloads its own matching Chrome binary during npm ci —
-# we do NOT use the system chromium package so versions always align.
+# Install the OS-level libraries that Chrome needs to run, plus unzip which
+# Puppeteer requires to extract its bundled Chrome download.
 RUN apt-get update && apt-get install -y \
     ca-certificates \
     fonts-liberation \
@@ -19,6 +18,7 @@ RUN apt-get update && apt-get install -y \
     libxfixes3 \
     libxkbcommon0 \
     libxrandr2 \
+    unzip \
     xdg-utils \
     --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
