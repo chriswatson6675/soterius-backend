@@ -1,20 +1,32 @@
-FROM node:18-slim
+FROM node:20-slim
 
-# Install Chromium for Puppeteer PDF generation.
-# node:18-slim is Debian Bullseye; chromium is available in the default repos.
+# Install the OS-level libraries that Chrome needs to run.
+# Puppeteer downloads its own matching Chrome binary during npm ci —
+# we do NOT use the system chromium package so versions always align.
 RUN apt-get update && apt-get install -y \
-    chromium \
+    ca-certificates \
     fonts-liberation \
+    libatk-bridge2.0-0 \
+    libatk1.0-0 \
+    libcups2 \
+    libdrm2 \
+    libgbm1 \
+    libgtk-3-0 \
+    libnspr4 \
+    libnss3 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxfixes3 \
+    libxkbcommon0 \
+    libxrandr2 \
+    xdg-utils \
     --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
-# Tell Puppeteer to skip downloading its own Chrome bundle and use system Chromium.
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
-ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
-
 WORKDIR /app
 
-# Install production dependencies only (separate layer for better cache reuse).
+# npm ci triggers Puppeteer's postinstall which downloads the matching Chrome
+# binary into ~/.cache/puppeteer — layer is cached until package-lock.json changes.
 COPY package*.json ./
 RUN npm ci --only=production
 

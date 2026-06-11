@@ -1,5 +1,5 @@
 const { createClient } = require('@supabase/supabase-js');
-const ws = require('ws');
+const logger = require('../utils/logger');
 
 let supabase;
 
@@ -7,8 +7,8 @@ function getClient() {
   if (!supabase) {
     const url = process.env.SUPABASE_URL;
     const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (!url || !key) throw new Error('SUPABASE_URL and SUPABASE_ANON_KEY env vars are required');
-    supabase = createClient(url, key, { realtime: { transport: ws } });
+    if (!url || !key) throw new Error('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY env vars are required');
+    supabase = createClient(url, key);
   }
   return supabase;
 }
@@ -40,7 +40,7 @@ async function saveSubmission(email, domain, scanScore, riskLevel, scannerResult
       .single();
 
     if (error) {
-      console.error('[SUPABASE-ERROR] Insert failed:', {
+      logger.error('[SUPABASE-ERROR] Insert failed:', {
         message: error.message,
         code:    error.code,
         details: error.details,
@@ -51,7 +51,7 @@ async function saveSubmission(email, domain, scanScore, riskLevel, scannerResult
     }
     return { success: true, id: data.id };
   } catch (err) {
-    console.error('[SUPABASE-ERROR] saveSubmission failed:', {
+    logger.error('[SUPABASE-ERROR] saveSubmission failed:', {
       message: err.message,
       code:    err.code,
       details: err.details,
@@ -70,9 +70,10 @@ async function getSubmissionByEmail(email) {
       .eq('email', email)
       .order('created_at', { ascending: false });
 
-    if (error) return [];
+    if (error) { logger.error(`getSubmissionByEmail failed: ${error.message}`); return []; }
     return data ?? [];
-  } catch {
+  } catch (err) {
+    logger.error(`getSubmissionByEmail threw: ${err.message}`);
     return [];
   }
 }
@@ -84,9 +85,10 @@ async function getAllSubmissions() {
       .select('*')
       .order('created_at', { ascending: false });
 
-    if (error) return [];
+    if (error) { logger.error(`getAllSubmissions failed: ${error.message}`); return []; }
     return data ?? [];
-  } catch {
+  } catch (err) {
+    logger.error(`getAllSubmissions threw: ${err.message}`);
     return [];
   }
 }
@@ -99,9 +101,10 @@ async function getSubmissionById(id) {
       .eq('id', id)
       .single();
 
-    if (error) return null;
+    if (error) { logger.error(`getSubmissionById failed: ${error.message}`); return null; }
     return data;
-  } catch {
+  } catch (err) {
+    logger.error(`getSubmissionById threw: ${err.message}`);
     return null;
   }
 }

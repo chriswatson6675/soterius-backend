@@ -11,6 +11,12 @@ const { adaptScannersForPDF }   = require('../utils/pdfAdapter');
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+function getRiskLevel(score) {
+  if (score >= 80) return 'GREEN';
+  if (score >= 60) return 'AMBER';
+  return 'RED';
+}
+
 
 const sslCheck       = require('../scanners/ssl-check');
 const headersCheck   = require('../scanners/headers-check');
@@ -26,7 +32,7 @@ const SCANNERS = [
   { key: 'gdpr',     name: 'GDPR / Cookie Compliance', fn: gdprCheck,      expectedChecks: 6, pts: { PASS:  2, WARNING:  1, FAIL: 0 } }, // max 12
 ];
 
-const MAX_POINTS = 108; // SSL(40)+Email(24)+Headers(20)+Vuln(12)+GDPR(12)
+const MAX_POINTS = SCANNERS.reduce((sum, def) => sum + def.expectedChecks * def.pts.PASS, 0);
 
 // ── POST /api/scan ────────────────────────────────────────────────────────────
 
@@ -47,14 +53,17 @@ router.post('/', async (req, res, next) => {
         : [{ name: 'Scanner error', status: 'FAIL', details: raw[i].reason?.message || 'Unknown error', timeToFix: 'N/A' }];
 
       const maxPts    = def.expectedChecks * def.pts.PASS;
-      const earnedPts = checks.reduce((sum, c) => sum + (def.pts[c.status] ?? 0), 0);
+      const earnedPts = checks.reduce((sum, c) => {
+        const status = String(c.status || '').toUpperCase();
+        return sum + (def.pts[status] ?? 0);
+      }, 0);
 
       return { def, checks, maxPts, earnedPts };
     });
 
     const totalPoints = interim.reduce((sum, r) => sum + r.earnedPts, 0);
     const score       = Math.round((totalPoints / MAX_POINTS) * 100);
-    const riskLevel   = score >= 80 ? 'GREEN' : score >= 50 ? 'AMBER' : 'RED';
+    const riskLevel   = getRiskLevel(score);
 
     const scanners = interim.map(({ def, checks, maxPts, earnedPts }) => ({
       name:  def.name,
@@ -101,23 +110,32 @@ router.post('/submit-gate', async (req, res, next) => {
     if (!email)                throw new ValidationError('Email is required');
     if (!EMAIL_RE.test(email)) throw new ValidationError('Invalid email format');
 
+    const trimmedDomain = String(domain).trim().toLowerCase();
+    if (!validateDomain(trimmedDomain)) throw new ValidationError(`Invalid domain: ${trimmedDomain}`);
+
+    const parsedConfidence = Number.isFinite(Number(confidence)) ? Number(confidence) : null;
+    if (parsedConfidence !== null && (parsedConfidence < 1 || parsedConfidence > 5)) {
+      throw new ValidationError('confidence must be between 1 and 5');
+    }
+
     const gateId    = randomUUID();
     const timestamp = new Date().toISOString();
 
     const submission = {
       gateId,
-      domain:        String(domain).trim(),
+      domain:        trimmedDomain,
       name:          name         ? String(name).trim()         : '',
       email:         String(email).trim().toLowerCase(),
       firmName:      firmName     ? String(firmName).trim()     : '',
       mainConcern:   mainConcern  ? String(mainConcern).trim()  : '',
       dataIncidents: Boolean(dataIncidents),
       itManagement:  itManagement ? String(itManagement).trim() : '',
-      confidence:    Number.isFinite(Number(confidence)) ? Number(confidence) : null,
+      confidence:    parsedConfidence,
       submittedAt:   timestamp,
     };
 
-    console.log(`[GATE] Submission received for: ${submission.domain} | email: ${submission.email} | id: ${gateId}`);
+    const maskedEmail = submission.email.replace(/(.{2})(.*)(@.*)/, '$1***$3');
+    logger.info(`Gate submission received: ${submission.domain} | ${maskedEmail} | id: ${gateId}`);
 
     // ── Supabase persistence ──────────────────────────────────────────────────
     const scannerMap = {};
@@ -125,9 +143,9 @@ router.post('/submit-gate', async (req, res, next) => {
       scanResults.forEach(s => { scannerMap[s.name] = s.score ?? null; });
     }
 
-    const riskLevel = typeof scanScore === 'number'
-      ? (scanScore >= 80 ? 'GREEN' : scanScore >= 50 ? 'AMBER' : 'RED')
-      : null;
+    const parsedScanScore = Number(scanScore);
+    const normalizedScanScore = Number.isFinite(parsedScanScore) ? parsedScanScore : null;
+    const riskLevel = normalizedScanScore !== null ? getRiskLevel(normalizedScanScore) : null;
 
     const scanDetails = {
       ssl:       scannerMap['SSL/TLS Encryption']       ?? null,
@@ -149,28 +167,32 @@ router.post('/submit-gate', async (req, res, next) => {
     const dbResult = await saveSubmission(
       submission.email,
       submission.domain,
-      typeof scanScore === 'number' ? scanScore : null,
+      normalizedScanScore,
       riskLevel,
       scanDetails,
       gateFormData,
       Array.isArray(scanResults) ? scanResults : null,
     );
     if (!dbResult.success) {
-      console.log(`[GATE] Supabase write FAILED: ${dbResult.error}`);
+      logger.error(`Gate submission DB write failed: ${dbResult.error}`);
     } else {
-      console.log(`[GATE] Supabase write OK — id: ${dbResult.id}`);
+      logger.info(`Gate submission stored: ${dbResult.id}`);
     }
 
     // ── Fire-and-forget: confirmation email with PDF link ─────────────────────
-    const pdfLink = dbResult.success
+    const pdfLink = dbResult.success && process.env.BACKEND_URL
       ? `${process.env.BACKEND_URL}/api/scan/download-pdf/${dbResult.id}`
       : null;
-    sendConfirmationEmail(submission.email, submission.domain, scanScore ?? null, pdfLink);
+    if (dbResult.success && !process.env.BACKEND_URL) {
+      logger.warn('BACKEND_URL not set — PDF link will be omitted from confirmation email');
+    }
+    void sendConfirmationEmail(submission.email, submission.domain, normalizedScanScore, pdfLink)
+      .catch(err => logger.error('Confirmation email failed', err));
 
     return res.status(200).json({
       success:      true,
       message:      'Check your email for confirmation',
-      submissionId: gateId,
+      submissionId: dbResult.success ? dbResult.id : gateId,
     });
   } catch (err) {
     if (err instanceof AppError) return next(err);
@@ -199,7 +221,7 @@ router.get('/download-pdf/:submissionId', async (req, res, next) => {
       domain:       submission.domain,
       timestamp:    submission.created_at,
       overallScore: submission.scan_score ?? submission.score ?? 0,
-      riskLevel:    (submission.risk_level || 'medium').toLowerCase(),
+      riskLevel:    (submission.risk_level || 'RED').toLowerCase(),
       results,
     });
 

@@ -7,10 +7,10 @@ async function getTxt(domain) {
 
 module.exports = async function emailSecurityCheck(domain) {
   const rootTxt  = (await getTxt(domain)).map(r => r.join(''));
-  const spf      = rootTxt.find(r => r.startsWith('v=spf1'));
+  const spf      = rootTxt.find(r => r.toLowerCase().startsWith('v=spf1'));
 
   const dmarcTxt   = (await getTxt(`_dmarc.${domain}`)).map(r => r.join(''));
-  const dmarc      = dmarcTxt.find(r => r.startsWith('v=DMARC1'));
+  const dmarc      = dmarcTxt.find(r => r.toLowerCase().startsWith('v=dmarc1'));
   const dmarcPolicy = dmarc?.match(/p=(\w+)/)?.[1]?.toLowerCase() ?? null;
 
   const DKIM_SELECTORS = [
@@ -20,12 +20,12 @@ module.exports = async function emailSecurityCheck(domain) {
   let dkimRecord = null;
   for (const sel of DKIM_SELECTORS) {
     const res = (await getTxt(`${sel}._domainkey.${domain}`)).map(r => r.join(''));
-    const found = res.find(r => r.includes('p='));
+    const found = res.find(r => r.toLowerCase().includes('p='));
     if (found) { dkimRecord = found; break; }
   }
 
   // SPF validity: +all or ?all are dangerously permissive
-  const spfPermissive = spf && /[+?]all/.test(spf);
+  const spfPermissive = spf && /(\s|^)[+?]all\b/i.test(spf);
 
   return [
     {

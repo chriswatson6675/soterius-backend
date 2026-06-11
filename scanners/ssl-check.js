@@ -21,10 +21,20 @@ module.exports = function sslCheck(domain) {
     const socket = tls.connect(options, () => {
       try {
         const cert       = socket.getPeerCertificate(true);
-        const protocol   = socket.getProtocol();
+        const protocol   = socket.getProtocol() || 'unknown';
         const authorized = socket.authorized;
 
+        if (!cert || !cert.valid_to) {
+          socket.destroy();
+          return resolve(failAll('Invalid certificate data'));
+        }
+
         const validTo          = new Date(cert.valid_to);
+        if (isNaN(validTo.getTime())) {
+          socket.destroy();
+          return resolve(failAll('Invalid certificate data'));
+        }
+
         const now              = new Date();
         const daysUntilExpiry  = Math.ceil((validTo - now) / (1000 * 60 * 60 * 24));
         const isExpired        = daysUntilExpiry <= 0;
@@ -69,7 +79,7 @@ module.exports = function sslCheck(domain) {
       }
     });
 
-    socket.on('error',  (err) => resolve(failAll(`Cannot connect via HTTPS: ${err.message}`)));
+    socket.once('error', (err) => resolve(failAll(`Cannot connect via HTTPS: ${err.message}`)));
     socket.setTimeout(10000, () => { socket.destroy(); resolve(failAll('Connection timed out')); });
   });
 };

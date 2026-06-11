@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Soterius GDPR Compliance Report</title>
+  <title>Soterius Website Security Report</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: Arial, Helvetica, sans-serif; font-size: 13px; color: #1f2937; background: #fff; line-height: 1.5; }
@@ -64,8 +64,8 @@
     </div>
   </div>
   <div class="cover-body">
-    <div class="cover-title">GDPR Compliance Audit Report</div>
-    <div class="cover-subtitle">Automated security and privacy compliance scan</div>
+    <div class="cover-title">Website Security Report</div>
+    <div class="cover-subtitle">Automated security and compliance scan</div>
     <div class="cover-domain">{{domain}}</div>
     <div class="cover-score-row">
       <div class="score-circle">
@@ -97,15 +97,14 @@
     </div>
     <div class="exec-right">
       <p class="exec-intro">
-        This report presents the results of an automated security and GDPR compliance scan of
-        <strong>{{domain}}</strong>, conducted on {{timestamp}}. Seven independent checks were
+        This report presents the results of an automated security scan of
+        <strong>{{domain}}</strong>, conducted on {{timestamp}}. Five independent checks were
         performed covering HTTPS security, HTTP security headers, email authentication,
-        open port exposure, subdomain enumeration, technology disclosure, and GDPR
-        compliance requirements. Results reflect the publicly observable state of the
-        website at the time of scan.
+        technology disclosure, and GDPR compliance. Results reflect the
+        publicly observable state of the website at the time of scan.
       </p>
       <div class="metrics-row">
-        <div class="metric-box"><div class="metric-num">7</div><div class="metric-lbl">Checks Run</div></div>
+        <div class="metric-box"><div class="metric-num">{{checkCount}}</div><div class="metric-lbl">Checks Run</div></div>
         <div class="metric-box" style="border-color:#86efac"><div class="metric-num" style="color:#16a34a">{{passCount}}</div><div class="metric-lbl">Passed</div></div>
         <div class="metric-box" style="border-color:#fcd34d"><div class="metric-num" style="color:#d97706">{{warnCount}}</div><div class="metric-lbl">Warnings</div></div>
         <div class="metric-box" style="border-color:#fca5a5"><div class="metric-num" style="color:#dc2626">{{failCount}}</div><div class="metric-lbl">Failed</div></div>
@@ -130,7 +129,7 @@
 <!-- ════════════════════ SECTION 4: DETAILED SCAN RESULTS ════════════════════ -->
 <div class="section page-break">
   <div class="section-title">Detailed Scan Results</div>
-  <p class="section-desc">Each of the seven scanners is documented below with its status, specific findings, business impact, a real-world SME example, and step-by-step remediation guidance.</p>
+  <p class="section-desc">Each of the five scanners is documented below with its status, specific findings, business impact, a real-world SME example, and step-by-step remediation guidance.</p>
   {{scannerCards}}
 </div>
 

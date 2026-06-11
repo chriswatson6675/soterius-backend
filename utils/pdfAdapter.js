@@ -17,19 +17,24 @@ function adaptScannersForPDF(rawScanResults) {
 
   const adapted = {};
 
+  const normalizeStatus = s => {
+    const u = String(s || '').toUpperCase();
+    return u === 'WARN' ? 'WARNING' : u;
+  };
+
   for (const scanner of rawScanResults) {
-    const key = SCANNER_NAME_TO_PDF_KEY[scanner.name];
+    const key = SCANNER_NAME_TO_PDF_KEY[String(scanner.name || '').trim()];
     if (!key) continue;
 
     const checks = scanner.checks || [];
 
-    const hasFail = checks.some(c => c.status === 'FAIL');
-    const hasWarn = checks.some(c => c.status === 'WARNING');
+    const hasFail = checks.some(c => normalizeStatus(c.status) === 'FAIL');
+    const hasWarn = checks.some(c => normalizeStatus(c.status) === 'WARNING');
 
     const status = hasFail ? 'fail' : hasWarn ? 'warn' : 'pass';
 
     const issues = checks
-      .filter(c => c.status !== 'PASS')
+      .filter(c => normalizeStatus(c.status) !== 'PASS')
       .map(c => [c.name, c.details].filter(Boolean).join(': '));
 
     adapted[key] = { status, issues, details: {} };

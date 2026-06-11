@@ -63,7 +63,7 @@ async function sendConfirmationEmail(email, domain, scanScore, pdfLink) {
       return;
     }
 
-    logger.info(`[EMAIL] Successfully sent via Resend — Message ID: ${data.id}`);
+    logger.info(`[EMAIL] Successfully sent via Resend — Message ID: ${data?.id ?? 'unknown'}`);
   } catch (err) {
     logger.error(`[EMAIL] Resend threw an exception — ${err.message}`);
     logger.error(`[EMAIL] Full error: ${JSON.stringify(err, Object.getOwnPropertyNames(err))}`);

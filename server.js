@@ -3,7 +3,6 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const { createServer } = require('http');
-const { Server } = require('socket.io');
 const scanRouter   = require('./routes/scan');
 const reportRouter = require('./routes/report');
 const gateRouter   = require('./routes/gate');
@@ -49,12 +48,11 @@ const corsOptions = {
 // ── App setup ─────────────────────────────────────────────────────────────────
 const app = express();
 const httpServer = createServer(app);
-const io = new Server(httpServer, { cors: corsOptions });
 
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions)); // explicit preflight handler for all routes
 app.use(express.json());
-app.use((req, _res, next) => { console.log(`[REQ] ${req.method} ${req.path} — origin: ${req.headers.origin ?? 'none'}`); next(); });
+app.use((req, _res, next) => { logger.info(`${req.method} ${req.path} — origin: ${req.headers.origin ?? 'none'}`); next(); });
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.get('/health', (req, res) => {
@@ -84,4 +82,4 @@ httpServer.listen(PORT, () => {
   logger.info(`CORS allowed origins: ${CORS_ORIGINS.join(', ')}`);
 });
 
-module.exports = { app, io };
+module.exports = { app };

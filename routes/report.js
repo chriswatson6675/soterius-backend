@@ -12,11 +12,13 @@ function normaliseRisk(riskLevel, score) {
   const l = String(riskLevel || '').toLowerCase();
   if (l === 'green'  || l === 'low')                    return 'low';
   if (l === 'amber'  || l === 'medium')                 return 'medium';
-  if (l === 'red'    || l === 'high' || l === 'critical') return 'critical';
+  if (l === 'red'    || l === 'high')   return 'high';
+  if (l === 'critical')                 return 'critical';
   // score-based fallback
   if (typeof score === 'number') {
     if (score >= 80) return 'low';
-    if (score >= 50) return 'medium';
+    if (score >= 60) return 'medium';
+    if (score >= 40) return 'high';
   }
   return 'critical';
 }

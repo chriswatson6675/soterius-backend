@@ -910,14 +910,17 @@ function buildNextSteps() {
 
 async function generatePDF(scanData) {
   const templatePath = path.join(__dirname, 'template.html');
-  let html = fs.readFileSync(templatePath, 'utf8');
+  let html = await fs.promises.readFile(templatePath, 'utf8');
 
   const results    = scanData.results || {};
   const score      = scanData.overallScore ?? 0;
-  const riskKey    = String(scanData.riskLevel || 'critical').toLowerCase();
+  const RISK_KEY_MAP = { green: 'low', amber: 'medium', red: 'high' };
+  const riskRaw    = String(scanData.riskLevel || '').toLowerCase();
+  const riskKey    = RISK_KEY_MAP[riskRaw] || 'critical';
   const riskStyle  = RISK_STYLES[riskKey] || RISK_STYLES.critical;
   const scoreColor = getScoreColor(score);
-  const riskLabel  = (riskKey.charAt(0).toUpperCase() + riskKey.slice(1)) + ' Risk';
+  const RISK_LABELS = { low: 'Low Risk', medium: 'Medium Risk', high: 'High Risk', critical: 'Critical Risk' };
+  const riskLabel  = RISK_LABELS[riskKey] || 'Critical Risk';
 
   const entries      = Object.values(results);
   const totalIssues  = entries.reduce((s, r) => s + (r.issues?.length || 0), 0);
@@ -925,6 +928,7 @@ async function generatePDF(scanData) {
   const warnCount    = entries.filter(r => r.status === 'warn').length;
   const failCount    = entries.filter(r => r.status === 'fail').length;
   const errorCount   = entries.filter(r => r.status === 'error').length;
+  const checkCount   = passCount + warnCount + failCount + errorCount;
 
   html = html
     .replace(/\{\{domain\}\}/g,                 sanitize(scanData.domain))
@@ -936,6 +940,7 @@ async function generatePDF(scanData) {
     .replace(/\{\{riskLabel\}\}/g,               sanitize(riskLabel))
     .replace(/\{\{riskBg\}\}/g,                  riskStyle.bg)
     .replace(/\{\{riskColor\}\}/g,               riskStyle.text)
+    .replace(/\{\{checkCount\}\}/g,              sanitize(String(checkCount)))
     .replace(/\{\{totalIssues\}\}/g,             sanitize(String(totalIssues)))
     .replace(/\{\{passCount\}\}/g,               sanitize(String(passCount)))
     .replace(/\{\{warnCount\}\}/g,               sanitize(String(warnCount)))
