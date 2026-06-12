@@ -217,13 +217,14 @@ router.get('/download-pdf/:submissionId', async (req, res, next) => {
 
     const results = adaptScannersForPDF(Array.isArray(rawScanResults) ? rawScanResults : []);
 
-    const pdf = await generatePDF({
+    const raw = await generatePDF({
       domain:       submission.domain,
       timestamp:    submission.created_at,
       overallScore: submission.scan_score ?? submission.score ?? 0,
       riskLevel:    (submission.risk_level || 'RED').toLowerCase(),
       results,
     });
+    const pdf = Buffer.isBuffer(raw) ? raw : Buffer.from(raw);
 
     const safeDomain = (submission.domain || 'report').replace(/[^a-zA-Z0-9.-]/g, '-');
     const dateStr    = new Date().toISOString().split('T')[0];

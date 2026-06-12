@@ -41,13 +41,16 @@ router.post('/report', async (req, res, next) => {
     logger.info(`PDF report requested for ${domain}`);
 
     const riskKey = normaliseRisk(riskLevel, overallScore);
-    const pdf = await generatePDF({
+    const raw = await generatePDF({
       domain,
       timestamp,
       results: adaptedResults,
       overallScore,
       riskLevel: riskKey,
     });
+    // Puppeteer 22+ returns Uint8Array; Express 4 res.send() JSON-stringifies
+    // anything that isn't a Buffer, so we must convert explicitly.
+    const pdf = Buffer.isBuffer(raw) ? raw : Buffer.from(raw);
 
     const safeDomain = domain.replace(/[^a-zA-Z0-9.-]/g, '-');
     const dateStr = new Date().toISOString().split('T')[0];
