@@ -914,7 +914,10 @@ async function generatePDF(scanData) {
 
   const results    = scanData.results || {};
   const score      = scanData.overallScore ?? 0;
-  const RISK_KEY_MAP = { green: 'low', amber: 'medium', red: 'high' };
+  const RISK_KEY_MAP = {
+    green: 'low', amber: 'medium', red: 'high',
+    low: 'low', medium: 'medium', high: 'high', critical: 'critical',
+  };
   const riskRaw    = String(scanData.riskLevel || '').toLowerCase();
   const riskKey    = RISK_KEY_MAP[riskRaw] || 'critical';
   const riskStyle  = RISK_STYLES[riskKey] || RISK_STYLES.critical;

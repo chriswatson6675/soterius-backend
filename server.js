@@ -71,7 +71,11 @@ app.use((req, res) => {
 app.use((err, req, res, next) => {
   const status  = err instanceof AppError ? err.statusCode : 500;
   const message = err instanceof AppError ? err.message    : 'Internal server error';
-  logger.error(`${status} — ${message}`);
+  if (status >= 500) {
+    logger.error(`${status} — ${err.stack || err.message}`);
+  } else {
+    logger.error(`${status} — ${message}`);
+  }
   res.status(status).json({ success: false, error: message });
 });
 
