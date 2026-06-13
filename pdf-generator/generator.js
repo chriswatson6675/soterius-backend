@@ -24,10 +24,10 @@ function calcRating(pct) {
 }
 
 function ratingBand(r) {
-  if (r >= 800) return { label: 'Excellent',     color: '#15803D', bg: '#DCFCE7' };
-  if (r >= 650) return { label: 'Good',          color: '#16A34A', bg: '#D1FAE5' };
-  if (r >= 500) return { label: 'Moderate Risk', color: '#D97706', bg: '#FEF9C3' };
-  if (r >= 300) return { label: 'High Risk',     color: '#EA580C', bg: '#FFEDD5' };
+  if (r >= 899) return { label: 'Excellent',     color: '#15803D', bg: '#DCFCE7' };
+  if (r >= 749) return { label: 'Good',          color: '#16A34A', bg: '#D1FAE5' };
+  if (r >= 599) return { label: 'Moderate Risk', color: '#D97706', bg: '#FEF9C3' };
+  if (r >= 400) return { label: 'High Risk',     color: '#EA580C', bg: '#FFEDD5' };
   return              { label: 'Critical Risk',  color: '#DC2626', bg: '#FEE2E2' };
 }
 
@@ -251,7 +251,7 @@ function ratingScaleBar(rating) {
       <span>Critical</span><span>High</span><span>Moderate</span><span>Good</span><span>Excellent</span>
     </div>
     <div style="display:flex;justify-content:space-between;font-size:8px;color:#9CA3AF;margin-top:1px;">
-      <span>0</span><span>300</span><span>500</span><span>650</span><span>999</span>
+      <span>0</span><span>400</span><span>599</span><span>749</span><span>999</span>
     </div>`;
 }
 
@@ -277,8 +277,45 @@ function scorecard(results) {
     </div>`;
 }
 
+// ── Category breakdown helper ─────────────────────────────────────────────────
+const CAT_DISPLAY = {
+  ssl:      'SSL/TLS Encryption',
+  email:    'Email Security',
+  headers:  'Security Headers',
+  vulnComp: 'Vulnerable Components',
+  gdpr:     'GDPR / Cookie Compliance',
+};
+
+function bandColor(rating) {
+  if (rating === 'Excellent')     return '#15803D';
+  if (rating === 'Good')          return '#16A34A';
+  if (rating === 'Moderate Risk') return '#D97706';
+  if (rating === 'High Risk')     return '#EA580C';
+  return '#DC2626';
+}
+
+function categoryBreakdownHtml(breakdown) {
+  if (!breakdown) return '';
+  const rows = ['ssl', 'email', 'headers', 'vulnComp', 'gdpr']
+    .filter(k => breakdown[k])
+    .map(k => {
+      const cat   = breakdown[k];
+      const name  = CAT_DISPLAY[k] || k;
+      const pct   = cat.percentage ?? 0;
+      const rat   = cat.rating     || 'Critical Risk';
+      const color = bandColor(rat);
+      return `
+        <div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid ${C.light};">
+          <div style="font-size:10px;color:${C.text};flex:1;">${sanitize(name)}</div>
+          <div style="font-size:10px;font-weight:700;color:${color};min-width:28px;text-align:right;">${pct}%</div>
+          <div style="background:${color}20;color:${color};font-size:9px;font-weight:700;padding:2px 8px;border-radius:99px;white-space:nowrap;">${sanitize(rat)}</div>
+        </div>`;
+    }).join('');
+  return rows ? `<div style="margin-top:10px;">${rows}</div>` : '';
+}
+
 // ── Page 1: Executive Dashboard ───────────────────────────────────────────────
-function buildPage1(scanData, results, rating, band, reportId) {
+function buildPage1(scanData, results, rating, band, reportId, scoreObject) {
   const topRisks    = getTopRisks(results);
   const impacts     = getBusinessImpacts(results);
   const remediation = getRemediationSummary(results);
@@ -350,10 +387,10 @@ function buildPage1(scanData, results, rating, band, reportId) {
           ${ratingScaleBar(rating)}
           <div style="margin-top:14px;padding-top:12px;border-top:1px solid ${C.light};">
             <div style="display:flex;justify-content:space-between;font-size:9px;color:${C.muted};">
-              <span>800–999 Excellent</span><span>650–799 Good</span><span>500–649 Moderate</span>
+              <span>899–999 Excellent</span><span>749–898 Good</span><span>599–748 Moderate</span>
             </div>
             <div style="display:flex;justify-content:space-between;font-size:9px;color:${C.muted};margin-top:2px;">
-              <span>300–499 High Risk</span><span>0–299 Critical Risk</span>
+              <span>400–598 High Risk</span><span>0–399 Critical Risk</span>
             </div>
           </div>
         </div>
@@ -362,6 +399,7 @@ function buildPage1(scanData, results, rating, band, reportId) {
         <div style="background:#fff;border:1px solid ${C.border};border-radius:10px;padding:16px 18px;margin-bottom:14px;">
           ${sectionHeading('SECURITY OVERVIEW')}
           ${scorecard(results)}
+          ${categoryBreakdownHtml(scoreObject?.categoryBreakdown)}
         </div>
 
         <!-- Remediation summary -->
@@ -529,11 +567,12 @@ function buildMonitoringSection(domain) {
 
 // ── Full HTML assembler ───────────────────────────────────────────────────────
 function buildFullHTML(scanData) {
-  const results  = scanData.results || {};
-  const score    = scanData.overallScore ?? 0;
-  const rating   = calcRating(score);
-  const band     = ratingBand(rating);
-  const reportId = generateReportId();
+  const results     = scanData.results || {};
+  const score       = scanData.overallScore ?? 0;
+  const rating      = calcRating(score);
+  const band        = ratingBand(rating);
+  const reportId    = generateReportId();
+  const scoreObject = scanData.scoreObject ?? null;
 
   const globalCss = `
     * { box-sizing:border-box; margin:0; padding:0; }
@@ -542,7 +581,7 @@ function buildFullHTML(scanData) {
     .no-break { page-break-inside:avoid; break-inside:avoid; }
   `;
 
-  const page1 = buildPage1(scanData, results, rating, band, reportId);
+  const page1 = buildPage1(scanData, results, rating, band, reportId, scoreObject);
   const page2 = buildPage2(results, scanData.domain, reportId);
   const tech  = buildTechnicalSection(results, scanData.domain);
   const mon   = buildMonitoringSection(scanData.domain);

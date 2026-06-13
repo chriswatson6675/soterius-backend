@@ -49,17 +49,21 @@ module.exports = async function emailSecurityCheck(domain) {
     {
       name:   'DMARC policy enforced',
       status: !dmarc ? 'FAIL'
-        : dmarcPolicy === 'reject' || dmarcPolicy === 'quarantine' ? 'PASS'
+        : dmarcPolicy === 'reject' ? 'PASS'
         : 'WARNING',
+      points: !dmarc ? 0
+        : dmarcPolicy === 'reject' ? 40
+        : dmarcPolicy === 'quarantine' ? 30
+        : 20,
       details: !dmarc
-        ? 'No DMARC record found — spoofed emails from this domain will be delivered'
+        ? 'No Protection — no DMARC record found; spoofed emails from this domain will be delivered'
         : dmarcPolicy === 'reject'
-          ? 'DMARC p=reject — spoofed emails are blocked outright'
+          ? 'Full Protection — DMARC p=reject; spoofed emails are blocked outright'
           : dmarcPolicy === 'quarantine'
-            ? 'DMARC p=quarantine — spoofed emails are sent to spam'
-            : `DMARC p=none — monitoring only, spoofed emails are still delivered (change to p=quarantine or p=reject)`,
+            ? 'Partial Protection — DMARC p=quarantine; spoofed emails are sent to spam but not fully blocked'
+            : 'Monitoring Only — DMARC p=none; no enforcement, spoofed emails are still delivered (change to p=quarantine or p=reject)',
       timeToFix: !dmarc ? '15 minutes'
-        : (dmarcPolicy === 'reject' || dmarcPolicy === 'quarantine') ? null
+        : dmarcPolicy === 'reject' ? null
         : '15 minutes',
     },
   ];

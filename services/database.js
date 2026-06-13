@@ -13,7 +13,7 @@ function getClient() {
   return supabase;
 }
 
-async function saveSubmission(email, domain, scanScore, riskLevel, scannerResults, formData, rawScanResults) {
+async function saveSubmission(email, domain, scanScore, riskLevel, scannerResults, formData, rawScanResults, scoreObject) {
   try {
     const { data, error } = await getClient()
       .from('submissions')
@@ -28,7 +28,7 @@ async function saveSubmission(email, domain, scanScore, riskLevel, scannerResult
         email_sec:      scannerResults?.email_sec  ?? null,
         vuln_comp:      scannerResults?.vulnComp   ?? null,
         gdpr:           scannerResults?.gdpr       ?? null,
-        scan_details:   JSON.stringify(rawScanResults ?? scannerResults ?? {}),
+        scan_details:   JSON.stringify({ results: rawScanResults ?? scannerResults ?? {}, scoreObject: scoreObject ?? null }),
         name:           formData?.name             || null,
         firm_name:      formData?.firmName         || null,
         main_concern:   formData?.mainConcern      || null,

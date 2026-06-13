@@ -17,7 +17,7 @@ module.exports = async function vulnerableComponentsCheck(domain) {
   } catch (err) {
     const msg = `Could not fetch page: ${err.message}`;
     return [
-      { name: 'No known CVEs in detected software',               status: 'FAIL', details: msg, timeToFix: 'N/A' },
+      { name: 'No known CVEs in detected software',               status: 'FAIL', points: 0, details: msg, timeToFix: 'N/A' },
       { name: 'Framework and CMS versions not publicly disclosed', status: 'FAIL', details: msg, timeToFix: 'N/A' },
       { name: 'No outdated third-party libraries detected',        status: 'FAIL', details: msg, timeToFix: 'N/A' },
     ];
@@ -80,6 +80,7 @@ module.exports = async function vulnerableComponentsCheck(domain) {
     {
       name:      'No known CVEs in detected software',
       status:    cveStatus,
+      points:    cveStatus === 'PASS' ? 40 : cveStatus === 'WARNING' ? 20 : 0,
       details:   cveDetails,
       timeToFix: cveStatus === 'PASS' ? null : cveStatus === 'WARNING' ? '1 hour' : '2 hours',
     },

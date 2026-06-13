@@ -12,9 +12,19 @@ const { adaptScannersForPDF }   = require('../utils/pdfAdapter');
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function getRiskLevel(score) {
-  if (score >= 80) return 'GREEN';
-  if (score >= 60) return 'AMBER';
-  return 'RED';
+  if (score >= 90) return 'Excellent';
+  if (score >= 75) return 'Good';
+  if (score >= 60) return 'Moderate Risk';
+  if (score >= 40) return 'High Risk';
+  return 'Critical Risk';
+}
+
+function getRiskBand(pct) {
+  if (pct >= 90) return 'Excellent';
+  if (pct >= 75) return 'Good';
+  if (pct >= 60) return 'Moderate Risk';
+  if (pct >= 40) return 'High Risk';
+  return 'Critical Risk';
 }
 
 
@@ -24,15 +34,21 @@ const emailSecurity  = require('../scanners/dns-check');
 const vulnComponents = require('../scanners/tech-detect');
 const gdprCheck      = require('../scanners/gdpr-check');
 
+// maxPoints reflects v1.0 methodology:
+//   ssl:      4 checks × 10pts = 40
+//   email:    SPF(8) + DKIM(8) + DMARC(40) = 56   (DMARC uses check.points)
+//   headers:  HSTS(15) + CSP(13) + XFO(10) + XCTO(8) + RP(4) = 50  (all use check.points)
+//   vulnComp: CVE(40) + Disclosure(4) + Libraries(4) = 48  (CVE uses check.points)
+//   gdpr:     6 checks × 2pts = 12
 const SCANNERS = [
-  { key: 'ssl',      name: 'SSL/TLS Encryption',      fn: sslCheck,       expectedChecks: 4, pts: { PASS: 10, WARNING:  5, FAIL: 0 } }, // max 40
-  { key: 'email',    name: 'Email Security',           fn: emailSecurity,  expectedChecks: 3, pts: { PASS:  8, WARNING:  4, FAIL: 0 } }, // max 24
-  { key: 'headers',  name: 'Security Headers',         fn: headersCheck,   expectedChecks: 4, pts: { PASS:  5, WARNING:  3, FAIL: 0 } }, // max 20
-  { key: 'vulnComp', name: 'Vulnerable Components',    fn: vulnComponents, expectedChecks: 3, pts: { PASS:  4, WARNING:  2, FAIL: 0 } }, // max 12
-  { key: 'gdpr',     name: 'GDPR / Cookie Compliance', fn: gdprCheck,      expectedChecks: 6, pts: { PASS:  2, WARNING:  1, FAIL: 0 } }, // max 12
+  { key: 'ssl',      name: 'SSL/TLS Encryption',      fn: sslCheck,       maxPoints: 40,  pts: { PASS: 10, WARNING:  5, FAIL: 0 } },
+  { key: 'email',    name: 'Email Security',           fn: emailSecurity,  maxPoints: 56,  pts: { PASS:  8, WARNING:  4, FAIL: 0 } },
+  { key: 'headers',  name: 'Security Headers',         fn: headersCheck,   maxPoints: 50,  pts: null },
+  { key: 'vulnComp', name: 'Vulnerable Components',    fn: vulnComponents, maxPoints: 48,  pts: { PASS:  4, WARNING:  2, FAIL: 0 } },
+  { key: 'gdpr',     name: 'GDPR / Cookie Compliance', fn: gdprCheck,      maxPoints: 12,  pts: { PASS:  2, WARNING:  1, FAIL: 0 } },
 ];
 
-const MAX_POINTS = SCANNERS.reduce((sum, def) => sum + def.expectedChecks * def.pts.PASS, 0);
+const MAX_POINTS = SCANNERS.reduce((sum, def) => sum + def.maxPoints, 0); // 206
 
 // ── POST /api/scan ────────────────────────────────────────────────────────────
 
@@ -52,10 +68,11 @@ router.post('/', async (req, res, next) => {
         ? raw[i].value
         : [{ name: 'Scanner error', status: 'FAIL', details: raw[i].reason?.message || 'Unknown error', timeToFix: 'N/A' }];
 
-      const maxPts    = def.expectedChecks * def.pts.PASS;
+      const maxPts    = def.maxPoints;
       const earnedPts = checks.reduce((sum, c) => {
+        if (typeof c.points === 'number') return sum + c.points;
         const status = String(c.status || '').toUpperCase();
-        return sum + (def.pts[status] ?? 0);
+        return sum + (def.pts ? (def.pts[status] ?? 0) : 0);
       }, 0);
 
       return { def, checks, maxPts, earnedPts };
@@ -65,11 +82,23 @@ router.post('/', async (req, res, next) => {
     const score       = Math.round((totalPoints / MAX_POINTS) * 100);
     const riskLevel   = getRiskLevel(score);
 
-    const scanners = interim.map(({ def, checks, maxPts, earnedPts }) => ({
-      name:  def.name,
-      score: maxPts > 0 ? Math.round((earnedPts / maxPts) * 100) : 0,
-      checks,
-    }));
+    const categoryBreakdown = {};
+    const scanners = interim.map(({ def, checks, maxPts, earnedPts }) => {
+      const catPct    = maxPts > 0 ? Math.round((earnedPts / maxPts) * 100) : 0;
+      const catRating = getRiskBand(catPct);
+      categoryBreakdown[def.key] = { achieved: earnedPts, maximum: maxPts, percentage: catPct, rating: catRating };
+      return { name: def.name, score: catPct, rating: catRating, checks };
+    });
+
+    const scoreObject = {
+      achievedPoints:    totalPoints,
+      totalMaximum:      MAX_POINTS,
+      percentage:        score,
+      riskBand:          riskLevel,
+      categoryBreakdown,
+      timestamp:         new Date().toISOString(),
+      scoringVersion:    'v1.0',
+    };
 
     logger.info(`Scan complete for ${domain} — score: ${score} (${riskLevel})`);
 
@@ -82,6 +111,7 @@ router.post('/', async (req, res, next) => {
       totalPoints,
       maxPoints:   MAX_POINTS,
       scanners,
+      scoreObject,
     });
   } catch (err) {
     next(err);
@@ -104,6 +134,7 @@ router.post('/submit-gate', async (req, res, next) => {
       confidence,
       scanScore,    // optional — sent by frontend after scan completes
       scanResults,  // optional — array of scanner objects from new format
+      scoreObject,  // optional — v1.0 score object for benchmarking
     } = req.body;
 
     if (!domain)               throw new ValidationError('Domain is required');
@@ -172,6 +203,7 @@ router.post('/submit-gate', async (req, res, next) => {
       scanDetails,
       gateFormData,
       Array.isArray(scanResults) ? scanResults : null,
+      scoreObject ?? null,
     );
     if (!dbResult.success) {
       logger.error(`Gate submission DB write failed: ${dbResult.error}`);
@@ -206,13 +238,21 @@ router.get('/download-pdf/:submissionId', async (req, res, next) => {
     const submission = await getSubmissionById(req.params.submissionId);
     if (!submission) return res.status(404).json({ success: false, error: 'Report not found' });
 
-    let rawScanResults;
+    let rawScanResults, storedScoreObject;
     try {
-      rawScanResults = typeof submission.scan_details === 'string'
+      const parsed = typeof submission.scan_details === 'string'
         ? JSON.parse(submission.scan_details)
         : submission.scan_details;
+      if (Array.isArray(parsed)) {
+        rawScanResults    = parsed;
+        storedScoreObject = null;
+      } else {
+        rawScanResults    = parsed?.results ?? [];
+        storedScoreObject = parsed?.scoreObject ?? null;
+      }
     } catch {
-      rawScanResults = null;
+      rawScanResults    = null;
+      storedScoreObject = null;
     }
 
     const results = adaptScannersForPDF(Array.isArray(rawScanResults) ? rawScanResults : []);
@@ -223,6 +263,7 @@ router.get('/download-pdf/:submissionId', async (req, res, next) => {
       overallScore: submission.scan_score ?? submission.score ?? 0,
       riskLevel:    (submission.risk_level || 'RED').toLowerCase(),
       results,
+      scoreObject:  storedScoreObject,
     });
     const pdf = Buffer.isBuffer(raw) ? raw : Buffer.from(raw);
 

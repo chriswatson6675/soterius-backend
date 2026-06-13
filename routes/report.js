@@ -5,19 +5,19 @@ const { adaptScannersForPDF } = require('../utils/pdfAdapter');
 const { ValidationError } = require('../utils/errors');
 const logger = require('../utils/logger');
 
-// Normalise riskLevel to the keys generatePDF / RISK_STYLES expects.
-// Accepts backend values ('GREEN','AMBER','RED'), already-normalised values
-// ('low','medium','critical'), or falls back to the numeric score.
+// Normalise riskLevel to the five-band keys the generator expects.
 function normaliseRisk(riskLevel, score) {
-  const l = String(riskLevel || '').toLowerCase();
-  if (l === 'green'  || l === 'low')                    return 'low';
-  if (l === 'amber'  || l === 'medium')                 return 'medium';
-  if (l === 'red'    || l === 'high')   return 'high';
-  if (l === 'critical')                 return 'critical';
+  const l = String(riskLevel || '').toLowerCase().replace(/\s+/g, '');
+  if (l === 'excellent')                                        return 'excellent';
+  if (l === 'good' || l === 'green' || l === 'low')            return 'good';
+  if (l === 'moderaterisk' || l === 'moderate')                return 'moderate';
+  if (l === 'highrisk' || l === 'high' || l === 'amber' || l === 'medium') return 'high';
+  if (l === 'criticalrisk' || l === 'critical' || l === 'red') return 'critical';
   // score-based fallback
   if (typeof score === 'number') {
-    if (score >= 80) return 'low';
-    if (score >= 60) return 'medium';
+    if (score >= 90) return 'excellent';
+    if (score >= 75) return 'good';
+    if (score >= 60) return 'moderate';
     if (score >= 40) return 'high';
   }
   return 'critical';
@@ -25,7 +25,7 @@ function normaliseRisk(riskLevel, score) {
 
 router.post('/report', async (req, res, next) => {
   try {
-    const { domain, timestamp, results, scanners, overallScore, riskLevel } = req.body;
+    const { domain, timestamp, results, scanners, overallScore, riskLevel, scoreObject } = req.body;
 
     if (!domain) throw new ValidationError('domain is required');
 
@@ -47,6 +47,7 @@ router.post('/report', async (req, res, next) => {
       results: adaptedResults,
       overallScore,
       riskLevel: riskKey,
+      scoreObject,
     });
     // Puppeteer 22+ returns Uint8Array; Express 4 res.send() JSON-stringifies
     // anything that isn't a Buffer, so we must convert explicitly.
