@@ -46,7 +46,7 @@ async function getScanHistory(domain, limit = 100) {
   try {
     const { data, error } = await getClient()
       .from('scans')
-      .select('id, domain, scanned_at, scoring_version, overall_score, risk_band, score_object')
+      .select('id, domain, scanned_at, scoring_version, overall_score, risk_band, score_object, scanner_results')
       .eq('domain', domain.toLowerCase())
       .order('scanned_at', { ascending: false })
       .limit(limit);
