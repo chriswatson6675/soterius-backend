@@ -13,7 +13,71 @@ function getClient() {
   return supabase;
 }
 
-async function saveSubmission(email, domain, scanScore, riskLevel, scannerResults, formData, rawScanResults, scoreObject) {
+// ── Scan history (permanent per-scan records) ─────────────────────────────────
+
+async function saveScan(domain, scoreObject, scanners) {
+  try {
+    const { data, error } = await getClient()
+      .from('scans')
+      .insert([{
+        domain,
+        scanned_at:      scoreObject.timestamp      || new Date().toISOString(),
+        scoring_version: scoreObject.scoringVersion  || 'v1.0',
+        overall_score:   scoreObject.percentage      ?? null,
+        risk_band:       scoreObject.riskBand        ?? null,
+        score_object:    scoreObject,
+        scanner_results: scanners,
+      }])
+      .select('id')
+      .single();
+
+    if (error) {
+      logger.error('[SUPABASE-ERROR] saveScan failed:', { message: error.message, code: error.code });
+      return { success: false, error: error.message };
+    }
+    return { success: true, id: data.id };
+  } catch (err) {
+    logger.error('[SUPABASE-ERROR] saveScan threw:', { message: err.message });
+    return { success: false, error: err.message };
+  }
+}
+
+async function getScanHistory(domain, limit = 100) {
+  try {
+    const { data, error } = await getClient()
+      .from('scans')
+      .select('id, domain, scanned_at, scoring_version, overall_score, risk_band, score_object')
+      .eq('domain', domain.toLowerCase())
+      .order('scanned_at', { ascending: false })
+      .limit(limit);
+
+    if (error) { logger.error(`getScanHistory failed: ${error.message}`); return []; }
+    return data ?? [];
+  } catch (err) {
+    logger.error(`getScanHistory threw: ${err.message}`);
+    return [];
+  }
+}
+
+async function getScanById(id) {
+  try {
+    const { data, error } = await getClient()
+      .from('scans')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error) { logger.error(`getScanById failed: ${error.message}`); return null; }
+    return data;
+  } catch (err) {
+    logger.error(`getScanById threw: ${err.message}`);
+    return null;
+  }
+}
+
+// ── Gate submissions (lead capture + scan linkage) ────────────────────────────
+
+async function saveSubmission(email, domain, scanScore, riskLevel, scannerResults, formData, rawScanResults, scoreObject, scanId) {
   try {
     const { data, error } = await getClient()
       .from('submissions')
@@ -29,6 +93,7 @@ async function saveSubmission(email, domain, scanScore, riskLevel, scannerResult
         vuln_comp:      scannerResults?.vulnComp   ?? null,
         gdpr:           scannerResults?.gdpr       ?? null,
         scan_details:   JSON.stringify({ results: rawScanResults ?? scannerResults ?? {}, scoreObject: scoreObject ?? null }),
+        scan_id:        scanId                     ?? null,
         name:           formData?.name             || null,
         firm_name:      formData?.firmName         || null,
         main_concern:   formData?.mainConcern      || null,
@@ -109,4 +174,7 @@ async function getSubmissionById(id) {
   }
 }
 
-module.exports = { saveSubmission, getSubmissionByEmail, getAllSubmissions, getSubmissionById };
+module.exports = {
+  saveScan, getScanHistory, getScanById,
+  saveSubmission, getSubmissionByEmail, getAllSubmissions, getSubmissionById,
+};

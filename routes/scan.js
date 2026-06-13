@@ -5,7 +5,7 @@ const { validateDomain }        = require('../utils/validators');
 const { AppError, ValidationError } = require('../utils/errors');
 const logger                    = require('../utils/logger');
 const { sendConfirmationEmail } = require('../utils/emailService');
-const { saveSubmission, getSubmissionById } = require('../services/database');
+const { saveScan, getScanHistory, saveSubmission, getSubmissionById } = require('../services/database');
 const { generatePDF }           = require('../pdf-generator/generator');
 const { adaptScannersForPDF }   = require('../utils/pdfAdapter');
 
@@ -26,7 +26,6 @@ function getRiskBand(pct) {
   if (pct >= 40) return 'High Risk';
   return 'Critical Risk';
 }
-
 
 const sslCheck       = require('../scanners/ssl-check');
 const headersCheck   = require('../scanners/headers-check');
@@ -81,6 +80,7 @@ router.post('/', async (req, res, next) => {
     const totalPoints = interim.reduce((sum, r) => sum + r.earnedPts, 0);
     const score       = Math.round((totalPoints / MAX_POINTS) * 100);
     const riskLevel   = getRiskLevel(score);
+    const scannedAt   = new Date().toISOString();
 
     const categoryBreakdown = {};
     const scanners = interim.map(({ def, checks, maxPts, earnedPts }) => {
@@ -96,31 +96,58 @@ router.post('/', async (req, res, next) => {
       percentage:        score,
       riskBand:          riskLevel,
       categoryBreakdown,
-      timestamp:         new Date().toISOString(),
+      timestamp:         scannedAt,
       scoringVersion:    'v1.0',
     };
 
     logger.info(`Scan complete for ${domain} — score: ${score} (${riskLevel})`);
 
+    // Persist permanent historical record — every scan is stored regardless of gate completion
+    const scanRecord = await saveScan(domain, scoreObject, scanners);
+    const scanId     = scanRecord.success ? scanRecord.id : null;
+    if (!scanRecord.success) {
+      logger.error(`Failed to persist scan record for ${domain}: ${scanRecord.error}`);
+    } else {
+      logger.info(`Scan record stored: ${scanId}`);
+    }
+
     res.json({
       success:     true,
       domain,
-      scannedAt:   new Date().toISOString(),
+      scannedAt,
       score,
       riskLevel,
       totalPoints,
       maxPoints:   MAX_POINTS,
       scanners,
       scoreObject,
+      scanId,
     });
   } catch (err) {
     next(err);
   }
 });
 
+// ── GET /api/scan/history/:domain ─────────────────────────────────────────────
+// Returns historical scan records for a domain, ordered newest first.
+// Supports future trend charts, score history, and monitoring dashboards.
+router.get('/history/:domain', async (req, res, next) => {
+  try {
+    const domain = String(req.params.domain || '').trim().toLowerCase();
+    if (!validateDomain(domain)) throw new ValidationError(`Invalid domain: ${domain}`);
+
+    const limit   = Math.min(Number(req.query.limit) || 100, 500);
+    const history = await getScanHistory(domain, limit);
+
+    res.json({ success: true, domain, count: history.length, history });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ── POST /api/scan/submit-gate ────────────────────────────────────────────────
-// Captures lead details, fires confirmation email + CSV export (both non-blocking),
-// and returns immediately so the UI doesn't wait on SMTP.
+// Captures lead details, fires confirmation email, and links the submission
+// to the scan record that preceded it via scanId.
 router.post('/submit-gate', async (req, res, next) => {
   try {
     const {
@@ -135,6 +162,7 @@ router.post('/submit-gate', async (req, res, next) => {
       scanScore,    // optional — sent by frontend after scan completes
       scanResults,  // optional — array of scanner objects from new format
       scoreObject,  // optional — v1.0 score object for benchmarking
+      scanId,       // optional — id from the scans table for this scan
     } = req.body;
 
     if (!domain)               throw new ValidationError('Domain is required');
@@ -204,6 +232,7 @@ router.post('/submit-gate', async (req, res, next) => {
       gateFormData,
       Array.isArray(scanResults) ? scanResults : null,
       scoreObject ?? null,
+      scanId      ?? null,
     );
     if (!dbResult.success) {
       logger.error(`Gate submission DB write failed: ${dbResult.error}`);
