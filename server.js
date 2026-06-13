@@ -3,9 +3,10 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const { createServer } = require('http');
-const scanRouter   = require('./routes/scan');
-const reportRouter = require('./routes/report');
-const gateRouter   = require('./routes/gate');
+const scanRouter      = require('./routes/scan');
+const reportRouter    = require('./routes/report');
+const gateRouter      = require('./routes/gate');
+const prospectsRouter = require('./routes/prospects');
 const logger = require('./utils/logger');
 const { AppError } = require('./utils/errors');
 
@@ -60,9 +61,10 @@ app.get('/health', (req, res) => {
 });
 
 
-app.use('/api/scan', scanRouter);
-app.use('/api/gate', gateRouter);
-app.use('/api', reportRouter);
+app.use('/api/scan',      scanRouter);
+app.use('/api/gate',      gateRouter);
+app.use('/api/prospects', prospectsRouter);
+app.use('/api',           reportRouter);
 
 app.use((req, res) => {
   res.status(404).json({ success: false, error: 'Not found' });

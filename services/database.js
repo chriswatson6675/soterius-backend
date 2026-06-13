@@ -15,7 +15,7 @@ function getClient() {
 
 // ── Scan history (permanent per-scan records) ─────────────────────────────────
 
-async function saveScan(domain, scoreObject, scanners) {
+async function saveScan(domain, scoreObject, scanners, prospectId = null) {
   try {
     const { data, error } = await getClient()
       .from('scans')
@@ -27,6 +27,7 @@ async function saveScan(domain, scoreObject, scanners) {
         risk_band:       scoreObject.riskBand        ?? null,
         score_object:    scoreObject,
         scanner_results: scanners,
+        prospect_id:     prospectId                  ?? null,
       }])
       .select('id')
       .single();
@@ -72,6 +73,149 @@ async function getScanById(id) {
   } catch (err) {
     logger.error(`getScanById threw: ${err.message}`);
     return null;
+  }
+}
+
+// ── Prospect management (benchmarking / market calibration) ──────────────────
+
+async function findOrCreateProspect(data) {
+  try {
+    const website = data.website.toLowerCase();
+
+    const { data: existing, error: fetchError } = await getClient()
+      .from('prospects')
+      .select('*')
+      .eq('website', website)
+      .maybeSingle();
+
+    if (fetchError) {
+      logger.error(`findOrCreateProspect fetch failed: ${fetchError.message}`);
+      return { success: false, error: fetchError.message };
+    }
+
+    if (existing) return { success: true, prospect: existing, created: false };
+
+    const result = await createProspect({ ...data, website, firm_name: data.firm_name || website });
+    return { ...result, created: true };
+  } catch (err) {
+    logger.error(`findOrCreateProspect threw: ${err.message}`);
+    return { success: false, error: err.message };
+  }
+}
+
+async function createProspect(data) {
+  try {
+    const { data: row, error } = await getClient()
+      .from('prospects')
+      .insert([{
+        firm_name: data.firm_name,
+        website:   data.website.toLowerCase(),
+        sector:    data.sector   ?? null,
+        location:  data.location ?? null,
+        source:    data.source   ?? 'manual',
+        notes:     data.notes    ?? null,
+      }])
+      .select('*')
+      .single();
+
+    if (error) {
+      if (error.code === '23505') {
+        return { success: false, error: `Website already exists: ${data.website}` };
+      }
+      logger.error(`createProspect failed: ${error.message}`);
+      return { success: false, error: error.message };
+    }
+    return { success: true, prospect: row };
+  } catch (err) {
+    logger.error(`createProspect threw: ${err.message}`);
+    return { success: false, error: err.message };
+  }
+}
+
+async function getProspects(filters = {}) {
+  try {
+    let query = getClient()
+      .from('prospects')
+      .select('*')
+      .order('last_scanned', { ascending: true, nullsFirst: true });
+
+    if (filters.sector)   query = query.eq('sector', filters.sector);
+    if (filters.location) query = query.eq('location', filters.location);
+    if (filters.source)   query = query.eq('source', filters.source);
+
+    const { data, error } = await query;
+    if (error) { logger.error(`getProspects failed: ${error.message}`); return []; }
+    return data ?? [];
+  } catch (err) {
+    logger.error(`getProspects threw: ${err.message}`);
+    return [];
+  }
+}
+
+async function getProspectById(id) {
+  try {
+    const { data, error } = await getClient()
+      .from('prospects')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error) { logger.error(`getProspectById failed: ${error.message}`); return null; }
+    return data;
+  } catch (err) {
+    logger.error(`getProspectById threw: ${err.message}`);
+    return null;
+  }
+}
+
+async function updateProspect(id, updates) {
+  try {
+    const { data, error } = await getClient()
+      .from('prospects')
+      .update({ ...updates, updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select('*')
+      .single();
+
+    if (error) {
+      logger.error(`updateProspect failed: ${error.message}`);
+      return { success: false, error: error.message };
+    }
+    if (!data) return { success: false, error: 'Prospect not found' };
+    return { success: true, prospect: data };
+  } catch (err) {
+    logger.error(`updateProspect threw: ${err.message}`);
+    return { success: false, error: err.message };
+  }
+}
+
+async function updateProspectLastScanned(id) {
+  try {
+    const now = new Date().toISOString();
+    const { error } = await getClient()
+      .from('prospects')
+      .update({ last_scanned: now, updated_at: now })
+      .eq('id', id);
+
+    if (error) logger.error(`updateProspectLastScanned failed: ${error.message}`);
+  } catch (err) {
+    logger.error(`updateProspectLastScanned threw: ${err.message}`);
+  }
+}
+
+async function getBenchmarkData() {
+  try {
+    const { data, error } = await getClient()
+      .from('scans')
+      .select('id, overall_score, risk_band, scoring_version, scanner_results, scanned_at, prospect_id, prospects(id, firm_name, sector, location)')
+      .not('prospect_id', 'is', null)
+      .order('scanned_at', { ascending: false });
+
+    if (error) { logger.error(`getBenchmarkData failed: ${error.message}`); return []; }
+    return data ?? [];
+  } catch (err) {
+    logger.error(`getBenchmarkData threw: ${err.message}`);
+    return [];
   }
 }
 
@@ -177,4 +321,6 @@ async function getSubmissionById(id) {
 module.exports = {
   saveScan, getScanHistory, getScanById,
   saveSubmission, getSubmissionByEmail, getAllSubmissions, getSubmissionById,
+  findOrCreateProspect, createProspect, getProspects, getProspectById,
+  updateProspect, updateProspectLastScanned, getBenchmarkData,
 };
