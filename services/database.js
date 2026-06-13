@@ -189,6 +189,32 @@ async function updateProspect(id, updates) {
   }
 }
 
+async function deleteProspect(id) {
+  try {
+    // Delete linked scans first, then the prospect
+    const { error: scanError } = await getClient()
+      .from('scans')
+      .delete()
+      .eq('prospect_id', id);
+    if (scanError) {
+      logger.error(`deleteProspect: failed to delete scans for ${id}: ${scanError.message}`);
+      return { success: false, error: scanError.message };
+    }
+    const { error } = await getClient()
+      .from('prospects')
+      .delete()
+      .eq('id', id);
+    if (error) {
+      logger.error(`deleteProspect failed: ${error.message}`);
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  } catch (err) {
+    logger.error(`deleteProspect threw: ${err.message}`);
+    return { success: false, error: err.message };
+  }
+}
+
 async function updateProspectLastScanned(id) {
   try {
     const now = new Date().toISOString();
@@ -322,5 +348,5 @@ module.exports = {
   saveScan, getScanHistory, getScanById,
   saveSubmission, getSubmissionByEmail, getAllSubmissions, getSubmissionById,
   findOrCreateProspect, createProspect, getProspects, getProspectById,
-  updateProspect, updateProspectLastScanned, getBenchmarkData,
+  updateProspect, updateProspectLastScanned, deleteProspect, getBenchmarkData,
 };

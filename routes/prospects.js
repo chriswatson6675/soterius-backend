@@ -6,7 +6,7 @@ const { executeScan } = require('../services/scanService');
 const { validateDomain } = require('../utils/validators');
 const {
   findOrCreateProspect, createProspect, getProspects, getProspectById,
-  updateProspect, updateProspectLastScanned,
+  updateProspect, updateProspectLastScanned, deleteProspect,
   saveScan, getScanHistory, getBenchmarkData,
 } = require('../services/database');
 
@@ -238,6 +238,23 @@ router.patch('/:id', async (req, res, next) => {
     if (!result.success) throw new AppError(result.error || 'Update failed', 500);
 
     res.json({ success: true, prospect: result.prospect });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── DELETE /api/prospects/:id ─────────────────────────────────────────────────
+// Deletes the prospect and all its linked scan records permanently.
+router.delete('/:id', async (req, res, next) => {
+  try {
+    const prospect = await getProspectById(req.params.id);
+    if (!prospect) return res.status(404).json({ success: false, error: 'Prospect not found' });
+
+    const result = await deleteProspect(req.params.id);
+    if (!result.success) throw new AppError(result.error || 'Delete failed', 500);
+
+    logger.info(`Prospect deleted: ${prospect.firm_name} (${prospect.website})`);
+    res.json({ success: true });
   } catch (err) {
     next(err);
   }
