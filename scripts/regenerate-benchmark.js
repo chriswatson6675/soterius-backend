@@ -11,16 +11,18 @@
 
 require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
 
-const path = require('path');
-const fs   = require('fs');
+const path     = require('path');
+const fs       = require('fs');
+const readline = require('readline');
 const { createClient } = require('@supabase/supabase-js');
 const { executeScan }  = require('../services/scanService');
 
 // ── Config ────────────────────────────────────────────────────────────────────
 
-const CONCURRENCY = 5;
-const REPORT_PATH = path.join(__dirname, '../../BENCHMARK_REPORT_001.md');
-const TODAY       = new Date().toISOString().split('T')[0];
+const CONCURRENCY        = 5;
+const LOW_SCORE_FLAG     = 10; // % — domains scoring at or below this are flagged for review
+const REPORT_PATH        = path.join(__dirname, '../../BENCHMARK_REPORT_001.md');
+const TODAY              = new Date().toISOString().split('T')[0];
 
 // ── Supabase client ───────────────────────────────────────────────────────────
 
@@ -55,6 +57,12 @@ function isValidDomain(d) {
 
 const log  = (...a) => console.log(...a);
 const lerr = (...a) => console.error(...a);
+
+// Readline prompt — only meaningful when running in an interactive terminal
+function prompt(question) {
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  return new Promise(resolve => rl.question(question, ans => { rl.close(); resolve(ans.trim()); }));
+}
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 
@@ -165,7 +173,7 @@ async function main() {
 
   // ── 4. Partition ─────────────────────────────────────────────────────────
 
-  const successful = results.filter(r => r.status === 'success');
+  let successful   = results.filter(r => r.status === 'success');
   const failed     = results.filter(r => r.status === 'failed');
 
   log(`\n── Scan summary ─────────────────────────────────────────────────`);
@@ -178,30 +186,83 @@ async function main() {
 
   if (!successful.length) { lerr('\nNo successful scans — cannot generate report.'); process.exit(1); }
 
-  // ── 5. Detect anomalies ───────────────────────────────────────────────────
+  // ── 5. Low-score review — flag potentially inactive or incorrect domains ───
+  //
+  // Domains scoring ≤ LOW_SCORE_FLAG% are likely parked, inactive, or
+  // incorrectly recorded. In an interactive terminal the user is prompted
+  // to delete each one; in non-interactive mode they are reported only.
+
+  const flagged  = successful.filter(r => r.scan.score <= LOW_SCORE_FLAG);
+  const deleted  = [];
+
+  if (flagged.length) {
+    log(`\n── Low score flags (≤ ${LOW_SCORE_FLAG}%) — possible inactive or incorrect domains ──`);
+
+    for (const r of flagged) {
+      log(`\n   ⚠  ${r.p.firm_name}`);
+      log(`       Domain:  ${r.p.website}`);
+      log(`       Score:   ${rating(r.scan.score)} / 999 (${r.scan.score}%) — ${r.scan.riskLevel}`);
+      log(`       Reason:  Score this low usually indicates a parked, offline, or incorrectly recorded domain.`);
+
+      if (process.stdin.isTTY) {
+        const answer = await prompt('       Delete this prospect and all its scan records? [y/N] ');
+        if (answer.toLowerCase() === 'y') {
+          const { error: scanErr } = await supabase.from('scans').delete().eq('prospect_id', r.p.id);
+          if (scanErr) {
+            log(`       ✗ Could not delete scan records: ${scanErr.message}`);
+            continue;
+          }
+          const { error: prospectErr } = await supabase.from('prospects').delete().eq('id', r.p.id);
+          if (prospectErr) {
+            log(`       ✗ Could not delete prospect: ${prospectErr.message}`);
+            continue;
+          }
+          log(`       ✓ Deleted.`);
+          r.deleted = true;
+          deleted.push(r);
+        } else {
+          log(`       Kept — will be included in statistics.`);
+        }
+      } else {
+        log(`       (Run in an interactive terminal to delete interactively.)`);
+      }
+    }
+
+    if (deleted.length) {
+      successful = successful.filter(r => !r.deleted);
+      log(`\n   ${deleted.length} prospect(s) deleted. Recomputing with ${successful.length} firms.`);
+    }
+    log('');
+  }
+
+  // ── 6. Detect other anomalies ─────────────────────────────────────────────
 
   const anomalies = [];
+  // Domains already handled above via interactive delete
+  for (const r of flagged.filter(r => !r.deleted)) {
+    anomalies.push({ firm: r.p.firm_name, domain: r.p.website, note: `Score ${rating(r.scan.score)} / 999 — may be inactive or incorrectly recorded` });
+  }
   for (const r of successful) {
-    if (r.scan.score === 0)   anomalies.push({ firm: r.p.firm_name, domain: r.p.website, note: 'Score 0 — possible scan error or entirely offline domain' });
     if (r.scan.score === 100) anomalies.push({ firm: r.p.firm_name, domain: r.p.website, note: 'Score 100 — unexpectedly perfect; verify manually' });
   }
 
   if (anomalies.length) {
-    log('\n── Anomalies detected ───────────────────────────────────────────');
+    log('── Anomalies carried into report ────────────────────────────────');
     anomalies.forEach(a => log(`   ⚠ ${a.firm} (${a.domain}): ${a.note}`));
+    log('');
   }
 
-  // ── 6. Compute statistics ─────────────────────────────────────────────────
+  // ── 7. Compute statistics ─────────────────────────────────────────────────
 
   const stats = computeStats(successful);
 
-  // ── 7. Generate report ────────────────────────────────────────────────────
+  // ── 8. Generate report ────────────────────────────────────────────────────
 
   const report = generateReport(stats, failed, excluded, anomalies, allProspects);
   fs.writeFileSync(REPORT_PATH, report, 'utf8');
   log(`\nReport written → BENCHMARK_REPORT_001.md`);
 
-  // ── 8. Print summary ──────────────────────────────────────────────────────
+  // ── 9. Print summary ──────────────────────────────────────────────────────
 
   printSummary(stats);
 }
@@ -383,7 +444,7 @@ function generateReport(stats, failed, excluded, anomalies, allProspects) {
     dqNotes.push('');
   }
   if (!dqNotes.length) {
-    dqNotes.push('No data quality issues. All prospects scanned successfully.');
+    dqNotes.push('No data quality issues identified. All prospects scanned successfully.');
   }
 
   const noRecordPct = pct(stats.dmarcLevels['No record'], n);
