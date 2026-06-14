@@ -16,10 +16,14 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 router.post('/', async (req, res, next) => {
   try {
-    const { domain } = req.body;
+    const raw = req.body.domain;
+    if (!raw) throw new ValidationError('domain is required');
 
-    if (!domain)                  throw new ValidationError('domain is required');
-    if (!validateDomain(domain))  throw new ValidationError(`Invalid domain: ${domain}`);
+    const domain = String(raw).trim().toLowerCase()
+      .replace(/^https?:\/\//, '')
+      .replace(/^www\./, '')
+      .split('/')[0];
+    if (!validateDomain(domain)) throw new ValidationError(`Invalid domain: ${raw}`);
 
     const { score, riskLevel, scannedAt, totalPoints, maxPoints, scanners, scoreObject } =
       await executeScan(domain);

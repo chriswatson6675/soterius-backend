@@ -6,10 +6,14 @@ async function getTxt(domain) {
 }
 
 module.exports = async function emailSecurityCheck(domain) {
-  const rootTxt  = (await getTxt(domain)).map(r => r.join(''));
+  // SPF, DMARC, and DKIM records are always published at the apex domain.
+  // Querying www.example.com would find nothing even when records exist at example.com.
+  const apex = domain.replace(/^www\./, '');
+
+  const rootTxt  = (await getTxt(apex)).map(r => r.join(''));
   const spf      = rootTxt.find(r => r.toLowerCase().startsWith('v=spf1'));
 
-  const dmarcTxt   = (await getTxt(`_dmarc.${domain}`)).map(r => r.join(''));
+  const dmarcTxt   = (await getTxt(`_dmarc.${apex}`)).map(r => r.join(''));
   const dmarc      = dmarcTxt.find(r => r.toLowerCase().startsWith('v=dmarc1'));
   const dmarcPolicy = dmarc?.match(/p=(\w+)/)?.[1]?.toLowerCase() ?? null;
 
@@ -19,7 +23,7 @@ module.exports = async function emailSecurityCheck(domain) {
   ];
   let dkimRecord = null;
   for (const sel of DKIM_SELECTORS) {
-    const res = (await getTxt(`${sel}._domainkey.${domain}`)).map(r => r.join(''));
+    const res = (await getTxt(`${sel}._domainkey.${apex}`)).map(r => r.join(''));
     const found = res.find(r => r.toLowerCase().includes('p='));
     if (found) { dkimRecord = found; break; }
   }
