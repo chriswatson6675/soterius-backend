@@ -16,6 +16,24 @@ function sha256(value) {
   return value ? crypto.createHash('sha256').update(value).digest('hex') : null;
 }
 
+// Persistence-layer robustness (shared): strip bytes PostgreSQL cannot store as text/JSON —
+// the NUL code point (U+0000, the "unsupported Unicode escape sequence" cause) and lone
+// surrogates — before content_observed is detected-on and stored. Deterministic; preserves all
+// other content exactly. Does NOT affect detector behaviour (these match no detector pattern);
+// keeping detector input == stored content preserves the re-derivation invariant.
+// NUL matcher is built from a code point (not a source escape/byte) to keep the source clean.
+const NUL_RE = new RegExp(String.fromCharCode(0), 'g');
+const LONE_HIGH_SURROGATE = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])/g;
+const LONE_LOW_SURROGATE = /(^|[^\uD800-\uDBFF])([\uDC00-\uDFFF])/g;
+
+function sanitizeForPg(text) {
+  if (typeof text !== 'string') return text;
+  return text
+    .replace(NUL_RE, '')
+    .replace(LONE_HIGH_SURROGATE, '')
+    .replace(LONE_LOW_SURROGATE, '$1');
+}
+
 // EM-H-D1 routing for the Retention Specification element (DE-PAD-015).
 function deriveEvidence(locatedState, contentObserved, detectorResult) {
   if (locatedState !== 'located') {
@@ -34,4 +52,4 @@ function deriveEvidence(locatedState, contentObserved, detectorResult) {
   };
 }
 
-module.exports = { deriveEvidence, sha256 };
+module.exports = { deriveEvidence, sha256, sanitizeForPg };

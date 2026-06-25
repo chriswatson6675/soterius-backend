@@ -27,7 +27,7 @@ const { discoverPolicy } = require('../disclosurecurrency/policy-discovery');
 const { retrievePolicy, closeBrowser } = require('../disclosurecurrency/policy-retrieval');
 // ── H-SIG-002 detector + evidence routing ───────────────────────────────────────
 const { detectRetention } = require('./detect-retention');
-const { deriveEvidence, sha256 } = require('./observation-writer');
+const { deriveEvidence, sha256, sanitizeForPg } = require('./observation-writer');
 
 const COHORT_CODE         = 'IF-001';
 const SIGNAL_ID           = 'SOT-RETENTIONTRANSPARENCY-001';
@@ -99,7 +99,8 @@ async function processDomain(domain) {
   if (discovery.status !== 'located') return buildRow(domain, discovery.status, discovery, null, null, null);
   const retrieval = await retrievePolicy(discovery.policyUrl);
   if (!retrieval.ok) return buildRow(domain, 'retrieval_failure', discovery, retrieval, null, null);
-  const contentObserved = retrieval.retrievalMethod === 'static' ? stripHtml(retrieval.content) : retrieval.content;
+  const raw = retrieval.retrievalMethod === 'static' ? stripHtml(retrieval.content) : retrieval.content;
+  const contentObserved = sanitizeForPg(raw); // persistence robustness: strip NUL / lone surrogates before detect + store
   const detectorResult = detectRetention(contentObserved);
   return buildRow(domain, 'located', discovery, retrieval, detectorResult, contentObserved);
 }

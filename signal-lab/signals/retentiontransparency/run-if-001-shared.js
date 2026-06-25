@@ -31,7 +31,7 @@ const { detectCurrency } = require('../disclosurecurrency/detect-currency');
 const { deriveEvidenceState, sha256 } = require('../disclosurecurrency/observation-writer');
 // H-SIG-002 detector + evidence routing
 const { detectRetention } = require('./detect-retention');
-const { deriveEvidence } = require('./observation-writer');
+const { deriveEvidence, sanitizeForPg } = require('./observation-writer');
 
 const COHORT_CODE  = 'IF-001';
 const CONCURRENCY  = Number(process.env.CONCURRENCY ?? 5);
@@ -117,7 +117,8 @@ async function processDomain(domain) {
     const prov = provenance(discovery, retrieval, null);
     return { currency: currencyRow(domain, 'retrieval_failure', prov, null), retention: retentionRow(domain, 'retrieval_failure', prov, null) };
   }
-  const contentObserved = retrieval.retrievalMethod === 'static' ? stripHtml(retrieval.content) : retrieval.content;
+  const raw = retrieval.retrievalMethod === 'static' ? stripHtml(retrieval.content) : retrieval.content;
+  const contentObserved = sanitizeForPg(raw); // persistence robustness: strip NUL / lone surrogates before detect + store
   const prov = provenance(discovery, retrieval, contentObserved);
   return {
     currency: currencyRow(domain, 'located', prov, detectCurrency(contentObserved)),
