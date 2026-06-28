@@ -441,8 +441,12 @@ function _emit(ctx, obj) {
   // Part 7: immutable → emit once; mutable → emit on change; unchanged → nothing.
   if (prior) {
     if (obj.emissionClass === EMISSION_CLASS.IMMUTABLE) return false; // capture-once
-    const unchanged = (prior.contentHash && prior.contentHash === obj.contentHash) ||
-      (obj.etag && prior.etag && prior.etag === obj.etag);
+    // The CONTENT HASH is the canonical change detector (CCS §7.2). The etag is
+    // a cheap pre-check only and must NOT suppress emission on its own: for the
+    // multi-resource EO-01 the profile etag does not cover the supporting
+    // resources (registered-office / registers / exemptions), so an etag match
+    // can mask a genuine content change and silently drop a snapshot (H1).
+    const unchanged = prior.contentHash != null && prior.contentHash === obj.contentHash;
     if (unchanged) return false;
   }
 
@@ -500,6 +504,15 @@ function _httpOpts(ctx) {
 }
 
 function _idemKey(objectType, identity) {
+  // Company-scoped ids (appointment_id / psc_id / statement id / charge_id, and
+  // the weak insolvency composite) are unique only WITHIN a company (CCS §5.2;
+  // EOI §2.1). The key must carry the full composite identity so the same local
+  // id at two different companies cannot collide in prior-state (H2). Globally
+  // unique identities (EO-01 company_number, EO-06 document_id, EO-10 officer_id)
+  // keep their single-id form.
+  if (identity.company_number != null && identity.objectId != null) {
+    return `${objectType}:${identity.company_number}/${identity.objectId}`;
+  }
   const id = identity.objectId ?? identity.company_number ?? identity.document_id ?? identity.officer_id ?? '?';
   return `${objectType}:${id}`;
 }

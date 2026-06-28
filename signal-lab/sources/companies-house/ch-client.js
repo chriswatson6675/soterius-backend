@@ -187,8 +187,10 @@ async function _requestWithPolicy(url, opts) {
 
 async function _executeWithRedirects(initialUrl, o) {
   let url = initialUrl;
+  let opts = o;                       // per-hop options; headers may be narrowed on a cross-origin redirect
+  let origin = _originOf(initialUrl);
   for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
-    const r = await o.fetchFn(url, o);
+    const r = await opts.fetchFn(url, opts);
     if (r.error) {
       const isConn = CONNECTION_ERROR_CODES.has(r.error.code ?? '');
       return _result('CONNECTION_ERROR', null, url, null, null, null,
@@ -196,8 +198,20 @@ async function _executeWithRedirects(initialUrl, o) {
     }
     const { statusCode, headers, bodyBuffer } = r;
 
-    if (o.followRedirects && (statusCode === 301 || statusCode === 302 || statusCode === 303 || statusCode === 307) && headers.location) {
-      url = _resolveUrl(headers.location, url);
+    if (opts.followRedirects && (statusCode === 301 || statusCode === 302 || statusCode === 303 || statusCode === 307) && headers.location) {
+      const next = _resolveUrl(headers.location, url);
+      const nextOrigin = _originOf(next);
+      // Drop Authorization when the redirect crosses to a DIFFERENT origin (e.g. the
+      // CH Document API → an S3 presigned URL). The presigned URL already authenticates
+      // via its query-string signature; sending Authorization as well makes S3 reject
+      // the request with 400 InvalidArgument ("Only one auth mechanism allowed"). This
+      // is the standard HTTP-client rule; all OTHER headers are preserved unchanged.
+      if (nextOrigin !== origin && opts.headers && opts.headers.Authorization) {
+        const { Authorization, ...rest } = opts.headers;
+        opts = { ...opts, headers: rest };
+      }
+      url = next;
+      origin = nextOrigin;
       if (hop === MAX_REDIRECTS) return _result('HTTP_ERROR', statusCode, url, headers, null, null, 'too many redirects');
       continue;
     }
@@ -263,6 +277,10 @@ function _resolveUrl(location, base) {
   try { return new URL(location, base).toString(); } catch { return location; }
 }
 
+function _originOf(url) {
+  try { return new URL(url).origin; } catch { return null; }
+}
+
 function _parseRetryAfter(value) {
   if (!value) return null;
   const n = Number(value);
@@ -280,7 +298,7 @@ module.exports = {
   createRateManager,
   PDA_HOST, DOC_HOST, STREAM_HOST, USER_AGENT,
   // exported for tests
-  _parseRetryAfter, _resolveUrl,
+  _parseRetryAfter, _resolveUrl, _originOf,
 };
 
 /**

@@ -266,6 +266,93 @@ describe('8.4 Object integrity', () => {
   });
 });
 
+// ── Regression: P0 conformance fixes (H1 hash-canonical, H2 composite keys) ──────
+
+describe('Regression — P0 conformance fixes', () => {
+  // H1 (CCS §7.2): content hash is the canonical change detector; an unchanged
+  // profile etag must NOT suppress emission when a supporting EO-01 resource
+  // changes (the profile etag does not cover registered-office/registers/exemptions).
+  test('H1 — changed supporting resource with unchanged profile etag re-emits EO-01', async () => {
+    const { res: first } = await run();
+    const eo01first = first.emitted.find(e => e.objectType === 'EO-01');
+    assert.equal(eo01first.provenance.etag, 'etag-profile');
+    const priorState = {
+      [collector._idemKey('EO-01', eo01first.objectIdentity)]: {
+        contentHash: eo01first.observationIdentity.contentHash,
+        etag: eo01first.provenance.etag, // 'etag-profile' — deliberately held constant
+      },
+    };
+    // exemptions was absent (404) in the first run; now present. Profile + its
+    // etag are UNCHANGED, so only the content hash reveals the change.
+    const routes = defaultRoutes();
+    routes[`/company/${N}/exemptions`] = () =>
+      J({ exemptions: { disclosure_transparency_rules_chapter_five_applies: { items: [] } } }, 'etag-exempt');
+    const { res: second } = await run(routes, { priorState });
+    const eo01 = second.emitted.find(e => e.objectType === 'EO-01');
+    assert.ok(eo01, 'changed supporting content must re-emit EO-01 despite unchanged profile etag');
+    assert.notEqual(eo01.observationIdentity.contentHash, eo01first.observationIdentity.contentHash);
+  });
+
+  // H2 (CCS §5.2; EOI §2.1): company-scoped ids are unique only within a company.
+  test('H2 — company-scoped idem keys include company_number (no cross-company collision)', () => {
+    const a = collector._idemKey('EO-02', { objectType: 'EO-02', company_number: '111', objectId: 'APPT1' });
+    const b = collector._idemKey('EO-02', { objectType: 'EO-02', company_number: '222', objectId: 'APPT1' });
+    assert.notEqual(a, b, 'same local appointment id at different companies must not collide');
+    // Globally-unique identities keep their single-id form.
+    assert.equal(collector._idemKey('EO-06', { objectType: 'EO-06', document_id: 'DOC1' }), 'EO-06:DOC1');
+    assert.equal(collector._idemKey('EO-01', { objectType: 'EO-01', company_number: '111' }), 'EO-01:111');
+  });
+
+  test('H2 — identical local ids at different companies are distinct evidence objects', async () => {
+    // An officer item whose content is byte-identical regardless of the anchor,
+    // so the ONLY thing distinguishing the two observations is company_number.
+    const officerItem = {
+      name: 'Shared Officer', officer_role: 'director', etag: 'e-shared',
+      links: { self: '/company/SHARED/appointments/APPT0', officer: { appointments: '/officers/OFFX/appointments' } },
+    };
+    const routesFor = (num) => ({
+      [`/company/${num}`]: () => J({ company_number: num, company_name: 'X', type: 'ltd' }, 'etag-profile'),
+      [`/company/${num}/registered-office-address`]: () => NF(),
+      [`/company/${num}/registers`]: () => NF(),
+      [`/company/${num}/exemptions`]: () => NF(),
+      [`/company/${num}/officers`]: (url) => {
+        const si = Number(new URL(url).searchParams.get('start_index')) || 0;
+        return si === 0 ? J({ total_results: 1, items: [officerItem] }, 'etag-officers') : J({ total_results: 1, items: [] });
+      },
+      [`/company/${num}/persons-with-significant-control`]: () => NF(),
+      [`/company/${num}/persons-with-significant-control-statements`]: () => J({ total_results: 0, items: [] }),
+      [`/company/${num}/filing-history`]: () => J({ total_count: 0, items: [] }),
+      [`/company/${num}/charges`]: () => J({ total_count: 0, items: [] }),
+      [`/company/${num}/insolvency`]: () => NF(),
+      [`/company/${num}/uk-establishments`]: () => J({ total_results: 0, items: [] }),
+    });
+    const reqFor = (num) => ({
+      anchor: { type: 'company', value: num },
+      scope: { objects: ['EO-02'], includeDocuments: false }, mode: 'targeted-snapshot',
+    });
+    const A = '11111111', Bnum = '22222222';
+
+    const resA = await collector.observe(reqFor(A), { apiKey: 'k', client: makeClient(routesFor(A)), now: () => MOMENT });
+    const eo02A = resA.emitted.find(e => e.objectType === 'EO-02');
+    const priorState = {};
+    for (const e of resA.emitted) {
+      priorState[collector._idemKey(e.objectType, e.objectIdentity)] =
+        { contentHash: e.observationIdentity.contentHash, etag: e.provenance.etag };
+    }
+
+    const resB = await collector.observe(reqFor(Bnum), { apiKey: 'k', client: makeClient(routesFor(Bnum)), now: () => MOMENT, priorState });
+    const eo02B = resB.emitted.find(e => e.objectType === 'EO-02');
+
+    assert.equal(eo02A.objectIdentity.objectId, 'APPT0');
+    assert.ok(eo02B, 'company B officer with identical content but different company must still emit');
+    assert.equal(eo02B.objectIdentity.objectId, 'APPT0');
+    assert.notEqual(
+      collector._idemKey('EO-02', eo02A.objectIdentity),
+      collector._idemKey('EO-02', eo02B.objectIdentity),
+    );
+  });
+});
+
 // ── 8.5 Observation integrity ────────────────────────────────────────────────────
 
 describe('8.5 Observation integrity', () => {
