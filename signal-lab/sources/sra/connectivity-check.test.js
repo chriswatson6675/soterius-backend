@@ -80,3 +80,11 @@ test('invalid configuration short-circuits before any request', async () => {
   assert.strictEqual(called, false, 'no request is made when config is invalid');
   assert.match(r.detail, /SRA_SUBSCRIPTION_KEY/);
 });
+
+test('connectivity probe applies the configured response-body timeout (default 300s)', async () => {
+  const { resolveRequestTimeoutMs } = require('./sra-client');
+  let captured;
+  const _fetch = async (url, o) => { captured = o; return resp(JSON.stringify({ firms: [] })); };
+  await checkConnectivity({ config: CONFIG, source: FIXTURE_SOURCE, _fetch });
+  assert.strictEqual(captured.requestTimeout, resolveRequestTimeoutMs(undefined), 'probe uses the single-source timeout (300s default)');
+});

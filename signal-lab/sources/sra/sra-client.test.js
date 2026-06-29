@@ -75,3 +75,21 @@ test('get retains the raw body even on an HTTP error', async () => {
   const res = await client.get('https://x', { subscriptionKey: 'K', _fetch: async () => okResp('error detail', 500) });
   assert.strictEqual(res.rawBody, 'error detail');
 });
+
+test('resolveRequestTimeoutMs: default 300000, env override, invalid → default, explicit wins', () => {
+  assert.strictEqual(client.DEFAULT_REQUEST_TIMEOUT_MS, 300000);
+  assert.strictEqual(client.resolveRequestTimeoutMs(undefined, {}), 300000, 'default 300s');
+  assert.strictEqual(client.resolveRequestTimeoutMs(undefined, { SRA_REQUEST_TIMEOUT_MS: '120000' }), 120000, 'env override');
+  assert.strictEqual(client.resolveRequestTimeoutMs(undefined, { SRA_REQUEST_TIMEOUT_MS: 'nonsense' }), 300000, 'invalid env → default');
+  assert.strictEqual(client.resolveRequestTimeoutMs(undefined, { SRA_REQUEST_TIMEOUT_MS: '0' }), 300000, 'non-positive env → default');
+  assert.strictEqual(client.resolveRequestTimeoutMs(45000, { SRA_REQUEST_TIMEOUT_MS: '120000' }), 45000, 'explicit override wins');
+});
+
+test('get applies the resolved response-body timeout to the transport', async () => {
+  let captured;
+  const _fetch = async (url, o) => { captured = o; return okResp('{}'); };
+  await client.get('https://x', { subscriptionKey: 'K', _fetch });
+  assert.strictEqual(captured.requestTimeout, client.resolveRequestTimeoutMs(undefined), 'default (300s) applied');
+  await client.get('https://x', { subscriptionKey: 'K', requestTimeoutMs: 90000, _fetch });
+  assert.strictEqual(captured.requestTimeout, 90000, 'explicit override applied');
+});

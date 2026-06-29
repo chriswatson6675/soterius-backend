@@ -36,7 +36,22 @@ const DEFAULT_BASE_URL = 'https://sra-prod-apim.azure-api.net';
 const SUBSCRIPTION_KEY_HEADER = 'Ocp-Apim-Subscription-Key';
 
 const DEFAULT_CONNECT_TIMEOUT_MS = 15000;
-const DEFAULT_REQUEST_TIMEOUT_MS = 60000; // a bulk snapshot segment can be large
+// Response-body timeout. The SRA GetAll endpoint returns the whole ~24 MB dataset in a
+// single body; over constrained egress (observed on Railway) 60s was too short and the
+// read was aborted ("response body timeout"). Default 300s, overridable per deployment
+// via SRA_REQUEST_TIMEOUT_MS. resolveRequestTimeoutMs() is the single source of truth.
+const DEFAULT_REQUEST_TIMEOUT_MS = 300000;
+
+/**
+ * Resolve the response-body timeout (ms): an explicit override wins, else the
+ * SRA_REQUEST_TIMEOUT_MS environment variable, else DEFAULT_REQUEST_TIMEOUT_MS. Pure.
+ * The single source of truth for the request timeout used by every transport call.
+ */
+function resolveRequestTimeoutMs(explicitMs, env = process.env) {
+  if (Number.isFinite(explicitMs) && explicitMs > 0) return explicitMs;
+  const fromEnv = parseInt(env.SRA_REQUEST_TIMEOUT_MS, 10);
+  return Number.isFinite(fromEnv) && fromEnv > 0 ? fromEnv : DEFAULT_REQUEST_TIMEOUT_MS;
+}
 
 const CONNECTION_ERROR_CODES = new Set([
   'ECONNREFUSED', 'ENOTFOUND', 'ECONNRESET', 'ETIMEDOUT',
@@ -107,7 +122,7 @@ async function get(url, opts = {}) {
   const r = await fetchFn(url, {
     headers,
     connectTimeout: opts.connectTimeoutMs ?? DEFAULT_CONNECT_TIMEOUT_MS,
-    requestTimeout: opts.requestTimeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS,
+    requestTimeout: resolveRequestTimeoutMs(opts.requestTimeoutMs),
   });
 
   if (r.error) {
@@ -175,8 +190,10 @@ module.exports = {
   validateConfig,
   buildUrl,
   get,
+  resolveRequestTimeoutMs,
   USER_AGENT,
   DEFAULT_BASE_URL,
+  DEFAULT_REQUEST_TIMEOUT_MS,
   SUBSCRIPTION_KEY_HEADER,
 };
 

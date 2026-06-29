@@ -115,3 +115,12 @@ test('production timestamp is null when the body is unparseable or the locator m
 test('throws only on programmer error (missing config.baseUrl)', async () => {
   await assert.rejects(() => acquireSnapshot({ config: {} }), /config\.baseUrl/);
 });
+
+test('snapshot acquisition applies the configured response-body timeout (default 300s)', async () => {
+  const { resolveRequestTimeoutMs } = require('./sra-client');
+  let captured;
+  const _fetch = async (url, o) => { captured = o; return ok('{"firms":[]}'); };
+  const r = await acquireSnapshot({ config: CONFIG, _fetch });
+  assert.strictEqual(r.ok, true);
+  assert.strictEqual(captured.requestTimeout, resolveRequestTimeoutMs(undefined), 'acquire uses the single-source timeout (300s default)');
+});
