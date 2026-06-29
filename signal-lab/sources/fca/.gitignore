@@ -1,0 +1,4 @@
+# Preserved evidence run directories produced by the Reference Collector.
+# Real evidence assets are large and run-specific; they are not committed by
+# default. Curated/pilot corpora can be force-added when the founder decides.
+runs/

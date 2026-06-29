@@ -8,3 +8,15 @@ test-results-*.csv
 
 # Signal Lab collection run output + preserved evidence corpora (never committed)
 signal-lab/sources/companies-house/runs/
+
+# Signal Lab generated run outputs (reproducible by re-running the collectors/runners;
+# source belongs in Git, generated observations do not).
+signal-lab/**/out/
+signal-lab/**/*-raw.json
+signal-lab/**/*-results.json
+signal-lab/**/*-results-v*.json
+signal-lab/**/*-summary.json
+signal-lab/**/*.jsonl
+signal-lab/if001-*/cohort-manifest.json
+signal-lab/if001-pilot/run-output.txt
+signal-lab/pra-assessment/overlap-results.json

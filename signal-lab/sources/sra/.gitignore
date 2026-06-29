@@ -1,0 +1,4 @@
+# Collection packages produced by the SRA Snapshot Collector.
+# Real snapshots are large and run-specific; they are not committed by default.
+# Curated/pilot packages can be force-added when the founder decides.
+runs/
