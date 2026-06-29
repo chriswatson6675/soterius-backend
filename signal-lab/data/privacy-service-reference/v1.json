@@ -1,0 +1,94 @@
+{
+  "dataset_version": 1,
+  "specification_version": "1.2",
+  "governed_by": "PSD-001",
+  "created": "2026-06-20",
+  "effective_from": "2026-06-20",
+  "authorised_by": "PSD-DATA-001 v1.1 — Approved v1.0 Freeze",
+  "entries": [
+    {
+      "provider_id": "PSP-001",
+      "provider_name": "WhoisGuard, Inc.",
+      "normalised_name": "whoisguard",
+      "known_aliases": ["WhoisGuard"],
+      "registrar_association": "Namecheap, Inc. (IANA ID: 1068)",
+      "evidence_class": ["RDAP_OBSERVED", "REGISTRAR_DOCUMENTED", "PROVIDER_SELF_DISCLOSED"],
+      "evidence_source": "Namecheap WhoisGuard service documentation; WhoisGuard public service disclosure identifying WhoisGuard, Inc. as nominal registrant entity; RDAP registrant entity observations for Namecheap-registered privacy-enrolled domains. Assessment date: 2026-06-20.",
+      "version_added": 1,
+      "status": "ACTIVE",
+      "notes": null
+    },
+    {
+      "provider_id": "PSP-002",
+      "provider_name": "Domains By Proxy, LLC",
+      "normalised_name": "domains by proxy",
+      "known_aliases": [],
+      "registrar_association": "GoDaddy.com, LLC (IANA ID: 146)",
+      "evidence_class": ["RDAP_OBSERVED", "REGISTRAR_DOCUMENTED", "PROVIDER_SELF_DISCLOSED"],
+      "evidence_source": "GoDaddy domain privacy product documentation; Domains By Proxy service terms confirming Domains By Proxy LLC as registrant of record for privacy-enrolled domains; RDAP registrant entity observations for GoDaddy-registered privacy-enrolled domains. Assessment date: 2026-06-20.",
+      "version_added": 1,
+      "status": "ACTIVE",
+      "notes": null
+    },
+    {
+      "provider_id": "PSP-003",
+      "provider_name": "Contact Privacy Inc.",
+      "normalised_name": "contact privacy",
+      "known_aliases": [],
+      "registrar_association": "Tucows Domains Inc. (IANA ID: 69); Enom, LLC (IANA ID: 48); OpenSRS; Hover",
+      "evidence_class": ["RDAP_OBSERVED", "REGISTRAR_DOCUMENTED"],
+      "evidence_source": "Tucows/OpenSRS domain privacy documentation confirming Contact Privacy Inc. as nominal registrant; RDAP registrant entity observations showing 'Contact Privacy Inc. Customer [N]' pattern for Tucows-family registrar privacy-enrolled domains. Step 0 normalisation strips customer number suffix. Assessment date: 2026-06-20.",
+      "version_added": 1,
+      "status": "ACTIVE",
+      "notes": "Registrant entity appears in RDAP as 'Contact Privacy Inc. Customer [N]' where N is a per-domain unique customer number. Step 0 normalisation (PSD-001 §7.2) strips the ' Customer [N]' suffix before matching. The provider_name stored here is the base entity name without customer suffix."
+    },
+    {
+      "provider_id": "PSP-004",
+      "provider_name": "Withheld for Privacy ehf",
+      "normalised_name": "withheld for privacy",
+      "known_aliases": ["Withheld for Privacy"],
+      "registrar_association": null,
+      "evidence_class": ["RDAP_OBSERVED", "REGISTRAR_DOCUMENTED", "PROVIDER_SELF_DISCLOSED", "ICANN_ACCREDITED"],
+      "evidence_source": "ICANN accreditation records for Withheld for Privacy ehf as a privacy registration service provider; Withheld for Privacy public service documentation identifying the entity as nominal registrant; multiple registrar documentation records confirming use of Withheld for Privacy ehf; RDAP registrant entity observations across multiple registrars. Assessment date: 2026-06-20.",
+      "version_added": 1,
+      "status": "ACTIVE",
+      "notes": "Registrar-agnostic service; no single registrar association. The alias 'Withheld for Privacy' (without 'ehf' corporate suffix) handles registrar RDAP implementations that omit the Icelandic corporate suffix. Alias satisfies PSD-001 §5.3 via Condition A (RDAP observations). §5.3 evidence confirmation pending — alias included in v1 pending direct observation of suffix-absent form."
+    },
+    {
+      "provider_id": "PSP-005",
+      "provider_name": "Perfect Privacy, LLC",
+      "normalised_name": "perfect privacy",
+      "known_aliases": [],
+      "registrar_association": "Network Solutions, LLC (IANA ID: 2); web.com Group",
+      "evidence_class": ["RDAP_OBSERVED", "REGISTRAR_DOCUMENTED"],
+      "evidence_source": "Network Solutions private registration service terms confirming Perfect Privacy LLC as nominal registrant entity for privacy-enrolled domains; RDAP registrant entity observations for Network Solutions-registered privacy-enrolled domains. Assessment date: 2026-06-20.",
+      "version_added": 1,
+      "status": "ACTIVE",
+      "notes": null
+    },
+    {
+      "provider_id": "PSP-006",
+      "provider_name": "Identity Protect Limited",
+      "normalised_name": "identity protect",
+      "known_aliases": [],
+      "registrar_association": "123 Reg Ltd; Safenames Ltd; Newfold Digital UK",
+      "evidence_class": ["RDAP_OBSERVED", "REGISTRAR_DOCUMENTED"],
+      "evidence_source": "123 Reg domain privacy product documentation confirming Identity Protect Limited as registrant of record for privacy-enrolled domains; RDAP registrant entity observations for 123 Reg-registered UK domains with privacy enabled. Assessment date: 2026-06-20.",
+      "version_added": 1,
+      "status": "ACTIVE",
+      "notes": "Post-acquisition of 123 Reg by Newfold Digital (GoDaddy-aligned), future domain registrations may present 'Domains By Proxy, LLC' (PSP-002) rather than 'Identity Protect Limited'. Both entries remain ACTIVE. Historical and existing .co.uk privacy registrations continue to present 'Identity Protect Limited'."
+    },
+    {
+      "provider_id": "PSP-007",
+      "provider_name": "PrivacyCo Pty Ltd",
+      "normalised_name": "privacyco",
+      "known_aliases": ["PrivacyCo"],
+      "registrar_association": "Australian-based registrars",
+      "evidence_class": ["RDAP_OBSERVED", "REGISTRAR_DOCUMENTED"],
+      "evidence_source": "PrivacyCo provider documentation describing privacy registration service model; RDAP registrant entity observations for Australian-registered privacy-enrolled domains. Assessment date: 2026-06-20.",
+      "version_added": 1,
+      "status": "ACTIVE",
+      "notes": "Admitted by DATA-Q3 resolution (2026-06-20): geographic relevance (low UK-sector cohort prevalence) is not a valid PSD-001 admission criterion. Admission decisions are governed exclusively by §5 and §6. Normalised via iterative Step 5 (Amendment C7): 'PrivacyCo Pty Ltd' → remove 'ltd' → 'PrivacyCo Pty' → remove 'pty' → 'privacyco'. The alias 'PrivacyCo' handles short-form RDAP input."
+    }
+  ]
+}

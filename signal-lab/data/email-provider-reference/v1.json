@@ -1,0 +1,85 @@
+{
+  "dataset_id": "EPR-DATA-001",
+  "dataset_version": 1,
+  "governed_by": "EPR-001 (Foundation Freeze v1.0)",
+  "status": "DATASET_FREEZE_v1.0_FROZEN",
+  "note": "Email Provider Attribution Reference seed (10 providers). Hand-authored. MX-only; observable provider only; backend never inferred.",
+  "freeze": {
+    "frozen": true,
+    "freeze_date": "2026-06-23",
+    "release_authority": "Founder / Governance Architect",
+    "documentary_verification": "Completed 2026-06-23 — all 10 entries documentary-verified (provider docs/IANA). M365/Mimecast/Barracuda verified at development; Google/Cisco/Fastmail/Proton/Zoho/Rackspace verified at freeze.",
+    "amendments_at_freeze": [ "EMXP-002 Google Workspace: added DOCUMENTED_SUFFIX smtp.google.com (modern single MX since April 2023; legacy aspmx.l.google.com retained)." ],
+    "watch_v2": [ "Mimecast regional ccTLDs (mimecast.co.za etc.)", "Zoho further regional TLDs", "Proton proton.me", "deferred: OpenSRS/Tucows, Mailgun, SendGrid" ]
+  },
+  "entries": [
+    { "provider_id": "EMXP-001", "provider_name": "Microsoft 365", "provider_class": "mailbox",
+      "attribution_keys": [ { "value": "mail.protection.outlook.com", "match_type": "DOCUMENTED_SUFFIX" } ],
+      "evidence_class": ["PROVIDER_DOCUMENTED", "MX_OBSERVED"],
+      "evidence_source": "Microsoft Learn (External DNS records for Microsoft 365): MX = <tenant>.mail.protection.outlook.com; shared path 'mail.protection.outlook.com' identical for every tenant. eTLD+1 outlook.com is shared with consumer mail -> SUFFIX key only (EPR-001 E3). Verified 2026-06-23.",
+      "version_added": 1, "status": "ACTIVE" },
+
+    { "provider_id": "EMXP-002", "provider_name": "Google Workspace", "provider_class": "mailbox",
+      "attribution_keys": [ { "value": "aspmx.l.google.com", "match_type": "DOCUMENTED_SUFFIX" }, { "value": "smtp.google.com", "match_type": "DOCUMENTED_SUFFIX" } ],
+      "evidence_class": ["PROVIDER_DOCUMENTED", "MX_OBSERVED"],
+      "evidence_source": "Google Workspace docs: legacy MX = aspmx.l.google.com (+alt1-4); modern single MX = smtp.google.com (since April 2023). Both SUFFIX-keyed (google.com eTLD+1 shared, E3). Amended +smtp.google.com. Verified 2026-06-23.",
+      "version_added": 1, "status": "ACTIVE" },
+
+    { "provider_id": "EMXP-003", "provider_name": "Proofpoint", "provider_class": "gateway",
+      "attribution_keys": [ { "value": "pphosted.com", "match_type": "ETLD1" }, { "value": "ppe-hosted.com", "match_type": "ETLD1" } ],
+      "evidence_class": ["PROVIDER_DOCUMENTED", "MX_OBSERVED"],
+      "evidence_source": "Proofpoint hosted email security: MX = *.pphosted.com, *.ppe-hosted.com. Verified 2026-06-23.",
+      "version_added": 1, "status": "ACTIVE" },
+
+    { "provider_id": "EMXP-004", "provider_name": "Mimecast", "provider_class": "gateway",
+      "attribution_keys": [ { "value": "mimecast.com", "match_type": "ETLD1" } ],
+      "known_aliases": ["Mimecast Limited"],
+      "evidence_class": ["PROVIDER_DOCUMENTED", "MX_OBSERVED"],
+      "evidence_source": "Mimecast docs: regional inbound MX eu-smtp-inbound-{1,2}.mimecast.com, us-smtp-inbound-{1,2}.mimecast.com (all under mimecast.com). Regional ccTLD variants (e.g. mimecast.co.za) are a v2 watch. Verified 2026-06-23.",
+      "version_added": 1, "status": "ACTIVE" },
+
+    { "provider_id": "EMXP-005", "provider_name": "Cisco Secure Email", "provider_class": "gateway",
+      "attribution_keys": [ { "value": "iphmx.com", "match_type": "ETLD1" } ],
+      "known_aliases": ["Cisco Cloud Email Security", "IronPort"],
+      "evidence_class": ["PROVIDER_DOCUMENTED", "MX_OBSERVED"],
+      "evidence_source": "Cisco Secure Email (cloud) MX under iphmx.com. Verified 2026-06-23.",
+      "version_added": 1, "status": "ACTIVE" },
+
+    { "provider_id": "EMXP-006", "provider_name": "Fastmail", "provider_class": "mailbox",
+      "attribution_keys": [ { "value": "messagingengine.com", "match_type": "ETLD1" } ],
+      "evidence_class": ["PROVIDER_DOCUMENTED", "MX_OBSERVED"],
+      "evidence_source": "Fastmail MX = in1-smtp.messagingengine.com, in2-smtp.messagingengine.com. Verified 2026-06-23.",
+      "version_added": 1, "status": "ACTIVE" },
+
+    { "provider_id": "EMXP-007", "provider_name": "Proton", "provider_class": "mailbox",
+      "attribution_keys": [ { "value": "protonmail.ch", "match_type": "ETLD1" } ],
+      "known_aliases": ["ProtonMail"],
+      "evidence_class": ["PROVIDER_DOCUMENTED", "MX_OBSERVED"],
+      "evidence_source": "Proton MX = mail.protonmail.ch, mailsec.protonmail.ch. Watch: proton.me. Verified 2026-06-23.",
+      "version_added": 1, "status": "ACTIVE" },
+
+    { "provider_id": "EMXP-008", "provider_name": "Zoho", "provider_class": "mailbox",
+      "attribution_keys": [ { "value": "zoho.com", "match_type": "ETLD1" }, { "value": "zoho.eu", "match_type": "ETLD1" }, { "value": "zoho.in", "match_type": "ETLD1" } ],
+      "evidence_class": ["PROVIDER_DOCUMENTED", "MX_OBSERVED"],
+      "evidence_source": "Zoho Mail MX = mx.zoho.com / mx2.zoho.com / mx3.zoho.com and regional mx.zoho.eu, mx.zoho.in. Further regional TLDs are a v2 watch. Verified 2026-06-23.",
+      "version_added": 1, "status": "ACTIVE" },
+
+    { "provider_id": "EMXP-009", "provider_name": "Barracuda", "provider_class": "gateway",
+      "attribution_keys": [ { "value": "barracudanetworks.com", "match_type": "ETLD1" } ],
+      "known_aliases": ["Barracuda Email Security Service", "BESS", "Email Gateway Defense"],
+      "evidence_class": ["PROVIDER_DOCUMENTED", "MX_OBSERVED"],
+      "evidence_source": "Barracuda ESS MX = <id>.ess.barracudanetworks.com (registrable domain barracudanetworks.com is provider-specific). Verified 2026-06-23.",
+      "version_added": 1, "status": "ACTIVE" },
+
+    { "provider_id": "EMXP-010", "provider_name": "Rackspace Email", "provider_class": "mailbox",
+      "attribution_keys": [ { "value": "emailsrvr.com", "match_type": "ETLD1" } ],
+      "evidence_class": ["PROVIDER_DOCUMENTED", "MX_OBSERVED"],
+      "evidence_source": "Rackspace Email MX = mx1.emailsrvr.com, mx2.emailsrvr.com. Verified 2026-06-23.",
+      "version_added": 1, "status": "ACTIVE" }
+  ],
+  "deferred": [
+    { "candidate": "OpenSRS / Tucows (hostedemail.com)", "reason": "confirm zone" },
+    { "candidate": "Mailgun (mailgun.org)", "reason": "transactional; low corporate prevalence" },
+    { "candidate": "SendGrid (sendgrid.net)", "reason": "outbound-only; rarely primary MX" }
+  ]
+}

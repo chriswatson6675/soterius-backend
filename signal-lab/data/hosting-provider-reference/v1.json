@@ -1,0 +1,59 @@
+{
+  "dataset_id": "HPR-DATA-001",
+  "dataset_version": 1,
+  "governed_by": "HPR-001 (Foundation Freeze v1.0)",
+  "consumed_by": "SOT-CLOUDHOST-001 (Specification Freeze v1.0)",
+  "status": "DATASET_FREEZE_v1.0_FROZEN",
+  "note": "Hosting/Cloud Provider Attribution Reference seed — Tier-1 hyperscale only (AWS, Microsoft Azure, Google Cloud). SMALLEST DEFENSIBLE dataset to validate the HPR attribution model. Two key types: IP_RANGE_CONTAINMENT (representative real prefixes drawn from each provider's authoritative published range file) + ASN_EXACT (RIR-registered ASNs). Attribution-only; no scoring/ranking/reputation/quality. Hand-authored from documentary sources; no build script. provider_class documentary/non-scoring.",
+  "scope_note": "Tier-1 hyperscale only (founder-authorised scope). No managed-hosting/colocation/long-tail providers in v1. ip_ranges are a representative subset of each provider's published file (sufficient to validate the model), NOT the exhaustive range set — exhaustive ranges are an implementation-phase concern (full published-file ingestion). Provenance (file URL + snapshot token/date) recorded per range group.",
+  "freeze": {
+    "frozen": true,
+    "freeze_date": "2026-06-23",
+    "freeze_version": "Dataset Freeze v1.0",
+    "release_authority": "Founder / Governance Architect (Founder Dataset Freeze Review 2026-06-23)",
+    "documentary_verification": "All three providers verified 2026-06-23 against their own authoritative published range files (AWS ip-ranges.json; Azure Service Tags Public; Google Cloud cloud.json) fetched over HTTPS, plus RIR-registered ASNs. Published-file URLs + snapshot tokens recorded per entry.",
+    "revalidation_at_freeze": "PASS — validate-seed.js 17/17 (IP_RANGE_CONTAINMENT, ASN_EXACT, precedence range>ASN + longest-prefix, CONFLICT, UNMAPPED, determinism; governance: provider_id unique, ASN disjoint, valid CIDRs, no cross-provider overlap, provenance complete, no prohibited fields).",
+    "immutability": "Immutable per HPR-001 §8.1 from this freeze. Authoritative for new runs. Expansion only via strict-superset successor (HPR-DATA-002): existing HCP-001..003 mappings preserved byte-identical; additive only; backward-compatible; range-snapshot refresh = a governed version event.",
+    "scope_at_freeze": "Tier-1 hyperscale only (founder scope). AS15169 (broad Google) deliberately excluded (H-E1 over-broad). Representative (not exhaustive) ranges — exhaustive published-file ingestion is an implementation-phase concern, not a freeze blocker."
+  },
+  "entries": [
+    { "provider_id": "HCP-001", "provider_name": "Amazon Web Services", "provider_class": "hyperscale_cloud",
+      "asns": [16509, 14618],
+      "ip_ranges": [
+        { "cidr": "1.178.1.0/24", "evidence_source": "AWS ip-ranges.json (EC2/AMAZON)", "snapshot_date": "2026-06-22" },
+        { "cidr": "15.193.32.0/19", "evidence_source": "AWS ip-ranges.json (EC2/AMAZON)", "snapshot_date": "2026-06-22" },
+        { "cidr": "3.40.0.0/17", "evidence_source": "AWS ip-ranges.json (EC2/AMAZON)", "snapshot_date": "2026-06-22" },
+        { "cidr": "52.93.229.96/32", "evidence_source": "AWS ip-ranges.json (EC2/AMAZON)", "snapshot_date": "2026-06-22" },
+        { "cidr": "54.79.0.0/16", "evidence_source": "AWS ip-ranges.json (EC2/AMAZON)", "snapshot_date": "2026-06-22" }
+      ],
+      "evidence_class": ["PROVIDER_PUBLISHED_RANGE", "RIR_ASN_REGISTRATION"],
+      "evidence_source": "Published range file https://ip-ranges.amazonaws.com/ip-ranges.json (createDate 2026-06-22-22-27-05, syncToken 1782167225 — AWS system-of-record, authoritative). ASNs AS16509 (AMAZON-02) + AS14618 (AMAZON-AES), RIR-registered (ARIN). Verified 2026-06-23.",
+      "version_added": 1, "status": "ACTIVE" },
+
+    { "provider_id": "HCP-002", "provider_name": "Microsoft Azure", "provider_class": "hyperscale_cloud",
+      "asns": [8075],
+      "ip_ranges": [
+        { "cidr": "102.133.0.0/19", "evidence_source": "Azure ServiceTags_Public (AzureCloud)", "snapshot_date": "2026-06-15" },
+        { "cidr": "191.239.160.0/19", "evidence_source": "Azure ServiceTags_Public (AzureCloud)", "snapshot_date": "2026-06-15" },
+        { "cidr": "20.201.156.0/23", "evidence_source": "Azure ServiceTags_Public (AzureCloud)", "snapshot_date": "2026-06-15" },
+        { "cidr": "52.156.32.0/19", "evidence_source": "Azure ServiceTags_Public (AzureCloud)", "snapshot_date": "2026-06-15" },
+        { "cidr": "52.102.172.0/24", "evidence_source": "Azure ServiceTags_Public (AzureCloud)", "snapshot_date": "2026-06-15" }
+      ],
+      "evidence_class": ["PROVIDER_PUBLISHED_RANGE", "RIR_ASN_REGISTRATION"],
+      "evidence_source": "Published range file 'Azure IP Ranges and Service Tags – Public Cloud' (Microsoft Download Center id=56519 → ServiceTags_Public_20260615.json, changeNumber 405, cloud=Public; AzureCloud service tag). ASN AS8075 (MICROSOFT-CORP-MSN-AS-BLOCK), RIR-registered (ARIN). IP_RANGE_CONTAINMENT is the precise primary key (AzureCloud); AS8075 corroborates (Microsoft-operated network). Verified 2026-06-23.",
+      "version_added": 1, "status": "ACTIVE" },
+
+    { "provider_id": "HCP-003", "provider_name": "Google Cloud", "provider_class": "hyperscale_cloud",
+      "asns": [396982],
+      "ip_ranges": [
+        { "cidr": "104.154.113.0/24", "evidence_source": "Google Cloud cloud.json", "snapshot_date": "2026-06-23" },
+        { "cidr": "23.251.144.0/20", "evidence_source": "Google Cloud cloud.json", "snapshot_date": "2026-06-23" },
+        { "cidr": "34.155.0.0/16", "evidence_source": "Google Cloud cloud.json", "snapshot_date": "2026-06-23" },
+        { "cidr": "34.22.128.0/17", "evidence_source": "Google Cloud cloud.json", "snapshot_date": "2026-06-23" },
+        { "cidr": "35.186.144.0/20", "evidence_source": "Google Cloud cloud.json", "snapshot_date": "2026-06-23" }
+      ],
+      "evidence_class": ["PROVIDER_PUBLISHED_RANGE", "RIR_ASN_REGISTRATION"],
+      "evidence_source": "Published range file https://www.gstatic.com/ipranges/cloud.json (creationTime 2026-06-23T07:09:24, syncToken 1782223764283 — GCP-specific, the correct file for cloud attribution). ASN AS396982 (GOOGLE-CLOUD-PLATFORM), RIR-registered. NOTE: AS15169 (GOOGLE, broader — carries consumer Search/Gmail/YouTube) is DELIBERATELY EXCLUDED as an over-broad shared key (HPR-001 H-E1 / E3-analogue): it would conflate consumer-Google-served endpoints with Google Cloud hosting. cloud.json + AS396982 are the GCP-specific keys. Verified 2026-06-23.",
+      "version_added": 1, "status": "ACTIVE" }
+  ]
+}
