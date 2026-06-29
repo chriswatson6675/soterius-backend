@@ -1,5 +1,6 @@
 # SRA Collection Platform — v1.0 Engineering Baseline (FROZEN)
 
+**Document ID:** BAS-SRA-001 (registered in `docs/DOCUMENT_REGISTER.md` → ENGINEERING; governance identity assigned by SLG-027 §7; non-authoritative pending Founder Review per SLG-019)
 **Version:** Collection Platform v1.0 · collector `sra-snapshot-collector/0.1.0`
 **Status:** COMPLETE — first live acquisition succeeded; platform frozen.
 **Baseline date:** 2026-06-29

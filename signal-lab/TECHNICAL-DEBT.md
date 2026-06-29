@@ -1,5 +1,7 @@
 # SRA Collection Platform — Technical Debt Register (v1.0 backlog)
 
+**Document ID:** TDR-SRA-001 (registered in `docs/DOCUMENT_REGISTER.md` → ENGINEERING; governance identity assigned by SLG-027 §7; non-authoritative pending Founder Review per SLG-019)
+
 Items deliberately **NOT** addressed in Collection Platform v1.0. These are backlog
 only — do not implement as part of the frozen baseline. Each is outside v1.0 scope
 (benchmarking, frontend, commercial validation, and future sources come first/next).
