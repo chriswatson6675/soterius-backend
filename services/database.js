@@ -108,12 +108,19 @@ async function createProspect(data) {
     const { data: row, error } = await getClient()
       .from('prospects')
       .insert([{
-        firm_name: data.firm_name,
-        website:   data.website.toLowerCase(),
-        sector:    data.sector   ?? null,
-        location:  data.location ?? null,
-        source:    data.source   ?? 'manual',
-        notes:     data.notes    ?? null,
+        firm_name:           data.firm_name,
+        website:             data.website.toLowerCase(),
+        sector:              data.sector              ?? null,
+        location:            data.location            ?? null,
+        source:              data.source              ?? 'manual',
+        source_date:         data.source_date         ?? null,
+        source_reference:    data.source_reference    ?? null,
+        firm_confidence:     data.firm_confidence     ?? 90,
+        domain_confidence:   data.domain_confidence   ?? 90,
+        postcode:            data.postcode            ?? null,
+        postcode_source:     data.postcode_source     ?? null,
+        postcode_confidence: data.postcode_confidence ?? null,
+        notes:               data.notes               ?? null,
       }])
       .select('*')
       .single();
