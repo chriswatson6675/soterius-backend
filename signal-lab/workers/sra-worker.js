@@ -3,31 +3,42 @@
 // sra-worker.js — Railway background worker that DRIVES the SRA Collection Layer.
 //
 // This worker is NOT part of the Collection Layer. It is an operational component
-// that polls the SRA source and, when a newer snapshot exists, invokes the already
-// completed collector end-to-end. It implements NO collection logic, parses NO
-// evidence, and modifies NO Collection Package — it only composes the public entry
-// points of the constitutional layer:
+// that polls the SRA source and, when the source snapshot has CHANGED, invokes the
+// already completed collector end-to-end. It implements NO collection logic, parses
+// NO evidence, and modifies NO Collection Package — it only composes the public
+// entry points of the constitutional layer:
 //
-//   connectivity-check  → is the source reachable + what is its production timestamp?
-//   run-snapshot        → collectSnapshot()  (Observe→…→Seal, atomic)
+//   connectivity-check  → is the source reachable + authenticated?
+//   acquire-snapshot    → acquire the current snapshot (to determine its content hash)
+//   run-snapshot        → collectSnapshot()  (Observe→…→Seal, atomic; UNCHANGED)
 //   report              → writeReports()     (read-only operational reports)
-//   snapshot-run-model  → loadRunModel()     (read-only; latest local production ts)
-//   collection-package  → listSealed()       (read-only; existing sealed packages)
+//   snapshot-run-model  → loadRunModel()     (read-only; latest package's recorded raw hash)
+//   collection-package  → listSealed() / readSeal()  (read-only; existing sealed packages)
 //
-// Operational health is tracked via worker-health.js (operational state only — never
-// evidence). Collaborators, logger, sleeper, and health are injectable for testing.
+// Duplicate detection (TD-1) is CONTENT-HASH based, not timestamp based: the SRA
+// source exposes no production timestamp, so the worker compares the SHA-256 of the
+// freshly-acquired snapshot against the SHA-256 already recorded in the latest sealed
+// Collection Package's raw index (reused, never recomputed from the raw file). The
+// dedup logic is source-agnostic. Operational health is tracked via worker-health.js
+// (operational state only — never evidence). Collaborators, logger, sleeper, and
+// health are injectable for testing.
 
 const fs = require('node:fs');
 const path = require('node:path');
 
 const sraClient = require('../sources/sra/sra-client');
 const { checkConnectivity } = require('../sources/sra/connectivity-check');
+const { acquireSnapshot } = require('../sources/sra/acquire-snapshot');
 const { collectSnapshot } = require('../sources/sra/run-snapshot');
 const { writeReports } = require('../sources/sra/report');
 const { loadRunModel } = require('../sources/sra/snapshot-run-model');
-const { listSealed } = require('../sources/sra/collection-package');
+const { listSealed, readSeal } = require('../sources/sra/collection-package');
+const { sha256 } = require('../sources/sra/preserve-snapshot');
 const { SRA_SNAPSHOT_SOURCE } = require('../sources/sra/snapshot-source');
 const { createHealth, STATUS } = require('./worker-health');
+
+/** Short hash for logs (operational only). */
+function shortHash(h) { return h ? String(h).slice(0, 12) : null; }
 
 // ── logging ────────────────────────────────────────────────────────────────────
 const LEVELS = { error: 0, warn: 1, info: 2, debug: 3 };
@@ -95,23 +106,61 @@ function createWorker(opts = {}) {
   const makeSleeper = opts.makeSleeper || defaultMakeSleeper;
   const health = opts.health || NULL_HEALTH;
   const deps = {
-    checkConnectivity, collectSnapshot, writeReports, loadRunModel, listSealed,
+    checkConnectivity, acquireSnapshot, collectSnapshot, writeReports, loadRunModel, listSealed, readSeal,
+    transportGet: sraClient.get, // low-level transport, used only for failure diagnostics
     ...(opts.deps || {}),
   };
 
   let stopping = false;
   let sleeper = null;
 
-  /** Newest production timestamp among locally SEALED packages (read-only), or null. */
-  function latestLocalProductionTimestamp() {
+  // ── content-hash de-duplication (TD-1) ──────────────────────────────────────────
+  // A snapshot fingerprint = the SHA-256(s) of the raw snapshot segment(s), combined.
+  // The SAME sha256 the Collection Package uses is applied on both sides — live side
+  // hashes the freshly-acquired raw bytes exactly as Preserve does; stored side REUSES
+  // the sha256 already recorded in the package raw index (never recomputed from disk).
+  function combineHashes(hashes) {
+    if (!hashes || hashes.length === 0) return null;
+    if (hashes.length === 1) return hashes[0];
+    return sha256(Buffer.from(hashes.join('\n'), 'utf8'));
+  }
+
+  /** Fingerprint freshly-acquired snapshot segments (live side). */
+  function fingerprintSegments(segments) {
+    return combineHashes((segments || []).map((s) => sha256(Buffer.from(String(s.body ?? ''), 'utf8'))));
+  }
+
+  /** Fingerprint of the latest SEALED package from its RECORDED raw hashes; null if none/unreadable. */
+  function latestSealedFingerprint() {
+    const sealed = deps.listSealed(config.runRoot);
+    if (!sealed.length) return null;
+    // Pick the most recently sealed package (by SEALED.sealedAt; listing order as fallback).
     let latest = null;
-    for (const p of deps.listSealed(config.runRoot)) {
-      let model;
-      try { model = deps.loadRunModel(p.dir); } catch { continue; }
-      const ts = model.manifest && model.manifest.snapshotProductionTimestamp;
-      if (ts && (latest === null || ts > latest)) latest = ts;
+    for (const p of sealed) {
+      let at = '';
+      try { const s = deps.readSeal(p.dir); at = (s && s.sealedAt) ? s.sealedAt : ''; } catch { at = ''; }
+      if (latest === null || at > latest.at) latest = { dir: p.dir, at };
     }
-    return latest;
+    let model;
+    try { model = deps.loadRunModel(latest.dir); } catch { return null; } // corrupted previous package → no comparable prior
+    const hashes = (model.rawIndex || []).map((r) => r && r.sha256).filter(Boolean);
+    return combineHashes(hashes); // null if the raw index is missing/empty (corrupted)
+  }
+
+  // ── connection diagnostics (TD — operational visibility only) ───────────────────
+  // checkConnectivity reports `errorType: 'CONNECTION_ERROR'` but not the underlying
+  // Node transport cause. On a connection error the worker runs ONE low-level probe
+  // (the same transport the collector uses) purely to surface the root cause
+  // (ENOTFOUND / ECONNRESET / ECONNREFUSED / ETIMEDOUT / TLS/cert message, …) and the
+  // host being dialled. Diagnostic only — it changes no collection behaviour, decision,
+  // or retry; it runs only on the failure path that already skips the cycle.
+  async function diagnoseConnection() {
+    let host = null; let url = null;
+    try { url = sraClient.buildUrl(config.client.baseUrl, config.source && config.source.datasetPath); host = new URL(url).host; } catch { /* ignore */ }
+    let r;
+    try { r = await deps.transportGet(url, { subscriptionKey: config.client.subscriptionKey }); }
+    catch (e) { return { host, probeErrorType: 'PROBE_THREW', underlyingError: e && e.message ? e.message : String(e) }; }
+    return { host, probeErrorType: r.errorType, probeHttpStatus: r.httpStatus, underlyingError: r.errorMessage };
   }
 
   /** Run a single poll cycle. Never throws; returns a structured cycle outcome. */
@@ -119,25 +168,48 @@ function createWorker(opts = {}) {
     health.setStatus(STATUS.CHECKING);
     health.markCheck();
 
+    // Pre-flight: source reachable + authenticated.
     const conn = await deps.checkConnectivity({ config: config.client, source: config.source });
     if (!conn.ok) {
-      logger.warn('connectivity check failed', { detail: conn.detail, httpStatus: conn.httpStatus });
+      const extra = { detail: conn.detail, httpStatus: conn.httpStatus, errorType: conn.errorType ?? null };
+      // Expose the root transport cause for a connection error (diagnostics only).
+      if (conn.errorType === 'CONNECTION_ERROR') {
+        const diag = await diagnoseConnection();
+        extra.host = diag.host;
+        extra.underlyingError = diag.underlyingError; // e.g. ENOTFOUND / ECONNRESET / ECONNREFUSED / ETIMEDOUT / cert message
+        if (diag.probeErrorType && diag.probeErrorType !== 'CONNECTION_ERROR') extra.probeErrorType = diag.probeErrorType;
+      }
+      logger.warn('connectivity check failed', extra);
       health.markSkipped('connectivity');
       return { action: 'skip', reason: 'connectivity', conn };
     }
 
-    const liveTs = conn.productionTimestamp ?? null;
-    const localTs = latestLocalProductionTimestamp();
-    const newer = localTs === null ? true : (liveTs !== null && liveTs > localTs);
-    if (!newer) {
-      logger.info('no newer snapshot; nothing to collect', { liveTs, localTs });
-      health.markSkipped('up-to-date');
-      return { action: 'skip', reason: 'up-to-date', liveTs, localTs };
+    // Acquire the current snapshot (in memory) to determine its content hash.
+    const acq = await deps.acquireSnapshot({ config: config.client, source: config.source });
+    if (!acq || !acq.ok) {
+      logger.warn('snapshot acquisition failed', { error: acq && acq.error ? acq.error : 'no result' });
+      health.markSkipped('acquire');
+      return { action: 'skip', reason: 'acquire', acq };
     }
 
-    logger.info('newer snapshot available; collecting', { liveTs, localTs });
+    // Content-hash de-duplication (TD-1): compare the live snapshot hash with the hash
+    // recorded in the latest sealed Collection Package (reused, never recomputed).
+    const liveHash = fingerprintSegments(acq.segments);
+    const priorHash = latestSealedFingerprint();
+    if (priorHash !== null && liveHash !== null && liveHash === priorHash) {
+      logger.info('no new snapshot; content hash unchanged', { hash: shortHash(liveHash) });
+      health.markSkipped('unchanged');
+      return { action: 'skip', reason: 'unchanged', hash: liveHash };
+    }
+
+    // Changed (or no comparable prior): invoke the UNCHANGED Collection Layer, reusing
+    // the already-acquired snapshot so it is not downloaded again.
+    logger.info('snapshot changed; collecting', { priorHash: shortHash(priorHash), liveHash: shortHash(liveHash) });
     health.setStatus(STATUS.COLLECTING);
-    const result = await deps.collectSnapshot({ config: config.client, runRoot: config.runRoot, source: config.source });
+    const result = await deps.collectSnapshot({
+      config: config.client, runRoot: config.runRoot, source: config.source,
+      deps: { acquireSnapshot: async () => acq },
+    });
 
     if (!result.ok || !result.sealed) {
       logger.error('collection failed; package left unsealed', { runId: result.runId, failedStage: result.failedStage, error: result.error });
@@ -149,12 +221,11 @@ function createWorker(opts = {}) {
     catch (e) { logger.warn('report generation failed', { runId: result.runId, error: e.message }); }
 
     logger.info('collection sealed', {
-      runId: result.runId, dir: result.dir,
-      productionTimestamp: result.productionTimestamp,
+      runId: result.runId, dir: result.dir, contentHash: shortHash(liveHash),
       records: result.stages && result.stages.extract ? result.stages.extract.records : null,
     });
     health.markCollected(result.runId, result.productionTimestamp);
-    return { action: 'collected', ok: true, result };
+    return { action: 'collected', ok: true, result, hash: liveHash };
   }
 
   /** Run the continuous poll loop until stopped. Resolves when the loop exits cleanly. */
