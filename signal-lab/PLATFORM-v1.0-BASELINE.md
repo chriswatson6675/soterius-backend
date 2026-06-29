@@ -140,11 +140,17 @@ payload `{ Count, Organisations[] }` · `recordsPath ['Organisations']` · `anch
 
 - **One-shot / scheduled collection: PRODUCTION-READY.** Proven live end-to-end with
   a sealed, integrity-verified package under default heap; full test coverage.
-- **Continuous unattended worker: READY pending TD-1** (snapshot dedup). Until then,
-  run the worker on a fixed daily cadence or add content-hash dedup, else it will
-  create a new package every `CHECK_INTERVAL`.
+- **Continuous unattended worker: PRODUCTION (TD-1 resolved).** Content-hash dedup is
+  implemented and deployed; the worker collects only when the register content changes
+  (else logs `no new snapshot; content hash unchanged`). No duplicate packages.
+- **Deployed and commissioned on Railway (2026-06-29):** the `sra-worker` service
+  (separate from the API), on a mounted volume, started, passed connectivity, and
+  sealed its first production Collection Package (`snapshot changed; collecting` →
+  `collection sealed`). **Railway is now the production deployment baseline.**
 - Deployment is documented (`DEPLOYMENT.md`): separate Railway worker service, volume
   at `RUN_ROOT`, env vars, graceful shutdown, fail-fast config validation.
+- Production-defect correction applied during commissioning: response-body timeout
+  made configurable, default raised 60 s → 300 s (`SRA_REQUEST_TIMEOUT_MS`).
 
 ## 9. Recommendations for future development
 
