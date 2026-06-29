@@ -243,3 +243,11 @@ test('stop() before start() exits immediately without a cycle', async () => {
   await w.start();
   assert.strictEqual(cycles, 0);
 });
+
+test('deploy config launches node directly (clean SIGTERM; no npm wrapper noise on redeploy)', () => {
+  const cfg = require('../../railway.worker.json');
+  assert.strictEqual(cfg.deploy.startCommand, 'node signal-lab/workers/sra-worker.js', 'node started directly');
+  assert.ok(!/\bnpm\b/.test(cfg.deploy.startCommand), 'no npm wrapper (npm would log a misleading "npm error signal SIGTERM" on redeploy)');
+  assert.strictEqual(cfg.deploy.numReplicas, 1, 'single writer');
+  assert.strictEqual(cfg.deploy.restartPolicyType, 'ON_FAILURE');
+});

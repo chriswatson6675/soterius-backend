@@ -15,7 +15,7 @@ process.
 ```
 Railway project
 ├── service: soterius-api      (existing)   start: node server.js          (Dockerfile CMD)
-└── service: sra-worker        (new)        start: npm run worker          (start-command override)
+└── service: sra-worker        (new)        start: node signal-lab/workers/sra-worker.js
                                             volume: sra-data → /data
 ```
 
@@ -24,9 +24,11 @@ Railway project
   unchanged).
 - The worker uses only Node built-ins + the in-repo collector modules — no extra
   dependencies, so the existing image runs it as-is.
-- `npm run worker` → `node signal-lab/workers/sra-worker.js` (service root = `backend`,
-  matching the API service). If the worker service root is the repo root instead,
-  use `node backend/signal-lab/workers/sra-worker.js`.
+- **Start node directly (not `npm run worker`)** so the worker process is PID 1 in the
+  container: it receives SIGTERM itself, runs its graceful-shutdown handler, and exits
+  0. Running it under npm makes npm the parent, which logs a misleading
+  `npm error signal SIGTERM` on every redeploy even though the worker exits cleanly.
+  Service root = `backend`; the `npm run worker` script remains for local use.
 
 ---
 
@@ -35,7 +37,7 @@ Railway project
 1. In the Railway project, **New → Service → GitHub repo** (same repo as the API).
 2. **Settings → Service name:** `sra-worker`.
 3. **Settings → Root Directory:** `backend` (same as the API service).
-4. **Settings → Deploy → Start Command:** `npm run worker`.
+4. **Settings → Deploy → Start Command:** `node signal-lab/workers/sra-worker.js` (launch node directly — not `npm run worker` — so the worker is the container's main process, handles SIGTERM itself, and exits 0 without the npm wrapper's misleading `npm error signal SIGTERM` on redeploy). `railway.worker.json` already sets this.
 5. Leave **Networking / public domain** OFF — a background worker needs no inbound
    HTTP. (Only enable a port if you set `HEALTH_PORT`; see Stage 4.)
 6. Do **not** change the API service. The worker is fully independent.
