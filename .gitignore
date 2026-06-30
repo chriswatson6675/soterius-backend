@@ -20,3 +20,18 @@ signal-lab/**/*.jsonl
 signal-lab/if001-*/cohort-manifest.json
 signal-lab/if001-pilot/run-output.txt
 signal-lab/pra-assessment/overlap-results.json
+
+# ── Repository Governance Rule — operational runtime state (SLG-028) ─────────────
+# Authoritative platform artefacts ARE committed (Organisation Registries,
+# CAPPED-SIC-CODES.md, manifests, curated/accepted datasets). Operational runtime
+# state and non-promoted generated artefacts are reproducible and are NOT committed:
+#   • processing ledgers / resume checkpoints / retry / queue / worker state
+#   • pilot snapshots and temporary/intermediate acquisition outputs
+# Applies to all current and future Population Acquisition runs (FCA, SRA, …).
+signal-lab/population-acquisition/runs/*/ledger.ndjson
+signal-lab/population-acquisition/runs/*/snapshots/
+signal-lab/population-acquisition/runs/*/*.checkpoint
+signal-lab/population-acquisition/runs/*/*.checkpoint.*
+signal-lab/population-acquisition/runs/*/*.resume
+signal-lab/population-acquisition/runs/*/*.tmp
+signal-lab/population-acquisition/runs/*/tmp/
