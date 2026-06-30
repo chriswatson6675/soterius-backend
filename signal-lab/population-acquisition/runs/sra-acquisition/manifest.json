@@ -1,0 +1,79 @@
+{
+  "artefactType": "sra-organisation-registry-manifest",
+  "cohortId": "SRA-REG-001",
+  "cohortName": "SRA Organisation Registry",
+  "source": {
+    "type": "sra-collection-package",
+    "runId": "live-003",
+    "collectorVersion": "sra-snapshot-collector/0.1.0",
+    "sourceAuthority": "Solicitors Regulation Authority",
+    "collectionCompletedAt": "2026-06-29T09:53:22.062Z",
+    "rawSha256": "297e6de58757944b78d607071fac067b9b34aecc2266c74c08f54ae9bbf4e2c0"
+  },
+  "totals": {
+    "organisationsInPackage": 25078,
+    "eligible": 10354,
+    "excluded": 14724,
+    "exclusionBreakdown": {
+      "no-website": 14088,
+      "malformed-website": 0,
+      "invalid-domain": 636
+    },
+    "accountingBalanced": true
+  },
+  "validation": {
+    "distinctDomains": 9636,
+    "duplicateDomainGroups": 520,
+    "organisationsSharingADomain": 1238,
+    "topSharedDomains": [
+      {
+        "domain": "aoshearman.com",
+        "orgs": 22
+      },
+      {
+        "domain": "qualitysolicitors.com",
+        "orgs": 14
+      },
+      {
+        "domain": "twobirds.com",
+        "orgs": 11
+      },
+      {
+        "domain": "lw.com",
+        "orgs": 11
+      },
+      {
+        "domain": "cliffordchance.com",
+        "orgs": 10
+      },
+      {
+        "domain": "rotherabray.co.uk",
+        "orgs": 10
+      },
+      {
+        "domain": "withersworldwide.com",
+        "orgs": 8
+      },
+      {
+        "domain": "linklaters.com",
+        "orgs": 8
+      },
+      {
+        "domain": "dlapiper.com",
+        "orgs": 7
+      },
+      {
+        "domain": "tsplegal.com",
+        "orgs": 7
+      }
+    ],
+    "duplicateIdentifierGroups": 0,
+    "recordsMissingIdentifier": 0
+  },
+  "registry": {
+    "path": "runs/sra-acquisition/registry.ndjson",
+    "records": 10354,
+    "sha256": "408f54624035dc83bc8354fb6a732c5aa5615b2dd3f3c509da8e2a6a4ff7228a"
+  },
+  "generatedBy": "derive-sra-registry.js"
+}
