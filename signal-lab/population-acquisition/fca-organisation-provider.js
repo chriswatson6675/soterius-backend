@@ -2,10 +2,11 @@
 
 // Organisation Provider — FCA Organisation Registry
 //
-// Concrete Organisation Provider that supplies organisations from the frozen FCA
-// Organisation Registry produced by the Population Acquisition Layer
-// (runs/fca-acquisition/registry.ndjson). Selected at runtime by the provider
-// factory (if001-full/organisation-provider.js).
+// Concrete Organisation Provider that supplies organisations from the FCA
+// Organisation Registry produced by the Population Acquisition Layer. By default it
+// reads the live registry (runs/fca-acquisition/registry.ndjson); set
+// FCA_REGISTRY_PATH to read an immutable snapshot instead (see resolveRegistryPath).
+// Selected at runtime by the provider factory (if001-full/organisation-provider.js).
 //
 // It satisfies the same Organisation Provider contract as the IF provider:
 //   loadOrganisations() → {
@@ -34,7 +35,19 @@ const fs     = require('node:fs');
 const path   = require('node:path');
 const crypto = require('node:crypto');
 
+// The live Organisation Registry the Population Acquisition Layer appends to — the
+// default source when no snapshot is configured.
 const REGISTRY_PATH = path.join(__dirname, 'runs', 'fca-acquisition', 'registry.ndjson');
+
+// Registry source selection. An Operational Execution should run against an
+// immutable snapshot so continuous acquisition need not stop: set FCA_REGISTRY_PATH
+// to the snapshot file. Absent or empty → the live registry (unchanged default
+// behaviour). Selection of the source is the only thing this controls; the
+// provider contract, mapping, eligibility, and ordering are identical regardless.
+function resolveRegistryPath() {
+  const override = (process.env.FCA_REGISTRY_PATH ?? '').trim();
+  return override.length > 0 ? override : REGISTRY_PATH;
+}
 
 const COHORT_ID   = 'FCA-REG-001';
 const COHORT_NAME = 'FCA Organisation Registry';
@@ -81,13 +94,14 @@ function selectionIdFor(buffer) {
 }
 
 function loadOrganisations() {
-  if (!fs.existsSync(REGISTRY_PATH)) {
-    const err = new Error('FCA Organisation Registry not found (runs/fca-acquisition/registry.ndjson)');
+  const registryPath = resolveRegistryPath();
+  if (!fs.existsSync(registryPath)) {
+    const err = new Error(`FCA Organisation Registry not found (${registryPath})`);
     err.code = 'FCA_REGISTRY_NOT_FOUND';
     throw err;
   }
 
-  const raw   = fs.readFileSync(REGISTRY_PATH, 'utf8');
+  const raw   = fs.readFileSync(registryPath, 'utf8');
   const lines = raw.split('\n').filter(l => l.trim().length > 0);
 
   const eligible = lines
@@ -114,4 +128,4 @@ function loadOrganisations() {
   };
 }
 
-module.exports = { loadOrganisations, REGISTRY_PATH };
+module.exports = { loadOrganisations, REGISTRY_PATH, resolveRegistryPath };
