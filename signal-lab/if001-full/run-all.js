@@ -1,21 +1,22 @@
 'use strict';
 
-// IF-001 — Signal Lab Collection Orchestrator (Full Cohort)
+// Signal Lab Collection Orchestrator
 //
-// Reads the full cohort manifest (cohort-manifest.json), runs all 9 Signal Lab
-// collectors against every domain, inserts observations into the approved Signal
-// Lab tables, and writes IF001_COLLECTION_REPORT.md.
+// Obtains organisations from the configured Organisation Provider, runs all 9
+// Signal Lab collectors against every domain, inserts observations into the
+// approved Signal Lab tables, and writes <COHORT>_COLLECTION_REPORT.md (the
+// cohort identity is supplied by the provider, e.g. IF-001 or FCA-REG-001).
 //
 // Signal Lab rule: records observations only. No scores. No ratings.
 //
-// Run AFTER select-cohort.js has created cohort-manifest.json.
-//
 // Usage:
-//   node backend/signal-lab/if001-full/run-all.js
+//   node backend/signal-lab/if001-full/run-all.js            # IF cohort (default)
+//   ORG_PROVIDER=fca node backend/signal-lab/if001-full/run-all.js
 //
 // Environment:
 //   SUPABASE_URL              — required
 //   SUPABASE_SERVICE_ROLE_KEY — required
+//   ORG_PROVIDER              — optional, 'if' (default) | 'fca'
 //   CONCURRENCY               — optional, default 8
 
 require('dotenv').config({ path: require('node:path').join(__dirname, '../../.env') });
@@ -37,14 +38,27 @@ const { collectCaa,            SIGNAL_ID: CAA_ID,     SIGNAL_VERSION: CAA_VER   
 const { collectSecurityTxt   } = require('../signals/securitytxt/securitytxt-collector');
 const { collectSecurityHeaders } = require('../signals/securityheaders/securityheaders-collector');
 
+// ── Organisation source ───────────────────────────────────────────────────────
+// The Observatory obtains the organisations it scans through an Organisation
+// Provider, not by reading the cohort directly. The provider is chosen by the
+// factory in ./organisation-provider (ORG_PROVIDER: 'if' default | 'fca'), so the
+// pipeline is population-agnostic and never references a specific source.
+
+const { loadOrganisations } = require('./organisation-provider');
+
 // ── Configuration ─────────────────────────────────────────────────────────────
 
-const COHORT_CODE        = 'IF-001';
 const COLLECTOR_VERSION  = '1.0.0';
-const MANIFEST_PATH      = path.join(__dirname, 'cohort-manifest.json');
-const REPORT_PATH        = path.join(__dirname, '../../../IF001_COLLECTION_REPORT.md');
+const REPORT_DIR         = path.join(__dirname, '../../../');
 const CONCURRENCY        = Number(process.env.CONCURRENCY ?? 8);
 const SIGNAL_CONCURRENCY = Number(process.env.SIGNAL_CONCURRENCY ?? 9);
+
+// Report identity is derived from the cohort the provider supplies, so the
+// Observatory is population-agnostic (no hardcoded IF-001). The filename stem is
+// the cohort id with separators removed: 'IF-001' → 'IF001' (unchanged for IF),
+// 'FCA-REG-001' → 'FCAREG001'.
+const reportStem    = id => String(id).replace(/[^A-Za-z0-9]/g, '');
+const reportPathFor = id => path.join(REPORT_DIR, `${reportStem(id)}_COLLECTION_REPORT.md`);
 
 // ── Supabase client ───────────────────────────────────────────────────────────
 
@@ -529,9 +543,9 @@ function generateReport(manifest, allStats, globalStart, globalEnd) {
 
   const lines = [];
 
-  lines.push('# IF001_COLLECTION_REPORT');
+  lines.push(`# ${reportStem(manifest.cohort_id)}_COLLECTION_REPORT`);
   lines.push('');
-  lines.push(`**Cohort:** ${COHORT_CODE} — Investment Firms Full Cohort`);
+  lines.push(`**Cohort:** ${manifest.cohort_id} — ${manifest.cohort_name}`);
   lines.push(`**Selection ID:** ${manifest.selection_id}`);
   lines.push(`**Collection started:** ${new Date(globalStart).toISOString()}`);
   lines.push(`**Collection completed:** ${new Date(globalEnd).toISOString()}`);
@@ -546,9 +560,9 @@ function generateReport(manifest, allStats, globalStart, globalEnd) {
   lines.push('');
   lines.push(`| Metric | Value |`);
   lines.push('|---|---|');
-  lines.push(`| Cohort | ${COHORT_CODE} |`);
+  lines.push(`| Cohort | ${manifest.cohort_id} |`);
   lines.push(`| Selection ID | \`${manifest.selection_id}\` |`);
-  lines.push(`| Domains in manifest | ${manifest.n} |`);
+  lines.push(`| Domains in cohort | ${manifest.n} |`);
   lines.push(`| Signals executed | 9 |`);
   lines.push(`| Total observations attempted | ${overallAttempted} |`);
   lines.push(`| Total observations stored | ${overallCompleted} |`);
@@ -716,8 +730,8 @@ function generateReport(manifest, allStats, globalStart, globalEnd) {
   lines.push('---');
   lines.push('');
   lines.push(`*Generated: ${new Date().toISOString()}*`);
-  lines.push(`*Cohort: ${COHORT_CODE}  •  Selection ID: ${manifest.selection_id}*`);
-  lines.push(`*Authority: IF-001-PILOT completed 2026-06-17 — full cohort execution authorised by founder*`);
+  lines.push(`*Cohort: ${manifest.cohort_id}  •  Selection ID: ${manifest.selection_id}*`);
+  lines.push(`*Source population: ${manifest.cohort_name} (${manifest.cohort_id})*`);
 
   return lines.join('\n');
 }
@@ -728,18 +742,23 @@ async function main() {
   const HR  = '═'.repeat(72);
   const DIV = '─'.repeat(72);
 
-  if (!fs.existsSync(MANIFEST_PATH)) {
-    console.error(`\n  ERROR: cohort-manifest.json not found.`);
-    console.error(`  Run select-cohort.js first to generate the cohort manifest.\n`);
-    process.exit(1);
+  let cohort;
+  try {
+    cohort = loadOrganisations();
+  } catch (err) {
+    if (err.code === 'COHORT_MANIFEST_NOT_FOUND') {
+      console.error(`\n  ERROR: cohort-manifest.json not found.`);
+      console.error(`  Run select-cohort.js first to generate the cohort manifest.\n`);
+      process.exit(1);
+    }
+    throw err;
   }
-  const manifest = JSON.parse(fs.readFileSync(MANIFEST_PATH, 'utf8'));
-  const firms    = manifest.firms;
+  const firms = cohort.organisations;
 
   console.log(`\n${HR}`);
-  console.log(` IF-001 — Signal Lab Collection Orchestrator (Full Cohort)`);
-  console.log(` Cohort: ${manifest.cohort_id}   n = ${manifest.n}   Domain concurrency: ${CONCURRENCY}   Signal concurrency: ${SIGNAL_CONCURRENCY}`);
-  console.log(` Selection ID: ${manifest.selection_id}`);
+  console.log(` ${cohort.cohort_id} — Signal Lab Collection Orchestrator`);
+  console.log(` Cohort: ${cohort.cohort_id}   n = ${cohort.n}   Domain concurrency: ${CONCURRENCY}   Signal concurrency: ${SIGNAL_CONCURRENCY}`);
+  console.log(` Selection ID: ${cohort.selection_id}`);
   console.log(`${HR}\n`);
 
   const supabase    = getClient();
@@ -851,7 +870,7 @@ async function main() {
   const totalElapsed = ((globalEnd - globalStart) / 1000).toFixed(0);
 
   console.log(`\n${HR}`);
-  console.log(` IF-001 — COLLECTION COMPLETE`);
+  console.log(` ${cohort.cohort_id} — COLLECTION COMPLETE`);
   console.log(`${HR}\n`);
   console.log(`  Signal              Attempted  Completed  Errors  Rate`);
   console.log(`  ${'─'.repeat(60)}`);
@@ -873,9 +892,10 @@ async function main() {
   }
   console.log('');
 
-  const reportMd = generateReport(manifest, allStats, globalStart, globalEnd);
-  fs.writeFileSync(REPORT_PATH, reportMd, 'utf8');
-  console.log(`  Report: ${REPORT_PATH}`);
+  const reportMd   = generateReport(cohort, allStats, globalStart, globalEnd);
+  const reportPath = reportPathFor(cohort.cohort_id);
+  fs.writeFileSync(reportPath, reportMd, 'utf8');
+  console.log(`  Report: ${reportPath}`);
   console.log(`\n${HR}\n`);
 }
 
