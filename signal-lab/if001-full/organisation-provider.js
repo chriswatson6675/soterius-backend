@@ -12,9 +12,10 @@
 //
 //   ORG_PROVIDER unset | 'if' | 'if-001'   → IF (Investment Firms) cohort   [default]
 //   ORG_PROVIDER       = 'fca'             → FCA Organisation Registry
+//   ORG_PROVIDER       = 'sra'             → SRA Organisation Registry
 //
-// Adding a future population (e.g. SRA Organisation Registry) means adding one
-// concrete provider module and one case below — the scanning pipeline is untouched.
+// Adding a future population means adding one concrete provider module and one case
+// below — the scanning pipeline is untouched.
 //
 // Every concrete provider satisfies the same contract:
 //   loadOrganisations() → {
@@ -24,11 +25,13 @@
 
 const ifProvider  = require('./if-organisation-provider');
 const fcaProvider = require('../population-acquisition/fca-organisation-provider');
+const sraProvider = require('../population-acquisition/sra-organisation-provider');
 
 const PROVIDERS = {
   if:       ifProvider,
   'if-001': ifProvider,
   fca:      fcaProvider,
+  sra:      sraProvider,
 };
 
 function getProvider() {
