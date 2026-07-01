@@ -3,7 +3,7 @@ const headersCheck   = require('../scanners/headers-check');
 const emailSecurity  = require('../scanners/dns-check');
 const vulnComponents = require('../scanners/tech-detect');
 const gdprCheck      = require('../scanners/gdpr-check');
-const logger         = require('../utils/logger');
+const logger         = require('../infra/utils/logger');
 
 // v1.0 methodology — do not modify without incrementing scoringVersion and
 // updating SCORING.md + DECISIONS.md.
