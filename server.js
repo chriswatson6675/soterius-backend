@@ -3,10 +3,14 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const { createServer } = require('http');
-const scanRouter      = require('./routes/scan');
-const reportRouter    = require('./routes/report');
-const gateRouter      = require('./routes/gate');
-const prospectsRouter = require('./routes/prospects');
+const scanRouter             = require('./routes/scan');
+const reportRouter           = require('./routes/report');
+const gateRouter             = require('./routes/gate');
+const prospectsRouter        = require('./routes/prospects');
+const organisationsRouter    = require('./routes/organisations');
+const scansRouter            = require('./routes/scans');
+const benchmarksRouter       = require('./routes/benchmarks');
+const improvementQueueRouter = require('./routes/improvement-queue');
 const logger = require('./utils/logger');
 const { AppError } = require('./utils/errors');
 
@@ -16,7 +20,8 @@ const { AppError } = require('./utils/errors');
 // Use '*' as a wildcard for a single domain segment, e.g.:
 //   https://soterius-*.vercel.app  → matches any Vercel preview deployment
 const DEFAULT_ORIGINS = [
-  'http://localhost:5173',
+  'http://localhost:3000',  // Next.js dev (Phase 2A+)
+  'http://localhost:5173',  // legacy Vite dev
   'https://soterius-frontend.vercel.app',
   'https://soterius-*.vercel.app',
 ];
@@ -61,10 +66,14 @@ app.get('/health', (req, res) => {
 });
 
 
-app.use('/api/scan',      scanRouter);
-app.use('/api/gate',      gateRouter);
-app.use('/api/prospects', prospectsRouter);
-app.use('/api',           reportRouter);
+app.use('/api/scan',              scanRouter);
+app.use('/api/gate',              gateRouter);
+app.use('/api/prospects',         prospectsRouter);
+app.use('/api/organisations',     organisationsRouter);
+app.use('/api/scans',             scansRouter);
+app.use('/api/benchmarks',        benchmarksRouter);
+app.use('/api/improvement-queue', improvementQueueRouter);
+app.use('/api',                   reportRouter);
 
 app.use((req, res) => {
   res.status(404).json({ success: false, error: 'Not found' });

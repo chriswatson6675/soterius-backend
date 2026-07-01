@@ -351,8 +351,108 @@ async function getSubmissionById(id) {
   }
 }
 
+// ── Customer-facing scan queries ──────────────────────────────────────────────
+
+/**
+ * List scans, optionally filtered. Joins with prospects to surface org name.
+ * Returns ScanRecordDTO-shaped objects (organisation_id, organisation_name added).
+ * @param {object} filter - { domain?, riskBand?, since?, limit? }
+ */
+async function getScans(filter = {}) {
+  try {
+    let query = getClient()
+      .from('scans')
+      .select('id, domain, scanned_at, scoring_version, overall_score, risk_band, score_object, scanner_results, prospect_id, prospects(id, firm_name)')
+      .order('scanned_at', { ascending: false })
+      .limit(filter.limit ?? 200);
+
+    if (filter.domain)   query = query.eq('domain', filter.domain.toLowerCase());
+    if (filter.riskBand) query = query.eq('risk_band', filter.riskBand);
+    if (filter.since)    query = query.gte('scanned_at', filter.since);
+
+    const { data, error } = await query;
+    if (error) { logger.error(`getScans failed: ${error.message}`); return []; }
+
+    return (data ?? []).map(row => ({
+      id:                row.id,
+      domain:            row.domain,
+      organisation_id:   row.prospect_id ?? null,
+      organisation_name: row.prospects?.firm_name ?? null,
+      scanned_at:        row.scanned_at,
+      scoring_version:   row.scoring_version,
+      overall_score:     row.overall_score,
+      risk_band:         row.risk_band,
+      score_object:      row.score_object ?? null,
+      scanner_results:   row.scanner_results ?? [],
+    }));
+  } catch (err) {
+    logger.error(`getScans threw: ${err.message}`);
+    return [];
+  }
+}
+
+/**
+ * Fetch a single scan by ID, joined with its prospect (if any).
+ */
+async function getScanWithOrg(id) {
+  try {
+    const { data, error } = await getClient()
+      .from('scans')
+      .select('*, prospects(id, firm_name)')
+      .eq('id', id)
+      .single();
+
+    if (error) { logger.error(`getScanWithOrg failed: ${error.message}`); return null; }
+    if (!data) return null;
+
+    return {
+      id:                data.id,
+      domain:            data.domain,
+      organisation_id:   data.prospect_id ?? null,
+      organisation_name: data.prospects?.firm_name ?? null,
+      scanned_at:        data.scanned_at,
+      scoring_version:   data.scoring_version,
+      overall_score:     data.overall_score,
+      risk_band:         data.risk_band,
+      score_object:      data.score_object ?? null,
+      scanner_results:   data.scanner_results ?? [],
+    };
+  } catch (err) {
+    logger.error(`getScanWithOrg threw: ${err.message}`);
+    return null;
+  }
+}
+
+/**
+ * For a list of domains, return the most recent scan per domain.
+ * Used by the organisation search endpoint to show the current risk band.
+ * @returns {Record<string, {overall_score, risk_band, scanned_at}>}
+ */
+async function getLatestScansByDomains(domains) {
+  if (!domains.length) return {};
+  try {
+    const { data, error } = await getClient()
+      .from('scans')
+      .select('domain, overall_score, risk_band, scanned_at')
+      .in('domain', domains.map(d => d.toLowerCase()))
+      .order('scanned_at', { ascending: false });
+
+    if (error) { logger.error(`getLatestScansByDomains failed: ${error.message}`); return {}; }
+
+    const latest = {};
+    for (const row of (data ?? [])) {
+      if (!latest[row.domain]) latest[row.domain] = row;
+    }
+    return latest;
+  } catch (err) {
+    logger.error(`getLatestScansByDomains threw: ${err.message}`);
+    return {};
+  }
+}
+
 module.exports = {
   saveScan, getScanHistory, getScanById,
+  getScans, getScanWithOrg, getLatestScansByDomains,
   saveSubmission, getSubmissionByEmail, getAllSubmissions, getSubmissionById,
   findOrCreateProspect, createProspect, getProspects, getProspectById,
   updateProspect, updateProspectLastScanned, deleteProspect, getBenchmarkData,
