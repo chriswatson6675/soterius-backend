@@ -23,7 +23,7 @@ const { companiesHouseApiCandidateSource } = require('./companies-house-api-sour
 const { runCandidateSource } = require('./candidate-source-runner');
 const { processCandidate } = require('./candidate-processor');
 const { loadCohortIndex, createCohortExclusionFilter, withCohortExclusion } = require('./cohort-exclusion-filter');
-const { loadConfig, validateConfig } = require('../../collection/sources/fca/fca-client');
+const { loadConfig, validateConfig } = require('../collection/sources/fca/fca-client');
 
 function arg(name, def) { const i = process.argv.indexOf(name); return i >= 0 ? process.argv[i + 1] : def; }
 
@@ -33,7 +33,7 @@ async function* take(src, n) { let i = 0; for await (const x of src) { if (i >= 
 async function main() {
   const snapshot = arg('--snapshot');                  // optional: a CH bulk CSV snapshot
   const limit = arg('--limit') ? parseInt(arg('--limit'), 10) : null;
-  const runDir = path.join(__dirname, 'runs', 'fca-acquisition');
+  const runDir = path.join(__dirname, 'runs', 'fca');
   const ledgerPath = arg('--ledger', path.join(runDir, 'ledger.ndjson'));
   const registryPath = arg('--registry', path.join(runDir, 'registry.ndjson'));
 
@@ -51,7 +51,7 @@ async function main() {
 
   // Cohort exclusion: skip firms already in the authoritative IF and PRA cohorts,
   // immediately before the Candidate Processor (no FCA/ledger/registry for skips).
-  const cohortDir = path.join(__dirname, '../../../data/cohort data');
+  const cohortDir = path.join(__dirname, '../../../../data/cohort data');
   const praDir = path.join(cohortDir, 'pra');
   const praPaths = fs.existsSync(praDir) ? fs.readdirSync(praDir).filter((f) => f.endsWith('.csv')).map((f) => path.join(praDir, f)) : [];
   const cohortIndex = loadCohortIndex({ ifPath: path.join(cohortDir, 'investment-firms.csv'), praPaths });

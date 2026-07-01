@@ -41,10 +41,14 @@ collection/sources/companies-house/runs/
 #   • processing ledgers / resume checkpoints / retry / queue / worker state
 #   • pilot snapshots and temporary/intermediate acquisition outputs
 # Applies to all current and future Population Acquisition runs (FCA, SRA, …).
-signal-lab/population-acquisition/runs/*/ledger.ndjson
-signal-lab/population-acquisition/runs/*/snapshots/
-signal-lab/population-acquisition/runs/*/*.checkpoint
-signal-lab/population-acquisition/runs/*/*.checkpoint.*
-signal-lab/population-acquisition/runs/*/*.resume
-signal-lab/population-acquisition/runs/*/*.tmp
-signal-lab/population-acquisition/runs/*/tmp/
+# Updated by WS2 WP-08 (P4-C2): population-acquisition/ moved to acquisition/;
+# signal-lab/population-acquisition/ no longer exists, so the old patterns are
+# replaced outright (unlike WP-07's collection/ patterns, there is no
+# leftover signal-lab/population-acquisition/ directory to keep matching).
+acquisition/runs/*/ledger.ndjson
+acquisition/runs/*/snapshots/
+acquisition/runs/*/*.checkpoint
+acquisition/runs/*/*.checkpoint.*
+acquisition/runs/*/*.resume
+acquisition/runs/*/*.tmp
+acquisition/runs/*/tmp/

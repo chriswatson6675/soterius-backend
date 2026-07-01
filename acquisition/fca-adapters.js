@@ -14,9 +14,9 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-const fcaClient = require('../../collection/sources/fca/fca-client');
-const { pathFor } = require('../../collection/sources/fca/endpoint-map');
-const { endpointsFor } = require('../../collection/sources/fca/collection-profiles');
+const fcaClient = require('../collection/sources/fca/fca-client');
+const { pathFor } = require('../collection/sources/fca/endpoint-map');
+const { endpointsFor } = require('../collection/sources/fca/collection-profiles');
 
 function _cfg(config) { return config || fcaClient.loadConfig(); }
 

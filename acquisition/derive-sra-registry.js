@@ -14,7 +14,7 @@
 // sealed package. Same lifecycle position as FCA:
 //   External Source → Population Acquisition → Organisation Registry → Provider → Observatory
 //
-// Output (mirrors runs/fca-acquisition/): runs/sra-acquisition/registry.ndjson —
+// Output (mirrors runs/fca/): runs/sra/registry.ndjson —
 // one record per ELIGIBLE organisation — plus manifest.json (generation provenance +
 // validation). Eligibility = the organisation has a website that normalises to a
 // valid domain; a record with no scannable domain cannot be scanned, so it is
@@ -35,7 +35,7 @@ const crypto = require('node:crypto');
 
 const COHORT_ID = 'SRA-REG-001';
 const COHORT_NAME = 'SRA Organisation Registry';
-const OUT_DIR = path.join(__dirname, 'runs', 'sra-acquisition');
+const OUT_DIR = path.join(__dirname, 'runs', 'sra');
 
 // Domain normalisation — identical rules to the FCA provider / IF cohort selection so
 // every registry emits domains in the same shape (schema consistency).
@@ -152,7 +152,7 @@ function main() {
       accountingBalanced: records.length + excludedTotal === orgsTotal,
     },
     validation: validate(records),
-    registry: { path: 'runs/sra-acquisition/registry.ndjson', records: records.length, sha256: registrySha },
+    registry: { path: 'runs/sra/registry.ndjson', records: records.length, sha256: registrySha },
     generatedBy: 'derive-sra-registry.js',
   };
   fs.writeFileSync(path.join(OUT_DIR, 'manifest.json'), JSON.stringify(manifest, null, 2));

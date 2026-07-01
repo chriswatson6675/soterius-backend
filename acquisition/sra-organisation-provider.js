@@ -3,7 +3,7 @@
 // Organisation Provider — SRA Organisation Registry
 //
 // Concrete Organisation Provider that supplies organisations from the SRA
-// Organisation Registry (runs/sra-acquisition/registry.ndjson — POP-SRA-001),
+// Organisation Registry (runs/sra/registry.ndjson — POP-SRA-001),
 // derived from the sealed SRA Collection Package by the Population Acquisition Layer.
 // By default it reads that registry; set SRA_REGISTRY_PATH to read an immutable
 // snapshot instead (see resolveRegistryPath). Selected at runtime by the provider
@@ -36,7 +36,7 @@ const crypto = require('node:crypto');
 
 // The SRA Organisation Registry produced by the Population Acquisition Layer — the
 // default source when no snapshot is configured.
-const REGISTRY_PATH = path.join(__dirname, 'runs', 'sra-acquisition', 'registry.ndjson');
+const REGISTRY_PATH = path.join(__dirname, 'runs', 'sra', 'registry.ndjson');
 
 // Registry source selection — mirrors the FCA provider's FCA_REGISTRY_PATH. An
 // Operational Execution should run against an immutable snapshot: set

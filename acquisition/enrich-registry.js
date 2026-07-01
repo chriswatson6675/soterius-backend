@@ -20,7 +20,7 @@ const path = require('node:path');
 try { require('dotenv').config({ path: path.join(__dirname, '../../.env') }); } catch { /* optional */ }
 
 const fs = require('node:fs');
-const chClient = require('../../collection/sources/companies-house/ch-client');
+const chClient = require('../collection/sources/companies-house/ch-client');
 
 const CH_PDA = 'https://api.company-information.service.gov.uk';
 const print = (s) => fs.writeSync(1, s); // unbuffered write — avoids stdout buffering on Windows pipes
@@ -28,7 +28,7 @@ const print = (s) => fs.writeSync(1, s); // unbuffered write — avoids stdout b
 function arg(name, def) { const i = process.argv.indexOf(name); return i >= 0 ? process.argv[i + 1] : def; }
 
 async function main() {
-  const runDir = path.join(__dirname, 'runs', 'fca-acquisition');
+  const runDir = path.join(__dirname, 'runs', 'fca');
   const registryPath = arg('--registry', path.join(runDir, 'registry.ndjson'));
   const limit = arg('--limit') ? parseInt(arg('--limit'), 10) : null;
 
