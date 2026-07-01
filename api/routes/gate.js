@@ -1,7 +1,7 @@
 const express = require('express');
 const router  = express.Router();
 const fs      = require('fs');
-const { CSV_PATH } = require('../infra/utils/csvExporter');
+const { CSV_PATH } = require('../../infra/utils/csvExporter');
 
 // GET /api/gate/submissions.csv
 // Protected by X-Admin-Token header matched against ADMIN_TOKEN env var.

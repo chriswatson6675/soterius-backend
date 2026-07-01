@@ -15,7 +15,7 @@ const path     = require('path');
 const fs       = require('fs');
 const readline = require('readline');
 const { createClient } = require('@supabase/supabase-js');
-const { executeScan }  = require('../../services/scanService');
+const { executeScan }  = require('../../api/services/scanService');
 
 // ── Config ────────────────────────────────────────────────────────────────────
 

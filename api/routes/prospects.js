@@ -1,14 +1,14 @@
 const express = require('express');
 const router  = express.Router();
-const { AppError, ValidationError } = require('../infra/utils/errors');
-const logger   = require('../infra/utils/logger');
+const { AppError, ValidationError } = require('../../infra/utils/errors');
+const logger   = require('../../infra/utils/logger');
 const { executeScan } = require('../services/scanService');
-const { validateDomain } = require('../infra/utils/validators');
+const { validateDomain } = require('../../infra/utils/validators');
 const {
   findOrCreateProspect, createProspect, getProspects, getProspectById,
   updateProspect, updateProspectLastScanned, deleteProspect,
   saveScan, getScanHistory, getBenchmarkData,
-} = require('../infra/database');
+} = require('../../infra/database');
 
 // ── Admin auth guard ──────────────────────────────────────────────────────────
 

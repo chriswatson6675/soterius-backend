@@ -1,9 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const { generatePDF } = require('../pdf-generator/generator');
-const { adaptScannersForPDF } = require('../infra/utils/pdfAdapter');
-const { ValidationError } = require('../infra/utils/errors');
-const logger = require('../infra/utils/logger');
+const { adaptScannersForPDF } = require('../../infra/utils/pdfAdapter');
+const { ValidationError } = require('../../infra/utils/errors');
+const logger = require('../../infra/utils/logger');
 
 // Normalise riskLevel to the five-band keys the generator expects.
 function normaliseRisk(riskLevel, score) {

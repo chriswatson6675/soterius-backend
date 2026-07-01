@@ -1,14 +1,14 @@
 const express = require('express');
 const router  = express.Router();
 const { randomUUID }            = require('crypto');
-const { validateDomain }        = require('../infra/utils/validators');
-const { AppError, ValidationError } = require('../infra/utils/errors');
-const logger                    = require('../infra/utils/logger');
-const { sendConfirmationEmail } = require('../infra/utils/emailService');
-const { saveScan, getScanHistory, saveSubmission, getSubmissionById } = require('../infra/database');
+const { validateDomain }        = require('../../infra/utils/validators');
+const { AppError, ValidationError } = require('../../infra/utils/errors');
+const logger                    = require('../../infra/utils/logger');
+const { sendConfirmationEmail } = require('../../infra/utils/emailService');
+const { saveScan, getScanHistory, saveSubmission, getSubmissionById } = require('../../infra/database');
 const { executeScan, getRiskLevel, MAX_POINTS } = require('../services/scanService');
 const { generatePDF }           = require('../pdf-generator/generator');
-const { adaptScannersForPDF }   = require('../infra/utils/pdfAdapter');
+const { adaptScannersForPDF }   = require('../../infra/utils/pdfAdapter');
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 

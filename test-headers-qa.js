@@ -2,7 +2,7 @@
 
 const path = require('path');
 const fs   = require('fs');
-const headersCheck = require('./scanners/headers-check');
+const headersCheck = require('./api/legacy-scanner/headers-check');
 
 const DOMAINS = [
   'amphlettslegal.co.uk',

@@ -1,9 +1,9 @@
-const sslCheck       = require('../scanners/ssl-check');
-const headersCheck   = require('../scanners/headers-check');
-const emailSecurity  = require('../scanners/dns-check');
-const vulnComponents = require('../scanners/tech-detect');
-const gdprCheck      = require('../scanners/gdpr-check');
-const logger         = require('../infra/utils/logger');
+const sslCheck       = require('../legacy-scanner/ssl-check');
+const headersCheck   = require('../legacy-scanner/headers-check');
+const emailSecurity  = require('../legacy-scanner/dns-check');
+const vulnComponents = require('../legacy-scanner/tech-detect');
+const gdprCheck      = require('../legacy-scanner/gdpr-check');
+const logger         = require('../../infra/utils/logger');
 
 // v1.0 methodology — do not modify without incrementing scoringVersion and
 // updating SCORING.md + DECISIONS.md.

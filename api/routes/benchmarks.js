@@ -1,7 +1,7 @@
 const express = require('express');
 const router  = express.Router();
-const logger  = require('../infra/utils/logger');
-const { getBenchmarkData } = require('../infra/database');
+const logger  = require('../../infra/utils/logger');
+const { getBenchmarkData } = require('../../infra/database');
 
 // ── GET /api/benchmarks ───────────────────────────────────────────────────────
 // Customer-accessible benchmark endpoint (no admin token required).

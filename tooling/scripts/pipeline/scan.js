@@ -23,7 +23,7 @@ require('dotenv').config({ path: require('path').join(__dirname, '../../../.env'
 
 const { log, warn, error } = require('./lib/log');
 const { updatePipelineStatus, appendFlag, getLatestScan, getProspectsByStatus, getProspectsForRescan } = require('./lib/db');
-const { executeScan }  = require('../../../services/scanService');
+const { executeScan }  = require('../../../api/services/scanService');
 const { saveScan, updateProspectLastScanned } = require('../../../infra/database');
 
 const CONCURRENCY       = 5;

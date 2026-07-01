@@ -1,10 +1,10 @@
 const express = require('express');
 const router  = express.Router();
-const logger  = require('../infra/utils/logger');
-const { ValidationError } = require('../infra/utils/errors');
+const logger  = require('../../infra/utils/logger');
+const { ValidationError } = require('../../infra/utils/errors');
 const {
   getProspects, getProspectById, getScanHistory, getLatestScansByDomains,
-} = require('../infra/database');
+} = require('../../infra/database');
 
 // ── SLG-014 scanner → category mapping ──────────────────────────────────────
 // Maps the v1.0 scanner keys to the closest SLG-014 trust category.

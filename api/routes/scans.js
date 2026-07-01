@@ -1,7 +1,7 @@
 const express = require('express');
 const router  = express.Router();
-const logger  = require('../infra/utils/logger');
-const { getScans, getScanWithOrg } = require('../infra/database');
+const logger  = require('../../infra/utils/logger');
+const { getScans, getScanWithOrg } = require('../../infra/database');
 
 // ── GET /api/scans ────────────────────────────────────────────────────────────
 // Returns ScanRecordDTO[] (no wrapper). Filtering via query params:
