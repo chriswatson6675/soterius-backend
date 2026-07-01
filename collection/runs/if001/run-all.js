@@ -41,12 +41,10 @@ const { collectSecurityHeaders } = require('../../signals/securityheaders/securi
 // ── Organisation source ───────────────────────────────────────────────────────
 // The Observatory obtains the organisations it scans through an Organisation
 // Provider, not by reading the cohort directly. The provider is chosen by the
-// factory in ./organisation-provider (ORG_PROVIDER: 'if' default | 'fca'), so the
-// pipeline is population-agnostic and never references a specific source.
-
-// Transitional path (P4-C1): organisation-provider.js has not moved yet (WP-10/P4-C4).
-// Updated to '../../../acquisition/providers/organisation-provider' once WP-10 lands.
-const { loadOrganisations } = require('../../../signal-lab/if001-full/organisation-provider');
+// factory in acquisition/providers/organisation-provider.js (ORG_PROVIDER: 'if'
+// default | 'fca' | 'sra'), so the pipeline is population-agnostic and never
+// references a specific source.
+const { loadOrganisations } = require('../../../acquisition/providers/organisation-provider');
 
 // ── Configuration ─────────────────────────────────────────────────────────────
 

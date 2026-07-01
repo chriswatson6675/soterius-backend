@@ -24,8 +24,8 @@
 //   }
 
 const ifProvider  = require('./if-organisation-provider');
-const fcaProvider = require('../population-acquisition/fca-organisation-provider');
-const sraProvider = require('../population-acquisition/sra-organisation-provider');
+const fcaProvider = require('./fca-organisation-provider');
+const sraProvider = require('./sra-organisation-provider');
 
 const PROVIDERS = {
   if:       ifProvider,

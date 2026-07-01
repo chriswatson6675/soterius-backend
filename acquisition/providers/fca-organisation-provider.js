@@ -6,7 +6,7 @@
 // Organisation Registry produced by the Population Acquisition Layer. By default it
 // reads the live registry (runs/fca/registry.ndjson); set
 // FCA_REGISTRY_PATH to read an immutable snapshot instead (see resolveRegistryPath).
-// Selected at runtime by the provider factory (if001-full/organisation-provider.js).
+// Selected at runtime by the provider factory (acquisition/providers/organisation-provider.js).
 //
 // It satisfies the same Organisation Provider contract as the IF provider:
 //   loadOrganisations() → {
@@ -37,7 +37,7 @@ const crypto = require('node:crypto');
 
 // The live Organisation Registry the Population Acquisition Layer appends to — the
 // default source when no snapshot is configured.
-const REGISTRY_PATH = path.join(__dirname, 'runs', 'fca', 'registry.ndjson');
+const REGISTRY_PATH = path.join(__dirname, '..', 'runs', 'fca', 'registry.ndjson');
 
 // Registry source selection. An Operational Execution should run against an
 // immutable snapshot so continuous acquisition need not stop: set FCA_REGISTRY_PATH

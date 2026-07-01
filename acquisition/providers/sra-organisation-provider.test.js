@@ -89,7 +89,7 @@ test('missing registry throws SRA_REGISTRY_NOT_FOUND', () => {
 });
 
 test('the real generated SRA registry loads as the full eligible population', () => {
-  const out = sra.loadOrganisations(); // default path = runs/sra-acquisition/registry.ndjson
+  const out = sra.loadOrganisations(); // default path = acquisition/runs/sra/registry.ndjson
   const lines = fs.readFileSync(sra.REGISTRY_PATH, 'utf8').split('\n').filter((l) => l.trim().length > 0).length;
   assert.strictEqual(out.n, lines, 'n equals registry line count');
   assert.ok(out.n > 0);
