@@ -7,24 +7,9 @@ dist/
 test-results-*.csv
 submissions.csv
 
-# Signal Lab collection run output + preserved evidence corpora (never committed)
-signal-lab/sources/companies-house/runs/
-
-# Signal Lab generated run outputs (reproducible by re-running the collectors/runners;
-# source belongs in Git, generated observations do not).
-signal-lab/**/out/
-signal-lab/**/*-raw.json
-signal-lab/**/*-results.json
-signal-lab/**/*-results-v*.json
-signal-lab/**/*-summary.json
-signal-lab/**/*.jsonl
-signal-lab/if001-*/cohort-manifest.json
-signal-lab/if001-pilot/run-output.txt
-signal-lab/pra-assessment/overlap-results.json
-
-# WS2 WP-07 (P4): collection/ equivalents of the signal-lab/ patterns above.
-# signal-lab/ patterns are retained until P6 (signal-lab/ still holds workers/
-# and if001-full/ until then) — see WS2-MIGRATION-PLAN-R2.md Phase P6.
+# signal-lab/ directory removed in WS2 Phase P6b (WP-14, WP-16-WP-19); patterns
+# migrated to collection/**/ and acquisition/runs/*/ below — see
+# WS2-MIGRATION-PLAN-R3.md §4/§6.
 collection/**/out/
 collection/**/*-raw.json
 collection/**/*-results.json
