@@ -7,7 +7,7 @@
 // One CH API call per company: GET /company/{number} returns both company_name and
 // registered_office_address.postal_code. Propagates errors (callers decide policy).
 
-const chClient = require('../sources/companies-house/ch-client');
+const chClient = require('../../collection/sources/companies-house/ch-client');
 
 const CH_PDA = 'https://api.company-information.service.gov.uk';
 

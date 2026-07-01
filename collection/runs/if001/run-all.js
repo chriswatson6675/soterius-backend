@@ -10,8 +10,8 @@
 // Signal Lab rule: records observations only. No scores. No ratings.
 //
 // Usage:
-//   node backend/signal-lab/if001-full/run-all.js            # IF cohort (default)
-//   ORG_PROVIDER=fca node backend/signal-lab/if001-full/run-all.js
+//   node backend/collection/runs/if001/run-all.js            # IF cohort (default)
+//   ORG_PROVIDER=fca node backend/collection/runs/if001/run-all.js
 //
 // Environment:
 //   SUPABASE_URL              — required
@@ -19,7 +19,7 @@
 //   ORG_PROVIDER              — optional, 'if' (default) | 'fca'
 //   CONCURRENCY               — optional, default 8
 
-require('dotenv').config({ path: require('node:path').join(__dirname, '../../.env') });
+require('dotenv').config({ path: require('node:path').join(__dirname, '../../../.env') });
 
 const path           = require('node:path');
 const fs             = require('node:fs');
@@ -28,15 +28,15 @@ const { createClient } = require('@supabase/supabase-js');
 
 // ── Collector imports ─────────────────────────────────────────────────────────
 
-const { collectSpf,            SIGNAL_ID: SPF_ID,     SIGNAL_VERSION: SPF_VER   } = require('../signals/spf/spf-collector');
-const { collectDkim,           SIGNAL_ID: DKIM_ID,    SIGNAL_VERSION: DKIM_VER  } = require('../signals/dkim/dkim-collector');
-const { collectDmarc,          SIGNAL_ID: DMARC_ID,   SIGNAL_VERSION: DMARC_VER } = require('../signals/dmarc/dmarc-collector');
-const { collectMtaSts,         SIGNAL_ID: MTASTS_ID,  SIGNAL_VERSION: MTASTS_VER  } = require('../signals/mtasts/mtasts-collector');
-const { collectTlsRpt,         SIGNAL_ID: TLSRPT_ID,  SIGNAL_VERSION: TLSRPT_VER  } = require('../signals/tlsrpt/tlsrpt-collector');
-const { collectDnssec,         SIGNAL_ID: DNSSEC_ID,  SIGNAL_VERSION: DNSSEC_VER  } = require('../signals/dnssec/dnssec-collector');
-const { collectCaa,            SIGNAL_ID: CAA_ID,     SIGNAL_VERSION: CAA_VER     } = require('../signals/caa/caa-collector');
-const { collectSecurityTxt   } = require('../signals/securitytxt/securitytxt-collector');
-const { collectSecurityHeaders } = require('../signals/securityheaders/securityheaders-collector');
+const { collectSpf,            SIGNAL_ID: SPF_ID,     SIGNAL_VERSION: SPF_VER   } = require('../../signals/spf/spf-collector');
+const { collectDkim,           SIGNAL_ID: DKIM_ID,    SIGNAL_VERSION: DKIM_VER  } = require('../../signals/dkim/dkim-collector');
+const { collectDmarc,          SIGNAL_ID: DMARC_ID,   SIGNAL_VERSION: DMARC_VER } = require('../../signals/dmarc/dmarc-collector');
+const { collectMtaSts,         SIGNAL_ID: MTASTS_ID,  SIGNAL_VERSION: MTASTS_VER  } = require('../../signals/mtasts/mtasts-collector');
+const { collectTlsRpt,         SIGNAL_ID: TLSRPT_ID,  SIGNAL_VERSION: TLSRPT_VER  } = require('../../signals/tlsrpt/tlsrpt-collector');
+const { collectDnssec,         SIGNAL_ID: DNSSEC_ID,  SIGNAL_VERSION: DNSSEC_VER  } = require('../../signals/dnssec/dnssec-collector');
+const { collectCaa,            SIGNAL_ID: CAA_ID,     SIGNAL_VERSION: CAA_VER     } = require('../../signals/caa/caa-collector');
+const { collectSecurityTxt   } = require('../../signals/securitytxt/securitytxt-collector');
+const { collectSecurityHeaders } = require('../../signals/securityheaders/securityheaders-collector');
 
 // ── Organisation source ───────────────────────────────────────────────────────
 // The Observatory obtains the organisations it scans through an Organisation
@@ -44,12 +44,14 @@ const { collectSecurityHeaders } = require('../signals/securityheaders/securityh
 // factory in ./organisation-provider (ORG_PROVIDER: 'if' default | 'fca'), so the
 // pipeline is population-agnostic and never references a specific source.
 
-const { loadOrganisations } = require('./organisation-provider');
+// Transitional path (P4-C1): organisation-provider.js has not moved yet (WP-10/P4-C4).
+// Updated to '../../../acquisition/providers/organisation-provider' once WP-10 lands.
+const { loadOrganisations } = require('../../../signal-lab/if001-full/organisation-provider');
 
 // ── Configuration ─────────────────────────────────────────────────────────────
 
 const COLLECTOR_VERSION  = '1.0.0';
-const REPORT_DIR         = path.join(__dirname, '../../../');
+const REPORT_DIR         = path.join(__dirname, '../../../../');
 const CONCURRENCY        = Number(process.env.CONCURRENCY ?? 8);
 const SIGNAL_CONCURRENCY = Number(process.env.SIGNAL_CONCURRENCY ?? 9);
 

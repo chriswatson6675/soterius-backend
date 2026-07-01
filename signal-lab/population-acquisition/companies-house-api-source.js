@@ -14,8 +14,8 @@
 // code with more than that many active companies has its tail dropped — this is
 // LOGGED (no silent cap), and is the only case where the bulk product would be needed.
 
-const chClient = require('../sources/companies-house/ch-client');
-const { APPROVED } = require('../sources/companies-house/candidate-sic');
+const chClient = require('../../collection/sources/companies-house/ch-client');
+const { APPROVED } = require('../../collection/sources/companies-house/candidate-sic');
 const { companiesHouseCandidateSource } = require('./companies-house-source');
 
 const ADVANCED_SEARCH = 'https://api.company-information.service.gov.uk/advanced-search/companies';

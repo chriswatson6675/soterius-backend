@@ -18,7 +18,7 @@
 const fs = require('node:fs');
 const readline = require('node:readline');
 
-const { matchedApproved } = require('../sources/companies-house/candidate-sic');
+const { matchedApproved } = require('../../collection/sources/companies-house/candidate-sic');
 
 /** True iff a Companies House status string denotes an active company. */
 function _isActive(status) { return String(status ?? '').trim().toLowerCase() === 'active'; }

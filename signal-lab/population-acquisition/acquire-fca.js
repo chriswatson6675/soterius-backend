@@ -23,7 +23,7 @@ const { companiesHouseApiCandidateSource } = require('./companies-house-api-sour
 const { runCandidateSource } = require('./candidate-source-runner');
 const { processCandidate } = require('./candidate-processor');
 const { loadCohortIndex, createCohortExclusionFilter, withCohortExclusion } = require('./cohort-exclusion-filter');
-const { loadConfig, validateConfig } = require('../sources/fca/fca-client');
+const { loadConfig, validateConfig } = require('../../collection/sources/fca/fca-client');
 
 function arg(name, def) { const i = process.argv.indexOf(name); return i >= 0 ? process.argv[i + 1] : def; }
 

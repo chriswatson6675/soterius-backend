@@ -1,7 +1,7 @@
 'use strict';
 
 const puppeteer = require('puppeteer');
-const logger    = require('../utils/logger');
+const logger    = require('../infra/utils/logger');
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
 const C = {

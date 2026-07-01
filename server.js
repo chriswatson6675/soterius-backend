@@ -11,8 +11,8 @@ const organisationsRouter    = require('./routes/organisations');
 const scansRouter            = require('./routes/scans');
 const benchmarksRouter       = require('./routes/benchmarks');
 const improvementQueueRouter = require('./routes/improvement-queue');
-const logger = require('./utils/logger');
-const { AppError } = require('./utils/errors');
+const logger = require('./infra/utils/logger');
+const { AppError } = require('./infra/utils/errors');
 
 
 // ── CORS origin whitelist ─────────────────────────────────────────────────────

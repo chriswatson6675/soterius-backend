@@ -35,8 +35,8 @@ const { createFcaSearch, createFcaEnrich, createRegistryPersist } = require('./f
 const { processCandidate, PROCESS_OUTCOME } = require('./candidate-processor');
 const { getChProfile } = require('./ch-address-lookup');
 const { STATES } = require('./processing-state');
-const fcaClient = require('../sources/fca/fca-client');
-const { pathFor } = require('../sources/fca/endpoint-map');
+const fcaClient = require('../../collection/sources/fca/fca-client');
+const { pathFor } = require('../../collection/sources/fca/endpoint-map');
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const print = (s) => fs.writeSync(1, s);  // unbuffered write — avoids stdout-to-file buffering on Windows

@@ -1,7 +1,7 @@
 const express = require('express');
 const router  = express.Router();
-const logger  = require('../utils/logger');
-const { getProspects, getScanHistory } = require('../services/database');
+const logger  = require('../infra/utils/logger');
+const { getProspects, getScanHistory } = require('../infra/database');
 
 const SCANNER_TO_CATEGORY = {
   email:    'A',
