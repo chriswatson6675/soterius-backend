@@ -32,15 +32,15 @@ const { randomUUID } = require('node:crypto');
 
 const {
   collectAndCommitFirm, loadCommitted, committedFirmDir, firmsDir, CORE_SCOPE,
-} = require('./firm-commit');
-const { verifyRun } = require('./provenance');
-const { loadRunModel, buildCollectionReport, scanDiscoveries } = require('./report');
-const { buildCoverage } = require('./coverage');
-const { buildHealth } = require('./health');
-const { FCA_PROFILE } = require('./fca-report-profile');
-const { COLLECTOR_VERSION } = require('./collection-run');
-const { sealPackage, isSealed } = require('./package-seal');
-const { endpointsFor } = require('./collection-profiles');
+} = require('../../collection/sources/fca/firm-commit');
+const { verifyRun } = require('../../collection/sources/fca/provenance');
+const { loadRunModel, buildCollectionReport, scanDiscoveries } = require('../../collection/sources/fca/report');
+const { buildCoverage } = require('../../collection/sources/fca/coverage');
+const { buildHealth } = require('../../collection/sources/fca/health');
+const { FCA_PROFILE } = require('../../collection/sources/fca/fca-report-profile');
+const { COLLECTOR_VERSION } = require('../../collection/sources/fca/collection-run');
+const { sealPackage, isSealed } = require('../../collection/sources/fca/package-seal');
+const { endpointsFor } = require('../../collection/sources/fca/collection-profiles');
 
 // ── package descriptor (orchestration metadata; NOT evidence, NOT a seal) ────────
 function packageJsonPath(pkgDir) { return path.join(pkgDir, 'package.json'); }
@@ -290,14 +290,14 @@ module.exports = {
 // BEFORE contacting the source.
 if (require.main === module) {
   (async () => {
-    try { require('dotenv').config({ path: path.join(__dirname, '../../../.env') }); } catch { /* optional */ }
+    try { require('dotenv').config({ path: path.join(__dirname, '../../.env') }); } catch { /* optional */ }
 
     const runRoot = process.env.RUN_ROOT;
     if (!runRoot) { console.error('RUN_ROOT is not set — point it at the mounted Railway volume (e.g. /data/fca-runs)'); process.exit(2); }
     fs.mkdirSync(runRoot, { recursive: true });
 
-    const { loadConfig, validateConfig } = require('./fca-client');
-    const { readCohort } = require('./run-core');
+    const { loadConfig, validateConfig } = require('../../collection/sources/fca/fca-client');
+    const { readCohort } = require('../../collection/sources/fca/run-core');
     const config = loadConfig();
     const v = validateConfig(config);
     if (!v.ok) { console.error('Config invalid:', v.errors.join('; ')); process.exit(2); }

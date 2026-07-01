@@ -3,7 +3,7 @@
 Operational deployment of the **completed, frozen** FCA Observatory as the **second
 production observatory** on the Soterius Collection Platform. This document covers only
 the deployment infrastructure — the observatory code is unchanged. It is the FCA
-equivalent of the SRA worker runbook (`signal-lab/workers/DEPLOYMENT.md`) and follows
+equivalent of the SRA worker runbook (`acquisition/workers/DEPLOYMENT.md`) and follows
 the same pattern.
 
 The FCA worker is a **separate Railway service** from the API and from the SRA worker.
@@ -28,8 +28,8 @@ complete cycle (resume-or-create → collect → verify → reports → SEAL) an
 ```
 Railway project
 ├── service: soterius-api    (existing)   start: node server.js                                   (Dockerfile CMD)
-├── service: sra-worker      (existing)   start: node signal-lab/workers/sra-worker.js            volume: sra-data → /data
-└── service: fca-worker      (new)        start: node signal-lab/sources/fca/fca-observatory-worker.js
+├── service: sra-worker      (existing)   start: node acquisition/workers/sra-worker.js            volume: sra-data → /data
+└── service: fca-worker      (new)        start: node acquisition/workers/fca-observatory-worker.js
                                           volume: fca-data → /data   ·   cron: 0 2 * * *
 ```
 
@@ -47,14 +47,14 @@ Railway project
 1. In the Railway project, **New → Service → GitHub repo** (same repo as the API).
 2. **Settings → Service name:** `fca-worker`.
 3. **Settings → Root Directory:** `backend` (same as the API and SRA worker services).
-4. **Settings → Deploy → Start Command:** `node signal-lab/sources/fca/fca-observatory-worker.js` (`railway.fca.json` already sets this; launch node directly so the worker is PID 1 and exits 0).
+4. **Settings → Deploy → Start Command:** `node acquisition/workers/fca-observatory-worker.js` (`railway.fca.json` already sets this; launch node directly so the worker is PID 1 and exits 0).
 5. **Settings → Deploy → Cron Schedule:** `0 2 * * *` (daily 02:00 UTC; adjust as required). With a cron schedule each trigger runs exactly one cycle and the container exits. Omit the schedule to run the service manually / one-shot.
 6. Leave **Networking / public domain** OFF — the worker needs no inbound HTTP.
 7. Do **not** change the API or `sra-worker` services. The FCA worker is fully independent.
 
 ## Stage 2 — Environment variables (on the `fca-worker` service)
 
-See `signal-lab/sources/fca/.env.example`.
+See `collection/sources/fca/.env.example`.
 
 | Variable | Required | Default | Notes |
 |---|---|---|---|

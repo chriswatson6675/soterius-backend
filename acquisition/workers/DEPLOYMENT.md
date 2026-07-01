@@ -15,7 +15,7 @@ process.
 ```
 Railway project
 ├── service: soterius-api      (existing)   start: node server.js          (Dockerfile CMD)
-└── service: sra-worker        (new)        start: node signal-lab/workers/sra-worker.js
+└── service: sra-worker        (new)        start: node acquisition/workers/sra-worker.js
                                             volume: sra-data → /data
 ```
 
@@ -37,7 +37,7 @@ Railway project
 1. In the Railway project, **New → Service → GitHub repo** (same repo as the API).
 2. **Settings → Service name:** `sra-worker`.
 3. **Settings → Root Directory:** `backend` (same as the API service).
-4. **Settings → Deploy → Start Command:** `node signal-lab/workers/sra-worker.js` (launch node directly — not `npm run worker` — so the worker is the container's main process, handles SIGTERM itself, and exits 0 without the npm wrapper's misleading `npm error signal SIGTERM` on redeploy). `railway.worker.json` already sets this.
+4. **Settings → Deploy → Start Command:** `node acquisition/workers/sra-worker.js` (launch node directly — not `npm run worker` — so the worker is the container's main process, handles SIGTERM itself, and exits 0 without the npm wrapper's misleading `npm error signal SIGTERM` on redeploy). `railway.worker.json` already sets this.
 5. Leave **Networking / public domain** OFF — a background worker needs no inbound
    HTTP. (Only enable a port if you set `HEALTH_PORT`; see Stage 4.)
 6. Do **not** change the API service. The worker is fully independent.

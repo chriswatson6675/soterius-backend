@@ -15,13 +15,13 @@ const os = require('node:os');
 const path = require('node:path');
 
 const { createWorker } = require('./sra-worker');
-const { collectSnapshot } = require('../sources/sra/run-snapshot');
-const { acquireSnapshot } = require('../sources/sra/acquire-snapshot');
-const { writeReports } = require('../sources/sra/report');
-const { loadRunModel } = require('../sources/sra/snapshot-run-model');
-const { listSealed, readSeal } = require('../sources/sra/collection-package');
-const { defineSource } = require('../sources/sra/snapshot-source');
-const { rawIndexPath } = require('../sources/sra/evidence-path');
+const { collectSnapshot } = require('../../collection/sources/sra/run-snapshot');
+const { acquireSnapshot } = require('../../collection/sources/sra/acquire-snapshot');
+const { writeReports } = require('../../collection/sources/sra/report');
+const { loadRunModel } = require('../../collection/sources/sra/snapshot-run-model');
+const { listSealed, readSeal } = require('../../collection/sources/sra/collection-package');
+const { defineSource } = require('../../collection/sources/sra/snapshot-source');
+const { rawIndexPath } = require('../../collection/sources/sra/evidence-path');
 
 const SRC = defineSource({ recordsPath: ['Organisations'], officesPath: ['Offices'], anchorPath: ['SraNumber'], productionTimestampPath: ['ProductionDate'] });
 const CLIENT = { baseUrl: 'https://x', subscriptionKey: 'KEY' };

@@ -13,8 +13,8 @@ const os = require('node:os');
 const path = require('node:path');
 
 const { runCollectionCycle, packageJsonPath, reportsDir, readPackage } = require('./fca-observatory-worker');
-const { loadCommitted, committedFirmDir } = require('./firm-commit');
-const { isSealed } = require('./package-seal');
+const { loadCommitted, committedFirmDir } = require('../../collection/sources/fca/firm-commit');
+const { isSealed } = require('../../collection/sources/fca/package-seal');
 
 function makeStubFetch(requested) {
   return async function _fetch(url) {

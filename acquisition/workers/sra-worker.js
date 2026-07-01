@@ -26,15 +26,15 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-const sraClient = require('../sources/sra/sra-client');
-const { checkConnectivity } = require('../sources/sra/connectivity-check');
-const { acquireSnapshot } = require('../sources/sra/acquire-snapshot');
-const { collectSnapshot } = require('../sources/sra/run-snapshot');
-const { writeReports } = require('../sources/sra/report');
-const { loadRunModel } = require('../sources/sra/snapshot-run-model');
-const { listSealed, readSeal } = require('../sources/sra/collection-package');
-const { sha256 } = require('../sources/sra/preserve-snapshot');
-const { SRA_SNAPSHOT_SOURCE } = require('../sources/sra/snapshot-source');
+const sraClient = require('../../collection/sources/sra/sra-client');
+const { checkConnectivity } = require('../../collection/sources/sra/connectivity-check');
+const { acquireSnapshot } = require('../../collection/sources/sra/acquire-snapshot');
+const { collectSnapshot } = require('../../collection/sources/sra/run-snapshot');
+const { writeReports } = require('../../collection/sources/sra/report');
+const { loadRunModel } = require('../../collection/sources/sra/snapshot-run-model');
+const { listSealed, readSeal } = require('../../collection/sources/sra/collection-package');
+const { sha256 } = require('../../collection/sources/sra/preserve-snapshot');
+const { SRA_SNAPSHOT_SOURCE } = require('../../collection/sources/sra/snapshot-source');
 const { createHealth, STATUS } = require('./worker-health');
 
 /** Short hash for logs (operational only). */
