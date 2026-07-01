@@ -12,12 +12,13 @@
 //   unseen → claimed → matched → enriched → persisted → complete        (happy path)
 //                 │
 //                 ├─→ no_match      (no FCA match)                       [terminal]
-//                 ├─→ ambiguous     (>1 FCA match — cannot resolve)      [terminal]
+//                 ├─→ ambiguous     (>1 FCA match — cannot resolve)      [re-resolves → claimed]
 //                 ├─→ discarded     (matched but not authorised)         [terminal]
 //                 ├─→ research      (matched, routed to research bucket) [terminal]
 //                 └─→ failed        (processing error)
 //   matched/enriched can also → failed
 //   failed → claimed                (retry; permits future resumability — NOT implemented here)
+//   ambiguous → claimed             (re-resolution; Phase 2 postcode tie-breaker, see resolve-ambiguous.js)
 //
 // `matched` means "matched to a SINGLE authorised firm and retained" — i.e. the name
 // match and the authorised-status gate both passed; non-retained outcomes diverge to
@@ -53,7 +54,7 @@ const TRANSITIONS = Object.freeze({
   [STATES.PERSISTED]: Object.freeze([STATES.COMPLETE]),
   [STATES.COMPLETE]: Object.freeze([]),
   [STATES.NO_MATCH]: Object.freeze([]),
-  [STATES.AMBIGUOUS]: Object.freeze([]),
+  [STATES.AMBIGUOUS]: Object.freeze([STATES.CLAIMED]),   // re-resolution path (Phase 2 postcode tie-breaker)
   [STATES.DISCARDED]: Object.freeze([]),
   [STATES.RESEARCH]: Object.freeze([]),
   [STATES.FAILED]: Object.freeze([STATES.CLAIMED]),     // retry (resumability is a later step)

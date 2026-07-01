@@ -31,13 +31,20 @@ test('claimed branches to every match/gate outcome', () => {
   }
 });
 
-test('terminal states are exactly complete, no_match, ambiguous, discarded, research', () => {
-  const expected = [STATES.COMPLETE, STATES.NO_MATCH, STATES.AMBIGUOUS, STATES.DISCARDED, STATES.RESEARCH].sort();
+test('terminal states are exactly complete, no_match, discarded, research', () => {
+  const expected = [STATES.COMPLETE, STATES.NO_MATCH, STATES.DISCARDED, STATES.RESEARCH].sort();
   assert.deepStrictEqual([...TERMINAL_STATES].sort(), expected);
   for (const s of expected) { assert.ok(isTerminal(s)); assert.deepStrictEqual(nextStates(s), []); }
-  for (const s of [STATES.UNSEEN, STATES.CLAIMED, STATES.MATCHED, STATES.ENRICHED, STATES.PERSISTED, STATES.FAILED]) {
+  for (const s of [STATES.UNSEEN, STATES.CLAIMED, STATES.MATCHED, STATES.ENRICHED, STATES.PERSISTED, STATES.AMBIGUOUS, STATES.FAILED]) {
     assert.ok(!isTerminal(s), `${s} is not terminal`);
   }
+});
+
+test('ambiguous is recoverable: ambiguous → claimed only (Phase 2 re-resolution)', () => {
+  assert.ok(canTransition(STATES.AMBIGUOUS, STATES.CLAIMED));
+  assert.ok(!canTransition(STATES.AMBIGUOUS, STATES.MATCHED));
+  assert.ok(!canTransition(STATES.AMBIGUOUS, STATES.COMPLETE));
+  assert.deepStrictEqual(nextStates(STATES.AMBIGUOUS), [STATES.CLAIMED]);
 });
 
 test('failed is recoverable: failed → claimed only', () => {

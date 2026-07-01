@@ -9,7 +9,9 @@
     "test": "node --test \"**/*.test.js\"",
     "worker": "node signal-lab/workers/sra-worker.js",
     "worker:fca": "node signal-lab/sources/fca/fca-observatory-worker.js",
-    "acquire:fca": "node signal-lab/population-acquisition/acquire-fca.js"
+    "acquire:fca": "node signal-lab/population-acquisition/acquire-fca.js",
+    "resolve:ambiguous": "node signal-lab/population-acquisition/resolve-ambiguous.js",
+    "enrich:registry": "node signal-lab/population-acquisition/enrich-registry.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.108.1",
