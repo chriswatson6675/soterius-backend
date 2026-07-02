@@ -5,6 +5,15 @@ const { ValidationError } = require('../../infra/utils/errors');
 const {
   getProspects, getProspectById, getScanHistory, getLatestScansByDomains,
 } = require('../../infra/database');
+const { requireAuth }        = require('../middleware/requireAuth');
+const { attachTenant }       = require('../middleware/attachTenant');
+const { createRequirePortfolio } = require('../middleware/requirePortfolio');
+
+// Applied to every per-organisation route below (not /search — that stays a
+// public, shared-corpus lookup per ADR-SYS-007: you need to search for
+// organisations you don't have in a portfolio yet). Gated behind
+// ENABLE_PORTFOLIO_GATE (default false) — see requirePortfolio.js.
+const requirePortfolio = createRequirePortfolio('id');
 
 // ── SLG-014 scanner → category mapping ──────────────────────────────────────
 // Maps the v1.0 scanner keys to the closest SLG-014 trust category.
@@ -232,7 +241,7 @@ router.get('/search', async (req, res, next) => {
 
 // GET /api/organisations/:id
 // Returns OrganisationDTO directly.
-router.get('/:id', async (req, res, next) => {
+router.get('/:id', requireAuth, attachTenant, requirePortfolio, async (req, res, next) => {
   try {
     const prospect = await getProspectById(req.params.id);
     if (!prospect) return res.status(404).json({ error: 'Organisation not found' });
@@ -248,7 +257,7 @@ router.get('/:id', async (req, res, next) => {
 
 // GET /api/organisations/:id/signals
 // Returns SignalDTO[] directly.
-router.get('/:id/signals', async (req, res, next) => {
+router.get('/:id/signals', requireAuth, attachTenant, requirePortfolio, async (req, res, next) => {
   try {
     const prospect = await getProspectById(req.params.id);
     if (!prospect) return res.status(404).json({ error: 'Organisation not found' });
@@ -264,7 +273,7 @@ router.get('/:id/signals', async (req, res, next) => {
 
 // GET /api/organisations/:id/timeline
 // Returns TimelineEventDTO[] directly.
-router.get('/:id/timeline', async (req, res, next) => {
+router.get('/:id/timeline', requireAuth, attachTenant, requirePortfolio, async (req, res, next) => {
   try {
     const prospect = await getProspectById(req.params.id);
     if (!prospect) return res.status(404).json({ error: 'Organisation not found' });
@@ -278,7 +287,7 @@ router.get('/:id/timeline', async (req, res, next) => {
 
 // GET /api/organisations/:id/improvement-queue
 // Returns ImprovementQueueItemDTO[] directly.
-router.get('/:id/improvement-queue', async (req, res, next) => {
+router.get('/:id/improvement-queue', requireAuth, attachTenant, requirePortfolio, async (req, res, next) => {
   try {
     const prospect = await getProspectById(req.params.id);
     if (!prospect) return res.status(404).json({ error: 'Organisation not found' });

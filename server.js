@@ -11,6 +11,8 @@ const organisationsRouter    = require('./api/routes/organisations');
 const scansRouter            = require('./api/routes/scans');
 const benchmarksRouter       = require('./api/routes/benchmarks');
 const improvementQueueRouter = require('./api/routes/improvement-queue');
+const meRouter               = require('./api/routes/me');
+const portfolioRouter        = require('./api/routes/portfolio');
 const logger = require('./infra/utils/logger');
 const { AppError } = require('./infra/utils/errors');
 
@@ -73,6 +75,8 @@ app.use('/api/organisations',     organisationsRouter);
 app.use('/api/scans',             scansRouter);
 app.use('/api/benchmarks',        benchmarksRouter);
 app.use('/api/improvement-queue', improvementQueueRouter);
+app.use('/api/me',                meRouter);
+app.use('/api/portfolio',         portfolioRouter);
 app.use('/api',                   reportRouter);
 
 app.use((req, res) => {

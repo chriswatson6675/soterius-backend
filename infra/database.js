@@ -450,10 +450,221 @@ async function getLatestScansByDomains(domains) {
   }
 }
 
+// ── Customer tenancy (Phase 4A foundation) ────────────────────────────────────
+// Backs the identity layer described in ADR-SYS-007 (portfolios over a shared
+// observed corpus; tenancy on private objects only). Each function accepts an
+// optional trailing `client`, defaulting to the real Supabase client, so tests
+// can inject a fake — the rest of this file's functions predate that need and
+// are untouched. No portfolio/claim functions here — out of scope for this slice.
+
+async function createCustomer(name, client = getClient()) {
+  try {
+    const { data, error } = await client
+      .from('customers')
+      .insert([{ name }])
+      .select('*')
+      .single();
+
+    if (error) {
+      logger.error(`createCustomer failed: ${error.message}`);
+      return { success: false, error: error.message };
+    }
+    return { success: true, customer: data };
+  } catch (err) {
+    logger.error(`createCustomer threw: ${err.message}`);
+    return { success: false, error: err.message };
+  }
+}
+
+async function getCustomerById(id, client = getClient()) {
+  try {
+    const { data, error } = await client
+      .from('customers')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error) { logger.error(`getCustomerById failed: ${error.message}`); return null; }
+    return data;
+  } catch (err) {
+    logger.error(`getCustomerById threw: ${err.message}`);
+    return null;
+  }
+}
+
+async function createMembership(customerId, userId, tenantRole = 'member', client = getClient()) {
+  try {
+    const { data, error } = await client
+      .from('memberships')
+      .insert([{ customer_id: customerId, user_id: userId, tenant_role: tenantRole }])
+      .select('*')
+      .single();
+
+    if (error) {
+      logger.error(`createMembership failed: ${error.message}`);
+      return { success: false, error: error.message };
+    }
+    return { success: true, membership: data };
+  } catch (err) {
+    logger.error(`createMembership threw: ${err.message}`);
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * A user belongs to at most one tenant (ADR-SYS-007 §3.2, enforced by
+ * migration 024's UNIQUE(user_id)). Returns null if the user has no
+ * membership yet — a valid, expected pre-onboarding state, not an error.
+ */
+async function getMembershipByUserId(userId, client = getClient()) {
+  try {
+    const { data, error } = await client
+      .from('memberships')
+      .select('id, tenant_role, customer_id, customers(id, name, plan)')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (error) { logger.error(`getMembershipByUserId failed: ${error.message}`); return null; }
+    if (!data) return null;
+
+    return {
+      id:         data.id,
+      tenantRole: data.tenant_role,
+      customer:   data.customers,
+    };
+  } catch (err) {
+    logger.error(`getMembershipByUserId threw: ${err.message}`);
+    return null;
+  }
+}
+
+// ── Portfolio (Phase 4A — Portfolio CRUD) ─────────────────────────────────────
+// A customer's tracked-organisations list (ADR-SYS-007's "portfolio").
+// Adding an organisation requires no verification — that's the separate,
+// later claim workflow, out of scope here.
+
+/**
+ * Idempotent add: returns the existing item if the organisation is already
+ * in the portfolio, otherwise inserts a new one. Mirrors findOrCreateProspect.
+ */
+async function addPortfolioItem(customerId, organisationId, addedByUserId, client = getClient()) {
+  try {
+    const { data: existing, error: fetchError } = await client
+      .from('organisation_portfolio_items')
+      .select('*')
+      .eq('customer_id', customerId)
+      .eq('organisation_id', organisationId)
+      .maybeSingle();
+
+    if (fetchError) {
+      logger.error(`addPortfolioItem fetch failed: ${fetchError.message}`);
+      return { success: false, error: fetchError.message };
+    }
+    if (existing) return { success: true, item: existing, created: false };
+
+    const { data, error } = await client
+      .from('organisation_portfolio_items')
+      .insert([{ customer_id: customerId, organisation_id: organisationId, added_by_user_id: addedByUserId }])
+      .select('*')
+      .single();
+
+    if (error) {
+      logger.error(`addPortfolioItem insert failed: ${error.message}`);
+      return { success: false, error: error.message };
+    }
+    return { success: true, item: data, created: true };
+  } catch (err) {
+    logger.error(`addPortfolioItem threw: ${err.message}`);
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Lists a tenant's portfolio, joined with organisation summary fields
+ * available on prospects (no additional round trip). Unavailable fields are
+ * returned as null, never invented.
+ */
+async function getPortfolioItems(customerId, client = getClient()) {
+  try {
+    const { data, error } = await client
+      .from('organisation_portfolio_items')
+      .select('id, organisation_id, is_home, added_by_user_id, added_at, prospects(id, firm_name, website, sector, location, last_scanned)')
+      .eq('customer_id', customerId)
+      .order('added_at', { ascending: false });
+
+    if (error) { logger.error(`getPortfolioItems failed: ${error.message}`); return []; }
+
+    return (data ?? []).map(row => ({
+      id:             row.id,
+      organisationId: row.organisation_id,
+      isHome:         row.is_home,
+      addedByUserId:  row.added_by_user_id,
+      addedAt:        row.added_at,
+      organisation: row.prospects ? {
+        id:            row.prospects.id,
+        name:          row.prospects.firm_name  ?? null,
+        domain:        row.prospects.website    ?? null,
+        sector:        row.prospects.sector     ?? null,
+        location:      row.prospects.location   ?? null,
+        lastScannedAt: row.prospects.last_scanned ?? null,
+      } : null,
+    }));
+  } catch (err) {
+    logger.error(`getPortfolioItems threw: ${err.message}`);
+    return [];
+  }
+}
+
+/**
+ * Single-item lookup — the authorisation check requirePortfolio is built on.
+ * Returns null (not an error) when the organisation is not in this tenant's
+ * portfolio, so callers can treat "not found" and "not authorised" the same.
+ */
+async function getPortfolioItem(customerId, organisationId, client = getClient()) {
+  try {
+    const { data, error } = await client
+      .from('organisation_portfolio_items')
+      .select('id, organisation_id, is_home')
+      .eq('customer_id', customerId)
+      .eq('organisation_id', organisationId)
+      .maybeSingle();
+
+    if (error) { logger.error(`getPortfolioItem failed: ${error.message}`); return null; }
+    return data;
+  } catch (err) {
+    logger.error(`getPortfolioItem threw: ${err.message}`);
+    return null;
+  }
+}
+
+async function removePortfolioItem(customerId, organisationId, client = getClient()) {
+  try {
+    const { data, error } = await client
+      .from('organisation_portfolio_items')
+      .delete()
+      .eq('customer_id', customerId)
+      .eq('organisation_id', organisationId)
+      .select('id')
+      .maybeSingle();
+
+    if (error) {
+      logger.error(`removePortfolioItem failed: ${error.message}`);
+      return { success: false, error: error.message };
+    }
+    if (!data) return { success: false, error: 'Portfolio item not found' };
+    return { success: true };
+  } catch (err) {
+    logger.error(`removePortfolioItem threw: ${err.message}`);
+    return { success: false, error: err.message };
+  }
+}
+
 module.exports = {
   saveScan, getScanHistory, getScanById,
   getScans, getScanWithOrg, getLatestScansByDomains,
   saveSubmission, getSubmissionByEmail, getAllSubmissions, getSubmissionById,
   findOrCreateProspect, createProspect, getProspects, getProspectById,
   updateProspect, updateProspectLastScanned, deleteProspect, getBenchmarkData,
+  createCustomer, getCustomerById, createMembership, getMembershipByUserId,
+  addPortfolioItem, getPortfolioItems, getPortfolioItem, removePortfolioItem,
 };
