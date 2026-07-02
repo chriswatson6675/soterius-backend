@@ -2,34 +2,20 @@
 
 // retry.js — transient-failure retry with bounded attempts + exponential backoff.
 //
-// SRA Snapshot Collector v0.1 — reused VERBATIM from the FCA Reference Collector
-// (design §"Reuses well": retry.js is source-agnostic). Copied (not shared) per the
-// proven per-source replication pattern (FCA and Companies House each carry their
-// own copy; a shared library has not been proven).
+// SRA Snapshot Collector v0.1.
 //
 // Pure operational concern: it re-attempts a request thunk on TRANSIENT failures
 // only, records EVERY attempt, and stops on success / permanent failure / the
 // bounded attempt cap. It alters no data.
 //
-// Transient (retried):   CONNECTION_ERROR, RATE_LIMITED (429), HTTP_ERROR >= 500.
-// Permanent (not retried): HTTP_ERROR < 500 (e.g. 401/403/404), anything else.
-// Success:                 errorType === 'NONE'.
+// classifyOutcome/backoffMs/DEFAULT_POLICY are shared with FCA — extracted to
+// ../common/retry (WS2 Phase P7, WP-15), replacing the prior verbatim copy.
+// withRetry stays here: this source's attempt log omits the FCA-specific
+// `fsrStatus` field. Companies House uses a different retry-after-aware
+// policy (collection/sources/companies-house/ch-client.js) and is not part
+// of this consolidation.
 
-const DEFAULT_POLICY = { maxAttempts: 3, baseDelayMs: 500, maxDelayMs: 8000 };
-
-function classifyOutcome(result) {
-  if (!result) return 'permanent';
-  const et = result.errorType;
-  if (et === 'NONE') return 'success';
-  if (et === 'CONNECTION_ERROR' || et === 'RATE_LIMITED') return 'transient';
-  if (et === 'HTTP_ERROR' && typeof result.httpStatus === 'number' && result.httpStatus >= 500) return 'transient';
-  return 'permanent';
-}
-
-function backoffMs(attemptNumber, policy) {
-  const d = policy.baseDelayMs * Math.pow(2, attemptNumber - 1);
-  return Math.min(d, policy.maxDelayMs);
-}
+const { classifyOutcome, backoffMs, DEFAULT_POLICY } = require('../common/retry');
 
 /**
  * Run `thunk(attemptNumber) -> Promise<result>` with retry. Never throws.

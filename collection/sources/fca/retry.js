@@ -10,29 +10,13 @@
 // observation plus the per-attempt log. A retry is a fresh observation, never an
 // overwrite [CR-FCA-09].
 //
-// Transient (retried):   CONNECTION_ERROR, RATE_LIMITED (429), HTTP_ERROR >= 500.
-// Permanent (not retried): PARSE_ERROR, HTTP_ERROR < 500 (e.g. 404), anything else.
-// Success:                 errorType === 'NONE' (the FSR envelope is interpreted
-//                          later — an FCA "absence" is still a successful transport
-//                          outcome and is NOT retried).
+// classifyOutcome/backoffMs/DEFAULT_POLICY are shared with SRA — extracted to
+// ../common/retry (WS2 Phase P7, WP-15). withRetry stays here: this source's
+// attempt log carries an FCA-specific `fsrStatus` field that SRA's does not.
 //
 // Authority: CCS-FCA-001 §11; CCD-FCA-001 CR-FCA-09; IMP-FCA-001 §7.
 
-const DEFAULT_POLICY = { maxAttempts: 3, baseDelayMs: 500, maxDelayMs: 8000 };
-
-function classifyOutcome(result) {
-  if (!result) return 'permanent';
-  const et = result.errorType;
-  if (et === 'NONE') return 'success';
-  if (et === 'CONNECTION_ERROR' || et === 'RATE_LIMITED') return 'transient';
-  if (et === 'HTTP_ERROR' && typeof result.httpStatus === 'number' && result.httpStatus >= 500) return 'transient';
-  return 'permanent';
-}
-
-function backoffMs(attemptNumber, policy) {
-  const d = policy.baseDelayMs * Math.pow(2, attemptNumber - 1);
-  return Math.min(d, policy.maxDelayMs);
-}
+const { classifyOutcome, backoffMs, DEFAULT_POLICY } = require('../common/retry');
 
 /**
  * Run `thunk(attemptNumber) -> Promise<result>` with retry. Never throws.
