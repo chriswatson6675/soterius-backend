@@ -113,6 +113,24 @@ test('findOrCreateAuthUser — re-affirms the role even if the existing user alr
   assert.deepStrictEqual(calls.updateUserById[0][1].app_metadata, { role: 'operations' });
 });
 
+test('findOrCreateAuthUser — re-affirms the password too when the user already exists, not just the role', async () => {
+  // Regression test: a real run showed the update call originally only sent
+  // app_metadata, silently leaving a stale/wrong password in place on an
+  // existing account — re-running the script with a new password did not
+  // actually change it, which defeats the point of it being idempotent.
+  const existing = { id: 'u1', email: 'ops@soterius.com', app_metadata: { role: 'operations' } };
+  const updated = { id: 'u1', email: 'ops@soterius.com', app_metadata: { role: 'operations' } };
+  const { client, calls } = fakeAuthAdmin({
+    createUser: { data: null, error: { message: 'User already registered' } },
+    listUsersPages: [{ data: { users: [existing] }, error: null }],
+    updateUserById: { data: { user: updated }, error: null },
+  });
+
+  await findOrCreateAuthUser(client, { email: 'ops@soterius.com', password: 'NewRealPassword123!', role: 'operations' });
+
+  assert.strictEqual(calls.updateUserById[0][1].password, 'NewRealPassword123!');
+});
+
 test('findOrCreateAuthUser — throws when createUser fails and no matching user is found either', async () => {
   const { client } = fakeAuthAdmin({
     createUser: { data: null, error: { message: 'network error' } },

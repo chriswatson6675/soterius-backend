@@ -41,9 +41,14 @@ async function findAuthUserByEmail(client, email, page = 1) {
  * Creates a Supabase Auth user with email_confirm: true (no confirmation
  * email flow exists or is wanted for these tooling-created accounts) and
  * app_metadata.role set at creation time. If the user already exists,
- * re-affirms the role on every run instead of assuming it's already
- * correct — self-healing, not just create-once. Existing app_metadata
- * fields other than role are preserved, never clobbered.
+ * re-affirms BOTH the role and the password on every run instead of
+ * assuming either is already correct — fully self-healing, not just
+ * create-once. (Originally this only re-affirmed the role; a real run
+ * showed that's not idempotent from the caller's point of view — the
+ * password you pass in should always end up being the account's actual
+ * password, or re-running this script to "fix" an account is misleading.)
+ * Existing app_metadata fields other than role are preserved, never
+ * clobbered.
  */
 async function findOrCreateAuthUser(client, { email, password, role }) {
   if (role !== 'customer' && role !== 'operations') {
@@ -66,9 +71,10 @@ async function findOrCreateAuthUser(client, { email, password, role }) {
 
   const mergedAppMetadata = { ...(existing.app_metadata ?? {}), role };
   const { data: updated, error: updateError } = await client.auth.admin.updateUserById(existing.id, {
+    password,
     app_metadata: mergedAppMetadata,
   });
-  if (updateError) throw new Error(`Failed to set role on existing user ${email}: ${updateError.message}`);
+  if (updateError) throw new Error(`Failed to update existing user ${email}: ${updateError.message}`);
 
   return { user: updated.user, created: false };
 }
