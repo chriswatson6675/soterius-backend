@@ -2,21 +2,22 @@
 
 // Signal Lab Collection Orchestrator
 //
-// Obtains organisations from the configured Organisation Provider, runs all 9
-// Signal Lab collectors against every domain, inserts observations into the
-// approved Signal Lab tables, and writes <COHORT>_COLLECTION_REPORT.md (the
-// cohort identity is supplied by the provider, e.g. IF-001 or FCA-REG-001).
+// Obtains organisations from the canonical Organisation Dataset (the Repository
+// Authority) via the Organisation Provider — every organisation with a VERIFIED
+// domain — runs all 9 Signal Lab collectors against every domain, inserts
+// observations into the approved Signal Lab tables, and writes
+// <COHORT>_COLLECTION_REPORT.md (identity supplied by the provider).
 //
 // Signal Lab rule: records observations only. No scores. No ratings.
 //
 // Usage:
-//   node backend/collection/runs/if001/run-all.js            # IF cohort (default)
-//   ORG_PROVIDER=fca node backend/collection/runs/if001/run-all.js
+//   node backend/collection/runs/if001/run-all.js            # canonical VERIFIED organisations
 //
 // Environment:
 //   SUPABASE_URL              — required
 //   SUPABASE_SERVICE_ROLE_KEY — required
-//   ORG_PROVIDER              — optional, 'if' (default) | 'fca'
+//   ORG_PROVIDER              — optional, only 'canonical' (default); legacy cohorts retired
+//   ORG_SAMPLE_N              — optional, cap to a deterministic head sample for commissioning
 //   CONCURRENCY               — optional, default 8
 
 require('dotenv').config({ path: require('node:path').join(__dirname, '../../../.env') });
@@ -39,11 +40,9 @@ const { collectSecurityTxt   } = require('../../signals/securitytxt/securitytxt-
 const { collectSecurityHeaders } = require('../../signals/securityheaders/securityheaders-collector');
 
 // ── Organisation source ───────────────────────────────────────────────────────
-// The Observatory obtains the organisations it scans through an Organisation
-// Provider, not by reading the cohort directly. The provider is chosen by the
-// factory in acquisition/providers/organisation-provider.js (ORG_PROVIDER: 'if'
-// default | 'fca' | 'sra'), so the pipeline is population-agnostic and never
-// references a specific source.
+// The Observatory obtains the organisations it scans through the Organisation
+// Provider, which resolves them exclusively from the canonical Organisation
+// Dataset (VERIFIED domains). No legacy cohort registry is referenced here.
 const { loadOrganisations } = require('../../../acquisition/providers/organisation-provider');
 
 // ── Configuration ─────────────────────────────────────────────────────────────
@@ -746,9 +745,9 @@ async function main() {
   try {
     cohort = loadOrganisations();
   } catch (err) {
-    if (err.code === 'COHORT_MANIFEST_NOT_FOUND') {
-      console.error(`\n  ERROR: cohort-manifest.json not found.`);
-      console.error(`  Run select-cohort.js first to generate the cohort manifest.\n`);
+    if (err.code === 'ORG_DATASET_NOT_FOUND') {
+      console.error(`\n  ERROR: canonical Organisation Dataset not found.`);
+      console.error(`  Run 'node backend/authority/build.js' to build the Repository Authority first.\n`);
       process.exit(1);
     }
     throw err;

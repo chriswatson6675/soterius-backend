@@ -1,0 +1,5 @@
+# Preserve sealed SRA Collection Package raw artefacts byte-for-byte.
+# Their SHA-256 is recorded in each package manifest; CRLF normalisation would
+# break integrity verification. Treat as binary so Git never rewrites bytes.
+runs/**/raw/snapshot.json -text
+runs/**/raw/raw-index.ndjson -text

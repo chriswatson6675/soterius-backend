@@ -1,0 +1,18 @@
+{
+  "runId": "live-004",
+  "collectorVersion": "sra-snapshot-collector/0.1.0",
+  "sealedAt": "2026-07-06T23:09:00.266Z",
+  "details": {
+    "integrity": {
+      "records": {
+        "total": 1009875,
+        "verified": 1009875,
+        "failures": []
+      },
+      "rawHashes": {
+        "checked": 1,
+        "verified": 1
+      }
+    }
+  }
+}

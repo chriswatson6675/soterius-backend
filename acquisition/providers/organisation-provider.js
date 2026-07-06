@@ -7,15 +7,11 @@
 // concrete provider supplies them; the scanning pipeline simply calls
 // loadOrganisations() and never knows or cares where organisations originate.
 //
-// Selection is by configuration (the ORG_PROVIDER environment variable), so no
-// IF/FCA branching leaks into the Observatory:
-//
-//   ORG_PROVIDER unset | 'if' | 'if-001'   → IF (Investment Firms) cohort   [default]
-//   ORG_PROVIDER       = 'fca'             → FCA Organisation Registry
-//   ORG_PROVIDER       = 'sra'             → SRA Organisation Registry
-//
-// Adding a future population means adding one concrete provider module and one case
-// below — the scanning pipeline is untouched.
+// The Observatory now resolves organisations EXCLUSIVELY through the canonical
+// Organisation Dataset (the Repository Authority), selecting every organisation
+// whose domain state is VERIFIED. It references NO legacy cohort registry
+// (IF / FCA / SRA providers). Those legacy providers have been superseded and
+// archived; the Observatory execution path no longer depends on them.
 //
 // Every concrete provider satisfies the same contract:
 //   loadOrganisations() → {
@@ -23,24 +19,26 @@
 //     organisations: Array<{ id, firm_name, domain, last_scanned }>
 //   }
 
-const ifProvider  = require('./if-organisation-provider');
-const fcaProvider = require('./fca-organisation-provider');
-const sraProvider = require('./sra-organisation-provider');
+const canonicalProvider = require('./canonical-organisation-provider');
 
-const PROVIDERS = {
-  if:       ifProvider,
-  'if-001': ifProvider,
-  fca:      fcaProvider,
-  sra:      sraProvider,
-};
+// Legacy cohort providers (if / fca / sra) — retained only for historical
+// provenance and rejected from the operational path. Any attempt to select one
+// fails loudly so no Observatory run can silently fall back to a legacy registry.
+const RETIRED_LEGACY_KEYS = new Set(['if', 'if-001', 'fca', 'sra']);
 
 function getProvider() {
-  const key = String(process.env.ORG_PROVIDER || 'if').toLowerCase();
-  const provider = PROVIDERS[key];
-  if (!provider) {
-    throw new Error(`Unknown ORG_PROVIDER '${key}' — expected one of: ${Object.keys(PROVIDERS).join(', ')}`);
+  const key = String(process.env.ORG_PROVIDER || 'canonical').toLowerCase();
+  if (key === 'canonical' || key === 'authority' || key === 'org-authority') {
+    return canonicalProvider;
   }
-  return provider;
+  if (RETIRED_LEGACY_KEYS.has(key)) {
+    throw new Error(
+      `ORG_PROVIDER='${key}' is a retired legacy cohort registry. The Observatory now ` +
+      `sources organisations only from the canonical Organisation Dataset ` +
+      `(VERIFIED domains). Unset ORG_PROVIDER or set it to 'canonical'.`,
+    );
+  }
+  throw new Error(`Unknown ORG_PROVIDER '${key}' — the only supported value is 'canonical'.`);
 }
 
 function loadOrganisations() {

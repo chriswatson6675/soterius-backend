@@ -1,0 +1,13 @@
+{
+  "totalOrganisations": 35752,
+  "verifiedDomains": 17057,
+  "distinctVerifiedDomains": 17057,
+  "pendingOrganisations": 4607,
+  "noDomainOrganisations": 14088,
+  "duplicatesMerged": 1965,
+  "crossRegulatorOrganisations": 23,
+  "organisationsWithObservatoryEvidence": 4867,
+  "organisationsWithCompleteTrustProfile": 1893,
+  "orphanObservations": 0,
+  "sourceRecordsIn": 37717
+}

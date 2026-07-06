@@ -1,0 +1,20 @@
+{
+  "artefactType": "sra-collection-manifest",
+  "note": "Describes the collection process. Does NOT summarise or interpret the evidence.",
+  "runId": "live-004",
+  "collectorVersion": "sra-snapshot-collector/0.1.0",
+  "sourceAuthority": "Solicitors Regulation Authority",
+  "collectionStartedAt": "2026-07-06T23:08:24.331Z",
+  "collectionCompletedAt": "2026-07-06T23:08:41.671Z",
+  "snapshotProductionTimestamp": null,
+  "segments": [
+    {
+      "file": "snapshot.json",
+      "byteLength": 23857447,
+      "sha256": "cc8c47ea111019fb56a572df968036bb1f5f4e538baf2029fcbb55bfe62fcd94"
+    }
+  ],
+  "segmentCount": 1,
+  "totalBytes": 23857447,
+  "recordCount": null
+}

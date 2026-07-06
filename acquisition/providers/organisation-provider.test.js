@@ -1,17 +1,17 @@
 'use strict';
 
 // organisation-provider.test.js — provider factory selection tests.
-// Confirms ORG_PROVIDER=sra selects the SRA provider, the existing if/fca/default
-// selections are unchanged, and unknown providers fail exactly as before. Selection
-// only — no provider is invoked (so no registry/Supabase access).
+// The Observatory now sources organisations EXCLUSIVELY from the canonical
+// Organisation Dataset. This confirms the default and explicit 'canonical'
+// selection resolve to the canonical provider, the retired legacy cohort
+// registries (if / fca / sra) are rejected, and unknown values fail. Selection
+// only — no provider is invoked (so no dataset/Supabase access).
 
 const { test } = require('node:test');
 const assert = require('node:assert');
 
 const { getProvider } = require('./organisation-provider');
-const ifProvider  = require('./if-organisation-provider');
-const fcaProvider = require('./fca-organisation-provider');
-const sraProvider = require('./sra-organisation-provider');
+const canonicalProvider = require('./canonical-organisation-provider');
 
 function withProvider(v, fn) {
   const prev = process.env.ORG_PROVIDER;
@@ -19,19 +19,20 @@ function withProvider(v, fn) {
   try { return fn(); } finally { if (prev === undefined) delete process.env.ORG_PROVIDER; else process.env.ORG_PROVIDER = prev; }
 }
 
-test('ORG_PROVIDER=sra selects the SRA provider (case-insensitive)', () => {
-  withProvider('sra', () => assert.strictEqual(getProvider(), sraProvider));
-  withProvider('SRA', () => assert.strictEqual(getProvider(), sraProvider));
+test('default and explicit canonical select the canonical provider (case-insensitive)', () => {
+  withProvider(undefined, () => assert.strictEqual(getProvider(), canonicalProvider)); // default
+  withProvider('canonical', () => assert.strictEqual(getProvider(), canonicalProvider));
+  withProvider('CANONICAL', () => assert.strictEqual(getProvider(), canonicalProvider));
+  withProvider('authority', () => assert.strictEqual(getProvider(), canonicalProvider));
 });
 
-test('existing selections are unchanged (default/if/if-001 → IF; fca → FCA)', () => {
-  withProvider(undefined, () => assert.strictEqual(getProvider(), ifProvider)); // default
-  withProvider('if', () => assert.strictEqual(getProvider(), ifProvider));
-  withProvider('if-001', () => assert.strictEqual(getProvider(), ifProvider));
-  withProvider('fca', () => assert.strictEqual(getProvider(), fcaProvider));
+test('retired legacy cohort registries are rejected', () => {
+  for (const key of ['if', 'if-001', 'fca', 'sra']) {
+    withProvider(key, () => assert.throws(() => getProvider(), /retired legacy cohort registry/));
+  }
 });
 
-test('unknown provider fails exactly as before', () => {
+test('unknown provider fails', () => {
   withProvider('does-not-exist', () => {
     assert.throws(() => getProvider(), /Unknown ORG_PROVIDER 'does-not-exist'/);
   });
