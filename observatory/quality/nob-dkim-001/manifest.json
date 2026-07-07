@@ -1,0 +1,26 @@
+{
+  "run_label": "NOB-DKIM-001",
+  "signal": "SOT-DKIM-001",
+  "category": "A — Email Trust (Signal 2)",
+  "population": 17057,
+  "cohort_id": "ORG-AUTHORITY-001",
+  "window": {
+    "after": null,
+    "before": "2026-07-07T14:00:00Z"
+  },
+  "collected_span": {
+    "earliest": "2026-07-06T23:57:33.008+00:00",
+    "latest": "2026-07-07T06:43:41.828+00:00"
+  },
+  "counts": {
+    "observations": 17057,
+    "keys": 14880
+  },
+  "sha256": {
+    "observations": "121bb20a62d16b74bdf471f51bb9b252d4dfbc26ece578c1d41120564fe25abf",
+    "keys": "6cca015d3a7eb5f9bfe24ec2ece5e756c4c034732f2bf5b693703f989209675d"
+  },
+  "signal_version": 1,
+  "probe_set_version": 1,
+  "nonobservation_pct": 12.34
+}

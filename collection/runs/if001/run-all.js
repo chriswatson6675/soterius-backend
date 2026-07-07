@@ -872,12 +872,23 @@ async function main() {
   // contention. SPF is isolated first: its apex-TXT queries return large,
   // multi-record RRsets that were starved (timed out → recorded Unknown) when
   // contending with the other DNS collectors under the fully-parallel schedule
-  // (SPF calibration finding). To isolate a future signal, give it its own
-  // phase entry; leaving signals grouped preserves the previous parallel model.
-  // Overridable via SIGNAL_PHASES, e.g. "spf|dkim,dmarc,...".
+  // (SPF calibration finding; ADR-COL-007).
+  //
+  // DKIM is isolated second (SLG-049 — DKIM Collector Validation, Founder-approved
+  // 2026-07-07): DKIM is the most DNS-intensive collector (up to 20 sequential TXT
+  // lookups per domain, one per probe-set selector), so when left in the
+  // fully-parallel Phase 2 it dominated total DNS query volume against the shared
+  // resolver and triggered resolver-level refusal — recording 12.34% of the
+  // national baseline as DNS_FAILURE/SERVFAIL (zero timeouts) while every lighter
+  // DNS signal resolved the SAME domains (DNSSEC 100%, SPF/DMARC/CAA ~98.8%). This
+  // is the same contention class ADR-COL-007 fixed for SPF; the remedy is identical
+  // — its own phase. To isolate a further signal, give it its own phase entry;
+  // leaving signals grouped preserves the parallel model. Overridable via
+  // SIGNAL_PHASES, e.g. "spf|dkim|dmarc,dnssec,...".
   const DEFAULT_PHASES = [
     ['spf'],
-    ['dkim', 'dmarc', 'mtasts', 'tlsrpt', 'dnssec', 'caa', 'securitytxt', 'securityheaders'],
+    ['dkim'],
+    ['dmarc', 'mtasts', 'tlsrpt', 'dnssec', 'caa', 'securitytxt', 'securityheaders'],
   ];
   const PHASES = process.env.SIGNAL_PHASES
     ? process.env.SIGNAL_PHASES.split('|').map(p => p.split(',').map(s => s.trim()).filter(Boolean))

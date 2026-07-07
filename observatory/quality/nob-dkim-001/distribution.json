@@ -1,0 +1,56 @@
+{
+  "population": 17057,
+  "outcomes": {
+    "present": 7497,
+    "not_detected": 7455,
+    "dns_failure": 2069,
+    "dns_servfail": 36,
+    "dns_timeout": 0
+  },
+  "nonobservation_pct": 12.34,
+  "adoption": {
+    "crude_pct": 43.95,
+    "of_observed_pct": 50.14,
+    "observed_population": 14952
+  },
+  "present_composition": {
+    "genuine_le7": 7302,
+    "anomalous_ge8": 195
+  },
+  "record_count_hist": {
+    "1": 4743,
+    "2": 1714,
+    "3": 558,
+    "4": 203,
+    "5": 64,
+    "6": 17,
+    "7": 3,
+    "9": 1,
+    "14": 1,
+    "16": 3,
+    "17": 1,
+    "18": 26,
+    "19": 25,
+    "20": 138
+  },
+  "genuine_keys": 11090,
+  "genuine_parse_ok": 10907,
+  "genuine_parse_fail": 183,
+  "key_type": {
+    "rsa": 11072,
+    "ed25519": 0,
+    "other": 18
+  },
+  "rsa_key_bits": {
+    "512": 2,
+    "768": 15,
+    "1024": 7290,
+    "2048": 3596,
+    "null": 4
+  },
+  "revoked_keys": 94,
+  "version_omitted": 2709,
+  "flag_testing_y": 9,
+  "flag_no_subdomain_s": 1543,
+  "has_h_tag": 135
+}
