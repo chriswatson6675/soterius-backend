@@ -1,0 +1,17 @@
+{
+  "run_label": "NOB-DMARC-001",
+  "run_id": "ce9cd3e8-282b-ca21-fa8c-0ead91e5f7c4",
+  "signal": "SOT-DMARC-001",
+  "model": "DMARC-QM-v1.0",
+  "baseline": "NOB-001 national DMARC collection",
+  "population": 17057,
+  "scored": 17028,
+  "not_scored_unknown": 29,
+  "sha256": {
+    "observations": "d513e92db4d864f5cab5cbcc660b324d6931383c7cfb51da9653245a8287a639",
+    "quality_scores": "add6eae49d4a43ca2538adeafccb66888ac895043e26627b391e6bc6c1bd590f"
+  },
+  "mean": 41.27,
+  "median": 40,
+  "provenance": "Scored from signal_facts_dmarc latest-per-domain via dmarc-quality.js (DMARC-QM-v1.0); SLG-060 calibration; SLG-062 commissioning."
+}
