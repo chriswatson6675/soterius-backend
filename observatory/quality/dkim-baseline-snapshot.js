@@ -46,11 +46,14 @@ function getClient() {
   return createClient(url, key);
 }
 
-// Fetch every row of a table within the collected_at window, paginated by created order.
+// Fetch every row of a table within the collected_at window, paginated by a
+// STABLE unique key (id). Ordering by collected_at is unsafe here: a single run
+// writes thousands of rows sharing one identical collected_at, and range-based
+// pagination over a non-unique sort key skips/duplicates rows across pages.
 async function fetchAll(sb, table, cols) {
   const out = [];
   for (let from = 0; ; from += PAGE) {
-    let q = sb.from(table).select(cols).order('collected_at', { ascending: true }).range(from, from + PAGE - 1);
+    let q = sb.from(table).select(cols).order('id', { ascending: true }).range(from, from + PAGE - 1);
     if (BEFORE) q = q.lt('collected_at', BEFORE);
     if (AFTER)  q = q.gte('collected_at', AFTER);
     const { data, error } = await q;

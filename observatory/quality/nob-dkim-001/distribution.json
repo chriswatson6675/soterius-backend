@@ -33,24 +33,24 @@
     "19": 25,
     "20": 138
   },
-  "genuine_keys": 11090,
-  "genuine_parse_ok": 10907,
-  "genuine_parse_fail": 183,
+  "genuine_keys": 11089,
+  "genuine_parse_ok": 10905,
+  "genuine_parse_fail": 184,
   "key_type": {
-    "rsa": 11072,
+    "rsa": 11071,
     "ed25519": 0,
     "other": 18
   },
   "rsa_key_bits": {
     "512": 2,
     "768": 15,
-    "1024": 7290,
-    "2048": 3596,
+    "1024": 7285,
+    "2048": 3599,
     "null": 4
   },
-  "revoked_keys": 94,
-  "version_omitted": 2709,
+  "revoked_keys": 95,
+  "version_omitted": 2704,
   "flag_testing_y": 9,
-  "flag_no_subdomain_s": 1543,
-  "has_h_tag": 135
+  "flag_no_subdomain_s": 1534,
+  "has_h_tag": 133
 }
