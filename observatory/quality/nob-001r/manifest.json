@@ -1,0 +1,27 @@
+{
+  "run_label": "NOB-001R",
+  "run_id": "7f85e48e-5dab-42ee-b796-9d6ca0f9c0df",
+  "supersedes": null,
+  "immutable_baseline_preserved": "NOB-001",
+  "cohort_id": "ORG-AUTHORITY-001",
+  "selection_id": "org-authority-599986411945",
+  "population": 17057,
+  "collected_at": "2026-07-07T12:42:43.185Z",
+  "elapsedSec": 170.74,
+  "concurrency": 8,
+  "isolated_phase": true,
+  "signal_version": 1,
+  "quality_version": "1.0",
+  "collection": {
+    "present": 15738,
+    "absent": 1292,
+    "unknown": 27
+  },
+  "scoredCount": 17030,
+  "distribution_summary": {
+    "mean": 86.89035378743395,
+    "median": 100,
+    "stddev": 28.302819308297675
+  },
+  "provenance": "Phased scheduler (SPF Observation Phase 1); collector spf v1 unchanged; SPF Quality Model v1.0 (SLG-043)."
+}

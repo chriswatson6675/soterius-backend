@@ -782,7 +782,7 @@ async function main() {
   const sechdrRunId = randomUUID();
 
   // Log all UUIDs before collection starts — record in RUN_REGISTER.md per SLG-003
-  console.log(`  Execution model: PARALLEL   Signal concurrency: ${SIGNAL_CONCURRENCY}\n`);
+  console.log(`  Execution model: PHASED   Signal concurrency: ${SIGNAL_CONCURRENCY}\n`);
   console.log(`  Run UUIDs — record in RUN_REGISTER.md BEFORE run commences:\n`);
   console.log(`  SOT-SPF-001              ${spfRunId}`);
   console.log(`  SOT-DKIM-001             ${dkimRunId}`);
@@ -795,73 +795,103 @@ async function main() {
   console.log(`  SOT-SECURITYHEADERS-001  ${sechdrRunId}`);
   console.log('');
 
-  const signalTasks = [
-    async () => {
+  // Each signal is an independent task keyed by signal id. Grouping is decided
+  // by PHASES below; the tasks themselves are unchanged (same production
+  // collect+insert path — no collector, parsing, resolver, retry, schema or
+  // observation-format change).
+  const signalTasks = {
+    spf: async () => {
       const start = Date.now();
       console.log(`[${new Date(start).toISOString()}] SOT-SPF-001 started`);
       const s = await runSpf(firms, supabase, spfRunId, start);
       console.log(`[${new Date().toISOString()}] SOT-SPF-001 complete  ${s.completed}/${s.attempted}  ${s.elapsedSec}s  ${s.successRate}%`);
       return s;
     },
-    async () => {
+    dkim: async () => {
       const start = Date.now();
       console.log(`[${new Date(start).toISOString()}] SOT-DKIM-001 started`);
       const s = await runDkim(firms, supabase, dkimRunId, start);
       console.log(`[${new Date().toISOString()}] SOT-DKIM-001 complete  ${s.completed}/${s.attempted}  ${s.elapsedSec}s  ${s.successRate}%`);
       return s;
     },
-    async () => {
+    dmarc: async () => {
       const start = Date.now();
       console.log(`[${new Date(start).toISOString()}] SOT-DMARC-001 started`);
       const s = await runDmarc(firms, supabase, dmarcRunId, start);
       console.log(`[${new Date().toISOString()}] SOT-DMARC-001 complete  ${s.completed}/${s.attempted}  ${s.elapsedSec}s  ${s.successRate}%`);
       return s;
     },
-    async () => {
+    mtasts: async () => {
       const start = Date.now();
       console.log(`[${new Date(start).toISOString()}] SOT-MTASTS-001 started`);
       const s = await runMtaSts(firms, supabase, mtastsRunId, start);
       console.log(`[${new Date().toISOString()}] SOT-MTASTS-001 complete  ${s.completed}/${s.attempted}  ${s.elapsedSec}s  ${s.successRate}%`);
       return s;
     },
-    async () => {
+    tlsrpt: async () => {
       const start = Date.now();
       console.log(`[${new Date(start).toISOString()}] SOT-TLSRPT-001 started`);
       const s = await runTlsRpt(firms, supabase, tlsrptRunId, start);
       console.log(`[${new Date().toISOString()}] SOT-TLSRPT-001 complete  ${s.completed}/${s.attempted}  ${s.elapsedSec}s  ${s.successRate}%`);
       return s;
     },
-    async () => {
+    dnssec: async () => {
       const start = Date.now();
       console.log(`[${new Date(start).toISOString()}] SOT-DNSSEC-001 started`);
       const s = await runDnssec(firms, supabase, dnssecRunId, start);
       console.log(`[${new Date().toISOString()}] SOT-DNSSEC-001 complete  ${s.completed}/${s.attempted}  ${s.elapsedSec}s  ${s.successRate}%`);
       return s;
     },
-    async () => {
+    caa: async () => {
       const start = Date.now();
       console.log(`[${new Date(start).toISOString()}] SOT-CAA-001 started`);
       const s = await runCaa(firms, supabase, caaRunId, start);
       console.log(`[${new Date().toISOString()}] SOT-CAA-001 complete  ${s.completed}/${s.attempted}  ${s.elapsedSec}s  ${s.successRate}%`);
       return s;
     },
-    async () => {
+    securitytxt: async () => {
       const start = Date.now();
       console.log(`[${new Date(start).toISOString()}] SOT-SECURITYTXT-001 started`);
       const s = await runSecurityTxt(firms, supabase, sectxtRunId, start);
       console.log(`[${new Date().toISOString()}] SOT-SECURITYTXT-001 complete  ${s.completed}/${s.attempted}  ${s.elapsedSec}s  ${s.successRate}%`);
       return s;
     },
-    async () => {
+    securityheaders: async () => {
       const start = Date.now();
       console.log(`[${new Date(start).toISOString()}] SOT-SECURITYHEADERS-001 started`);
       const s = await runSecurityHeaders(firms, supabase, sechdrRunId, start);
       console.log(`[${new Date().toISOString()}] SOT-SECURITYHEADERS-001 complete  ${s.completed}/${s.attempted}  ${s.elapsedSec}s  ${s.successRate}%`);
       return s;
     },
-  ];
+  };
 
-  const allStats = await runSignalsWithConcurrency(signalTasks, SIGNAL_CONCURRENCY);
+  // ── Phased execution ──────────────────────────────────────────────────────
+  // Phases run STRICTLY in order; each phase completes before the next starts.
+  // Within a phase, its signals run in parallel up to SIGNAL_CONCURRENCY.
+  // Isolating a signal into its own phase removes it from cross-signal resolver
+  // contention. SPF is isolated first: its apex-TXT queries return large,
+  // multi-record RRsets that were starved (timed out → recorded Unknown) when
+  // contending with the other DNS collectors under the fully-parallel schedule
+  // (SPF calibration finding). To isolate a future signal, give it its own
+  // phase entry; leaving signals grouped preserves the previous parallel model.
+  // Overridable via SIGNAL_PHASES, e.g. "spf|dkim,dmarc,...".
+  const DEFAULT_PHASES = [
+    ['spf'],
+    ['dkim', 'dmarc', 'mtasts', 'tlsrpt', 'dnssec', 'caa', 'securitytxt', 'securityheaders'],
+  ];
+  const PHASES = process.env.SIGNAL_PHASES
+    ? process.env.SIGNAL_PHASES.split('|').map(p => p.split(',').map(s => s.trim()).filter(Boolean))
+    : DEFAULT_PHASES;
+
+  const allStats = [];
+  for (let p = 0; p < PHASES.length; p++) {
+    const phaseIds = PHASES[p].filter(id => signalTasks[id]);
+    if (phaseIds.length === 0) continue;
+    console.log(`\n  ── Observation phase ${p + 1}/${PHASES.length}: ${phaseIds.join(', ')}  (signal concurrency ${SIGNAL_CONCURRENCY}) ──`);
+    const phaseTasks = phaseIds.map(id => signalTasks[id]);
+    const phaseStats = await runSignalsWithConcurrency(phaseTasks, SIGNAL_CONCURRENCY);
+    allStats.push(...phaseStats);
+  }
 
   // ── Overall summary ──────────────────────────────────────────────────────────
 
@@ -898,7 +928,18 @@ async function main() {
   console.log(`\n${HR}\n`);
 }
 
-main().catch(e => {
-  console.error('\nFatal:', e.message);
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch(e => {
+    console.error('\nFatal:', e.message);
+    process.exit(1);
+  });
+}
+
+// Exported so an operational retry pass can re-collect a subset of domains using
+// the EXACT production collect+insert functions (no duplication, no drift). This
+// changes nothing about the standalone run — it still executes when invoked as a
+// script (the require.main guard above).
+module.exports = {
+  getClient,
+  runSpf, runDkim, runDmarc, runMtaSts, runTlsRpt, runDnssec, runCaa, runSecurityTxt, runSecurityHeaders,
+};
