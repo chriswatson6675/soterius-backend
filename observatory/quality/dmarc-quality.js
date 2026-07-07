@@ -10,9 +10,9 @@
 // this module only reads facts already produced.
 //
 // Implements the calibrated model DMARC-QM-v1.0 (design SLG-059, calibration
-// SLG-060) EXACTLY. Formal governance freeze is a separate, later act; this file
-// is the commissioning reference implementation. Any change requires a new version
-// and a new calibration — v1.0 values are never modified retrospectively.
+// SLG-060) EXACTLY. FROZEN as the production reference at Stage 7 (SLG-063),
+// commissioned & verified in SLG-062. Any change requires a new version and a new
+// calibration — v1.0 values are never modified retrospectively (SLG-043 P9/P10).
 //
 // ── Model (SLG-059 design, SLG-060 calibration) ──────────────────────────────
 //
@@ -32,7 +32,7 @@
 // Multiple records / missing-or-invalid p → floor (0), NOT a multiplier.
 // Omitted OPTIONAL tags (sp/adkim/aspf/pct) are never penalised (RFC defaults benign).
 
-const QUALITY_VERSION = '1.0';           // DMARC-QM-v1.0 (calibrated; formal freeze pending)
+const QUALITY_VERSION = '1.0';           // DMARC-QM-v1.0 (FROZEN — SLG-063)
 const MODEL_ID = 'DMARC-QM-v1.0';
 
 const PRIMARY_REJECT     = 100;
