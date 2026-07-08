@@ -1,0 +1,37 @@
+{
+  "run_label": "NOB-MTASTS-001",
+  "run_id": "dc83cd93-9de6-a5fb-b182-6f301cf0be33",
+  "signal": "SOT-MTASTS-001",
+  "model": "MTASTS-QM-v1.0",
+  "baseline": "NOB-MTASTS-001 national MTA-STS baseline (most-recent observation per domain)",
+  "baseline_window": {
+    "start": "2026-07-06T23:57:33.011+00:00",
+    "end": "2026-07-07T04:39:08.724+00:00"
+  },
+  "population": 17057,
+  "scored": 16988,
+  "not_scored_dns_unobserved": 39,
+  "not_scored_policy_unobserved": 30,
+  "calc_failures": 0,
+  "sha256": {
+    "observations": "38832eccebd54f1d6d292d57f2adf39421c4182210d4b97842c2a8440de9d30c",
+    "quality_scores": "34773df5cac6fd2bfa41bf4e0fdc73ae03b7a1fa15c5d0b3de46f9926cf49e64"
+  },
+  "mean": 2.5609,
+  "median": 0,
+  "distinct_values": [
+    0,
+    15,
+    25,
+    95,
+    100
+  ],
+  "primary_state_histogram": {
+    "ABSENT": 16372,
+    "ENFORCE": 389,
+    "TESTING": 193,
+    "PUBLISHED_UNUSABLE": 26,
+    "NONE": 8
+  },
+  "provenance": "Scored from signal_facts_mtasts (NOB-MTASTS-001, latest-per-domain) via mtasts-quality.js (MTASTS-QM-v1.0); SLG-086 design; SLG-087 calibration; SLG-088 commissioning."
+}
