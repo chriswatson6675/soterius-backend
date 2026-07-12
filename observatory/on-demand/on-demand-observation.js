@@ -131,6 +131,15 @@ async function runOnDemandObservation(domain, deps = {}) {
   if (!sessionRes.ok) return { ok: false, error: `session creation failed: ${sessionRes.error}` };
   const session = sessionRes.session;
 
+  // Collection and scoring across up to 10 signals can take tens of
+  // seconds — a synchronous HTTP caller (the on-demand route, Milestone 4)
+  // needs the session id as soon as it exists, not only once this whole
+  // function resolves. Optional, additive: every existing caller that
+  // doesn't pass onSessionCreated behaves identically to before.
+  if (typeof deps.onSessionCreated === 'function') {
+    try { deps.onSessionCreated(session); } catch { /* a caller's hook must never break the pipeline */ }
+  }
+
   // 3 — Collect + score each signal. A signal's own failure is recorded on
   // its own result entry and never aborts the others (mirrors collect()'s
   // Promise.allSettled-style isolation already used by the legacy scanner

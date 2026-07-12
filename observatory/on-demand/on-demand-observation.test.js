@@ -267,6 +267,52 @@ test('tls + certificate — a thrown handshake failure records both signals as u
   assert.strictEqual(r.signals.find((s) => s.signal === 'spf').observed, true);
 });
 
+// ── onSessionCreated — the early-return hook the route handler relies on ────
+
+test('onSessionCreated fires as soon as the session exists, before collection completes', async () => {
+  let hookSession = null;
+  let hookFiredBeforeCompletion = false;
+  const deps = baseDeps();
+  deps.onSessionCreated = (session) => {
+    hookSession = session;
+    hookFiredBeforeCompletion = true;
+  };
+
+  const r = await runOnDemandObservation('example.com', deps);
+
+  assert.ok(hookFiredBeforeCompletion);
+  assert.strictEqual(hookSession.id, r.sessionId);
+});
+
+test('onSessionCreated is never called when session creation itself fails', async () => {
+  let called = false;
+  const deps = baseDeps({ createSession: async () => ({ ok: false, error: 'db unreachable' }) });
+  deps.onSessionCreated = () => { called = true; };
+
+  await runOnDemandObservation('example.com', deps);
+
+  assert.strictEqual(called, false);
+});
+
+test('a throwing onSessionCreated hook never breaks the pipeline', async () => {
+  const deps = baseDeps();
+  deps.onSessionCreated = () => { throw new Error('caller bug'); };
+
+  const r = await runOnDemandObservation('example.com', deps);
+
+  assert.strictEqual(r.ok, true);
+  assert.strictEqual(r.signals.length, 10);
+});
+
+test('omitting onSessionCreated behaves exactly as before (no hook is required)', async () => {
+  const deps = baseDeps();
+  delete deps.onSessionCreated;
+
+  const r = await runOnDemandObservation('example.com', deps);
+
+  assert.strictEqual(r.ok, true);
+});
+
 // ── Session lifecycle ────────────────────────────────────────────────────────
 
 test('session creation failure short-circuits before any collection is attempted', async () => {
