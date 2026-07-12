@@ -41,6 +41,24 @@ function fakeClient(result) {
   return { client: builder, calls };
 }
 
+// Sequence-aware variant for DKIM: reconstructFacts issues a genuine
+// child-table SELECT (resolved via awaiting the builder itself, .then())
+// BEFORE the eventual quality INSERT (resolved via .single()).
+function fakeSequencedClient(results) {
+  const queue = [...results];
+  const calls = [];
+  const next = () => (queue.length > 1 ? queue.shift() : queue[0]);
+  const builder = {
+    from(t) { calls.push(['from', t]); return builder; },
+    select(c) { calls.push(['select', c]); return builder; },
+    insert(r) { calls.push(['insert', r]); return builder; },
+    eq(c, v) { calls.push(['eq', c, v]); return builder; },
+    single() { calls.push(['single']); return Promise.resolve(next()); },
+    then(res, rej) { return Promise.resolve(next()).then(res, rej); },
+  };
+  return { client: builder, calls };
+}
+
 // The generic envelope columns every buildObservation()/buildObservationEnvelope()
 // call produces (observation-envelope.js) — present on every persisted
 // signal_facts_<signal> row regardless of signal.
@@ -71,13 +89,22 @@ const CASES = {
     scoreFn: scoreSpfQuality,
     expectLabel: (r) => assert.strictEqual(r.primaryLabel, '-all'),
   },
+  // DKIM DEVIATES differently again: dkim_keys is never a column on
+  // signal_facts_dkim at all — dkim-observation.js strips it before insert
+  // and fans it out to the child table signal_facts_dkim_keys. Reconstruction
+  // here means a genuine child-table read, not an in-row unwrap.
   dkim: {
     persistedRow: {
       domain: 'example.com', ...ENVELOPE, collector: 'dkim', collection_method: 'DNS',
       signal_version: 1, collected_at: '2026-07-12T00:00:00.000Z',
       dkim_present: true, dkim_collection_status: 'OK',
-      dkim_keys: [{ parse_success: true, public_key_present: true, key_bits: 2048, key_type: 'rsa', flags: [] }],
+      // dkim_keys: intentionally ABSENT — not a column on this table.
     },
+    childKeyRows: [{
+      selector: 'default', raw_record: 'v=DKIM1; k=rsa; p=abc', parse_success: true, version: 'DKIM1',
+      key_type: 'rsa', key_bits: 2048, public_key_present: true, hash_algorithms: ['sha256'],
+      service_type: '*', flags: [], syntax_errors: [],
+    }],
     scoreFn: scoreDkimQuality,
     expectLabel: (r) => assert.strictEqual(r.primaryLabel, '>=2048'),
   },
@@ -219,13 +246,17 @@ for (const [signal, spec] of Object.entries(CASES)) {
           leaf_is_self_signed: spec.persistedRow.leaf_is_self_signed,
           leaf_lifetime_days: spec.persistedRow.evidence.leaf_lifetime_days,
         }
+      : signal === 'dkim'
+      ? { ...spec.persistedRow, dkim_keys: spec.childKeyRows }
       : spec.persistedRow;
 
     const expected = spec.extra ? spec.scoreFn(expectedFacts, spec.extra) : spec.scoreFn(expectedFacts);
     assert.strictEqual(expected.scored, true, `${signal}: fixture must exercise a scored case`);
     if (spec.expectLabel) spec.expectLabel(expected);
 
-    const { client, calls } = fakeClient({ data: { id: `row-${signal}` }, error: null });
+    const { client, calls } = spec.childKeyRows
+      ? fakeSequencedClient([{ data: spec.childKeyRows, error: null }, { data: { id: `row-${signal}` }, error: null }])
+      : fakeClient({ data: { id: `row-${signal}` }, error: null });
     const r = await persistOnDemandQuality({
       signal,
       facts: spec.persistedRow,
@@ -287,4 +318,15 @@ test('regression guard — certificate: scoring the raw persisted row without re
   });
   assert.strictEqual(reconstructed.scored, true);
   assert.strictEqual(reconstructed.primaryLabel, 'CEILING');
+});
+
+test('regression guard — dkim: scoring the raw persisted row without the child-table read is always "no usable key"', () => {
+  const raw = scoreDkimQuality(CASES.dkim.persistedRow);
+  assert.strictEqual(raw.scored, true);
+  assert.strictEqual(raw.primaryLabel, 'no usable key (bounded)');
+
+  const reconstructed = scoreDkimQuality({ ...CASES.dkim.persistedRow, dkim_keys: CASES.dkim.childKeyRows });
+  assert.strictEqual(reconstructed.scored, true);
+  assert.strictEqual(reconstructed.primaryLabel, '>=2048');
+  assert.notStrictEqual(reconstructed.score, raw.score);
 });

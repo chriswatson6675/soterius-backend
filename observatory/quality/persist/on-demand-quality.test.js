@@ -29,6 +29,26 @@ function fakeClient(result) {
   return { client: builder, calls };
 }
 
+// Sequence-aware variant (matches observation-session.test.js's own fakeClient):
+// DKIM's reconstructFacts issues a genuine child-table SELECT (resolved via
+// awaiting the builder itself, through .then()) BEFORE the eventual quality
+// INSERT (resolved via .single()) — two distinct queries need two distinct
+// canned results, consumed in order.
+function fakeSequencedClient(results) {
+  const queue = Array.isArray(results) ? [...results] : [results];
+  const calls = [];
+  const next = () => (queue.length > 1 ? queue.shift() : queue[0]);
+  const builder = {
+    from(t) { calls.push(['from', t]); return builder; },
+    select(c) { calls.push(['select', c]); return builder; },
+    insert(r) { calls.push(['insert', r]); return builder; },
+    eq(c, v) { calls.push(['eq', c, v]); return builder; },
+    single() { calls.push(['single']); return Promise.resolve(next()); },
+    then(res, rej) { return Promise.resolve(next()).then(res, rej); },
+  };
+  return { client: builder, calls };
+}
+
 test('all ten signals have an adapter registered', () => {
   assert.deepStrictEqual(
     SIGNALS.slice().sort(),
@@ -68,16 +88,51 @@ test('spf — unobserved facts are not persisted (Unknown ≠ Absent)', async ()
   assert.strictEqual(calls.some((c) => c[0] === 'insert'), false, 'no insert attempted for an unscored observation');
 });
 
-test('dkim — byte-identical to a direct scoreDkimQuality() call', async () => {
-  const facts = { domain: 'example.com', dkim_collection_status: 'OK', dkim_keys: [{ parse_success: true, public_key_present: true, key_bits: 2048, flags: [] }], collected_at: '2026-07-12T00:00:00.000Z' };
-  const direct = scoreDkimQuality(facts);
-  const { client, calls } = fakeClient({ data: { id: 'row-2' }, error: null });
+// Realistic signal_facts_dkim row: dkim_keys is NEVER a column on this table
+// — dkim-observation.js strips it before insert and fans it out to the
+// child table signal_facts_dkim_keys. This is what .select('*') on
+// signal_facts_dkim actually returns.
+test('dkim — realistic persisted row (dkim_keys absent, read back from the child table) scores correctly', async () => {
+  const persistedRow = {
+    domain: 'example.com', collection_run_id: 'collection-run-1', collection_programme_id: 'programme-1',
+    collector: 'dkim', collector_version: 'dkim-collector@1.0.0', collection_method: 'DNS',
+    organisation_id: null, repository_authority_ref: null, collection_outcome: 'OBSERVED_PRESENT',
+    signal_version: 1, collected_at: '2026-07-12T00:00:00.000Z',
+    dkim_present: true, dkim_collection_status: 'OK',
+    // dkim_keys: intentionally ABSENT — not a column on this table at all.
+  };
+  const childKeyRows = [{
+    selector: 'default', raw_record: 'v=DKIM1; k=rsa; p=abc', parse_success: true, version: 'DKIM1',
+    key_type: 'rsa', key_bits: 2048, public_key_present: true, hash_algorithms: ['sha256'],
+    service_type: '*', flags: [], syntax_errors: [],
+  }];
 
-  const r = await persistOnDemandQuality({ signal: 'dkim', facts, runId: 'run-1', runLabel: 'label' }, { client });
+  const expected = scoreDkimQuality({ ...persistedRow, dkim_keys: childKeyRows });
+  assert.strictEqual(expected.scored, true);
+  assert.strictEqual(expected.primaryLabel, '>=2048', 'sanity: this fixture exercises the exact case the missing child-table read broke');
 
-  assert.strictEqual(r.result.score, direct.score);
+  // Proves the fix matters: scoring the raw persisted row with no key
+  // read-back — the pre-fix behaviour — defaults dkim_keys to [] and always
+  // reports "no usable key", regardless of the domain's real key strength.
+  const withoutReconstruction = scoreDkimQuality(persistedRow);
+  assert.strictEqual(withoutReconstruction.scored, true);
+  assert.strictEqual(withoutReconstruction.primaryLabel, 'no usable key (bounded)');
+  assert.notStrictEqual(withoutReconstruction.score, expected.score);
+
+  const { client, calls } = fakeSequencedClient([
+    { data: childKeyRows, error: null },      // the child-table SELECT
+    { data: { id: 'row-2' }, error: null },   // the signal_quality_dkim INSERT
+  ]);
+
+  const r = await persistOnDemandQuality({ signal: 'dkim', facts: persistedRow, runId: 'run-1', runLabel: 'label' }, { client });
+
+  assert.strictEqual(r.ok, true, r.error);
+  assert.strictEqual(r.persisted, true);
+  assert.strictEqual(r.result.score, expected.score);
   const insertedRow = calls.find((c) => c[0] === 'insert')[1][0];
-  assert.strictEqual(insertedRow.max_key_bits, direct.maxBits);
+  assert.strictEqual(insertedRow.max_key_bits, expected.maxBits);
+  const childSelect = calls.find((c) => c[0] === 'from' && c[1] === 'signal_facts_dkim_keys');
+  assert.ok(childSelect, 'must query the child table before scoring');
 });
 
 test('dmarc — byte-identical, and dmarc_policy is null for a floor state', async () => {

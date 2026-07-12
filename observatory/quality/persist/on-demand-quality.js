@@ -57,9 +57,29 @@ const ADAPTERS = {
     },
   },
 
+  // DKIM DEVIATES differently from tls/certificate: dkim-observation.js
+  // strips `dkim_keys` entirely from the domain-level signal_facts_dkim row
+  // (`const { dkim_keys, ...domainFacts } = facts`) and fans it out to a
+  // CHILD TABLE, signal_facts_dkim_keys, via the adapter's persistChildren
+  // hook. A .select('*') on signal_facts_dkim never contains key evidence at
+  // all — not even nested — so scoreDkimQuality's `facts.dkim_keys` would
+  // silently default to [] (no usable key) for every domain, regardless of
+  // its real key strength. reconstructFacts reads the child rows back and
+  // re-attaches them, mirroring the batch loaders' own read-the-real-
+  // evidence-before-scoring discipline; async because this reconstruction
+  // genuinely requires a query the tls/certificate cases do not.
   dkim: {
     tableName: 'signal_quality_dkim',
     scoreFn: (facts) => scoreDkimQuality(facts),
+    async reconstructFacts(row, client) {
+      const { data, error } = await client
+        .from('signal_facts_dkim_keys')
+        .select('*')
+        .eq('domain', row.domain)
+        .eq('dkim_run_id', row.collection_run_id);
+      if (error) throw new Error(`dkim key read-back failed: ${error.message}`);
+      return { ...row, dkim_keys: data || [] };
+    },
     buildRow(result, ctx) {
       return {
         domain: ctx.domain,
@@ -354,14 +374,16 @@ async function persistOnDemandQuality(input, deps = {}) {
   const scoreFn = deps.scoreFn || adapter.scoreFn;
 
   // Most signals' persisted rows are already the flat shape score*Quality()
-  // expects (facts spread verbatim by makeObservationBuilder). TLS and
-  // Certificate are not — reconstructFacts bridges the gap, exactly as the
-  // national batch loaders already do, before the row ever reaches the
-  // model. scoringFacts is used ONLY for the scoreFn call; buildRow below
-  // still receives the ORIGINAL row (ctx.facts) for its own metadata needs
-  // (collected_at, signal_version, the full evidence block for certificate's
-  // own evidence column), unaffected by this narrowing.
-  const scoringFacts = adapter.reconstructFacts ? adapter.reconstructFacts(facts) : facts;
+  // expects (facts spread verbatim by makeObservationBuilder). TLS,
+  // Certificate, and DKIM are not — reconstructFacts bridges the gap, exactly
+  // as the national batch loaders already do, before the row ever reaches
+  // the model (a plain object for tls/certificate; a genuine child-table
+  // query for dkim — `await` resolves either immediately). scoringFacts is
+  // used ONLY for the scoreFn call; buildRow below still receives the
+  // ORIGINAL row (ctx.facts) for its own metadata needs (collected_at,
+  // signal_version, the full evidence block for certificate's own evidence
+  // column), unaffected by this reconstruction.
+  const scoringFacts = adapter.reconstructFacts ? await adapter.reconstructFacts(facts, client) : facts;
 
   const result = scoreFn(scoringFacts, { population });
 
