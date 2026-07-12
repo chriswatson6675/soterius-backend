@@ -113,26 +113,104 @@ test('mtasts — byte-identical for an ENFORCE domain', async () => {
   assert.strictEqual(r.result.score, direct.score);
 });
 
-test('tls — byte-identical, row carries source_run_id', async () => {
-  const facts = { domain: 'example.com', endpoint_state: 'RESPONSE_OBSERVED', negotiated_version: 'TLSv1.3', collected_at: '2026-07-12T00:00:00.000Z' };
-  const direct = scoreTlsQuality(facts);
+// TLS's realistic signal_tls_v1 row: promotedScalars() (tls-extractor.js)
+// never sets cipher_key_exchange at the top level — it lives only inside
+// `evidence`, the full extractor output. This is what .select('*') actually
+// returns, and this fixture models it exactly (not a hand-flattened object).
+test('tls — realistic persisted row (cipher_key_exchange absent at top level, present only in evidence) scores correctly', async () => {
+  const persistedRow = {
+    id: 'obs-1', domain: 'example.com', run_id: 'collector-run-1',
+    collection_run_id: 'collection-run-1', collection_programme_id: 'programme-1',
+    collector: 'tls', collector_version: 'tls-extractor@1.0.0', collection_method: 'TLS',
+    organisation_id: null, repository_authority_ref: null, collection_outcome: 'OBSERVED_PRESENT',
+    signal_version: 1, collected_at: '2026-07-12T00:00:00.000Z',
+    endpoint_state: 'RESPONSE_OBSERVED', negotiated_version: 'TLSv1.2',
+    cipher_suite_standard: 'TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256',
+    forward_secrecy: true, alpn_protocol: 'h2', http2_negotiated: true,
+    // cipher_key_exchange: intentionally ABSENT at top level — this is the
+    // real shape promotedScalars() produces.
+    evidence: {
+      endpoint_state: 'RESPONSE_OBSERVED', negotiated_version: 'TLSv1.2',
+      cipher_suite_openssl: 'ECDHE-RSA-AES128-GCM-SHA256',
+      cipher_suite_standard: 'TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256',
+      cipher_key_exchange: 'ECDHE', cipher_symmetric_alg: 'AES_128_GCM', cipher_mac_hash: 'SHA256',
+      forward_secrecy: true, alpn_protocol: 'h2', http2_negotiated: true,
+    },
+  };
+
+  const expected = scoreTlsQuality({
+    endpoint_state: 'RESPONSE_OBSERVED', negotiated_version: 'TLSv1.2',
+    cipher_suite_standard: 'TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256',
+    cipher_key_exchange: 'ECDHE', alpn_protocol: 'h2', http2_negotiated: true,
+  });
+  assert.strictEqual(expected.scored, true);
+  assert.strictEqual(expected.primaryLabel, 'UPPER_MIDDLE', 'sanity: this fixture exercises the exact case the missing reconstruction broke');
+
+  // Proves the fix matters: scoring the RAW persisted row with no
+  // reconstruction — the pre-fix behaviour — produces the wrong result.
+  const withoutReconstruction = scoreTlsQuality(persistedRow);
+  assert.strictEqual(withoutReconstruction.scored, false);
+  assert.strictEqual(withoutReconstruction.reason, 'NOT_CLASSIFIABLE');
+
   const { client, calls } = fakeClient({ data: { id: 'row-6' }, error: null });
+  const r = await persistOnDemandQuality({ signal: 'tls', facts: persistedRow, runId: 'run-1', runLabel: 'label', sourceRunId: 'collection-run-1' }, { client });
 
-  const r = await persistOnDemandQuality({ signal: 'tls', facts, runId: 'run-1', runLabel: 'label', sourceRunId: 'collection-run-1' }, { client });
-
-  assert.strictEqual(r.result.score, direct.score);
+  assert.strictEqual(r.ok, true);
+  assert.strictEqual(r.persisted, true);
+  assert.strictEqual(r.result.score, expected.score);
+  assert.strictEqual(r.result.primaryLabel, 'UPPER_MIDDLE');
   const insertedRow = calls.find((c) => c[0] === 'insert')[1][0];
   assert.strictEqual(insertedRow.source_run_id, 'collection-run-1');
+  assert.strictEqual(insertedRow.collected_at, '2026-07-12T00:00:00.000Z', "buildRow still reads metadata from the ORIGINAL row, not the narrowed scoring facts");
 });
 
-test('certificate — byte-identical for a CHAIN_VERIFIED domain', async () => {
-  const facts = { domain: 'example.com', endpoint_state: 'RESPONSE_OBSERVED', certificate_present: 'CERTIFICATE_PRESENTED', tls_verification_result: 'CHAIN_VERIFIED', leaf_key_type: 'RSA', leaf_key_bits: 2048, leaf_is_wildcard: false, leaf_lifetime_days: 90, collected_at: '2026-07-12T00:00:00.000Z' };
-  const direct = scoreCertificateQuality(facts);
+// Certificate's realistic signal_certificate_v1 row: the PRIMARY gate
+// (tls_verification_result) plus leaf_key_type/leaf_key_bits/leaf_key_curve/
+// leaf_lifetime_days all live only inside `evidence` — none are promoted
+// columns (migration 015). This fixture models exactly what .select('*')
+// returns, not a hand-flattened object.
+test('certificate — realistic persisted row (primary gate + multiplier inputs only in evidence) scores correctly', async () => {
+  const persistedRow = {
+    id: 'obs-2', domain: 'example.com', run_id: 'collector-run-2',
+    collection_run_id: 'collection-run-2', collection_programme_id: 'programme-2',
+    collector: 'certificate', collector_version: 'certificate-extractor@1.0.0', collection_method: 'TLS',
+    organisation_id: null, repository_authority_ref: null, collection_outcome: 'OBSERVED_PRESENT',
+    signal_version: 1, collected_at: '2026-07-12T00:00:00.000Z',
+    endpoint_state: 'RESPONSE_OBSERVED', certificate_present: 'CERTIFICATE_PRESENTED',
+    tls_error_code: null, leaf_days_remaining: 60,
+    leaf_issuer_cn: "Let's Encrypt", leaf_issuer_o: "Let's Encrypt",
+    leaf_subject_cn: 'example.com', leaf_is_self_signed: false, leaf_is_wildcard: false,
+    leaf_fingerprint_sha256: 'abc123',
+    // tls_verification_result/leaf_key_type/leaf_key_bits/leaf_key_curve/
+    // leaf_lifetime_days: intentionally ABSENT at top level.
+    evidence: {
+      tls_verification_result: 'CHAIN_VERIFIED', leaf_key_type: 'RSA', leaf_key_bits: 2048,
+      leaf_key_curve: null, leaf_lifetime_days: 90,
+    },
+  };
+
+  const expected = scoreCertificateQuality({
+    endpoint_state: 'RESPONSE_OBSERVED', certificate_present: 'CERTIFICATE_PRESENTED',
+    tls_verification_result: 'CHAIN_VERIFIED', leaf_key_type: 'RSA', leaf_key_bits: 2048,
+    leaf_key_curve: null, leaf_is_wildcard: false, leaf_is_self_signed: false, leaf_lifetime_days: 90,
+  });
+  assert.strictEqual(expected.scored, true);
+  assert.strictEqual(expected.primaryLabel, 'CEILING', 'sanity: this fixture exercises the exact case the missing reconstruction broke');
+
+  // Proves the fix matters: scoring the RAW persisted row with no
+  // reconstruction — the pre-fix behaviour — never even finds a verification
+  // result and always returns INVALID_OBSERVATION.
+  const withoutReconstruction = scoreCertificateQuality(persistedRow);
+  assert.strictEqual(withoutReconstruction.scored, false);
+  assert.strictEqual(withoutReconstruction.reason, 'INVALID_OBSERVATION');
+
   const { client } = fakeClient({ data: { id: 'row-7' }, error: null });
+  const r = await persistOnDemandQuality({ signal: 'certificate', facts: persistedRow, runId: 'run-1', runLabel: 'label', sourceRunId: 'collection-run-2' }, { client });
 
-  const r = await persistOnDemandQuality({ signal: 'certificate', facts, runId: 'run-1', runLabel: 'label', sourceRunId: 'collection-run-1' }, { client });
-
-  assert.strictEqual(r.result.score, direct.score);
+  assert.strictEqual(r.ok, true);
+  assert.strictEqual(r.persisted, true);
+  assert.strictEqual(r.result.score, expected.score);
+  assert.strictEqual(r.result.primaryLabel, 'CEILING');
 });
 
 test('securitytxt — byte-identical for a CEILING domain', async () => {

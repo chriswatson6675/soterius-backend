@@ -187,9 +187,32 @@ const ADAPTERS = {
     },
   },
 
+  // TLS DEVIATES from the flat facts-spread pattern: signal_tls_v1 stores
+  // only a subset of fields as promoted top-level columns (tls-extractor.js
+  // promotedScalars()) plus the full extractor output nested under
+  // `evidence`. scoreTlsQuality() needs cipher_key_exchange, which is a
+  // derived field the extractor computes (tls-extractor.js:69) but
+  // promotedScalars() does not surface at the top level (migration 016
+  // comment: "informational index; not in §4.5 promoted list"). Every other
+  // field the model reads IS already a promoted column. reconstructFacts
+  // mirrors exactly what the national batch loader
+  // (observatory/quality/nob-tls-001/load.js) already does before calling
+  // this same scoreTlsQuality() — reused as an approach, not imported,
+  // since load.js is a standalone script with its own execution entry
+  // point, not a library module.
   tls: {
     tableName: 'signal_quality_tls',
     scoreFn: (facts) => scoreTlsQuality(facts),
+    reconstructFacts(row) {
+      return {
+        endpoint_state: row.endpoint_state,
+        negotiated_version: row.negotiated_version,
+        cipher_suite_standard: row.cipher_suite_standard,
+        cipher_key_exchange: row.evidence?.cipher_key_exchange,
+        alpn_protocol: row.alpn_protocol,
+        http2_negotiated: row.http2_negotiated,
+      };
+    },
     buildRow(result, ctx) {
       return {
         domain: ctx.domain,
@@ -207,9 +230,31 @@ const ADAPTERS = {
     },
   },
 
+  // CERTIFICATE has the same deviation as TLS (same shared collection
+  // domain, ADR-COL-003; signal_certificate_v1 built the same way by
+  // certificate-observation.js). scoreCertificateQuality()'s PRIMARY gate
+  // (tls_verification_result) plus leaf_key_type/leaf_key_bits/
+  // leaf_key_curve/leaf_lifetime_days all live only in `evidence` — none are
+  // promoted columns (migration 015). reconstructFacts mirrors exactly what
+  // observatory/quality/nob-certificate-001-v2/load.js already does before
+  // calling this same scoreCertificateQuality() (same non-import rationale
+  // as tls above).
   certificate: {
     tableName: 'signal_quality_certificate',
     scoreFn: (facts) => scoreCertificateQuality(facts),
+    reconstructFacts(row) {
+      return {
+        endpoint_state: row.endpoint_state,
+        certificate_present: row.certificate_present,
+        tls_verification_result: row.evidence?.tls_verification_result,
+        leaf_key_type: row.evidence?.leaf_key_type,
+        leaf_key_bits: row.evidence?.leaf_key_bits,
+        leaf_key_curve: row.evidence?.leaf_key_curve,
+        leaf_is_wildcard: row.leaf_is_wildcard,
+        leaf_is_self_signed: row.leaf_is_self_signed,
+        leaf_lifetime_days: row.evidence?.leaf_lifetime_days,
+      };
+    },
     buildRow(result, ctx) {
       return {
         domain: ctx.domain,
@@ -278,7 +323,10 @@ const SIGNALS = Object.keys(ADAPTERS);
 
 /**
  * Score one already-persisted Observation row and, if scoreable, insert one
- * row into the matching signal_quality_<signal> table.
+ * row into the matching signal_quality_<signal> table. For tls/certificate,
+ * `input.facts` is first passed through the adapter's reconstructFacts()
+ * before scoring (see the ADAPTERS entries above) — every other signal's
+ * row is already the flat shape score*Quality() expects.
  *
  * @param {Object} input
  * @param {string} input.signal        - one of SIGNALS
@@ -305,7 +353,17 @@ async function persistOnDemandQuality(input, deps = {}) {
   const client = deps.client || getClient();
   const scoreFn = deps.scoreFn || adapter.scoreFn;
 
-  const result = scoreFn(facts, { population });
+  // Most signals' persisted rows are already the flat shape score*Quality()
+  // expects (facts spread verbatim by makeObservationBuilder). TLS and
+  // Certificate are not — reconstructFacts bridges the gap, exactly as the
+  // national batch loaders already do, before the row ever reaches the
+  // model. scoringFacts is used ONLY for the scoreFn call; buildRow below
+  // still receives the ORIGINAL row (ctx.facts) for its own metadata needs
+  // (collected_at, signal_version, the full evidence block for certificate's
+  // own evidence column), unaffected by this narrowing.
+  const scoringFacts = adapter.reconstructFacts ? adapter.reconstructFacts(facts) : facts;
+
+  const result = scoreFn(scoringFacts, { population });
 
   // Unscored — Unknown ≠ Absent. No row is written; this is the intended,
   // honest outcome (matches every model's own P1 discipline), not a failure.
