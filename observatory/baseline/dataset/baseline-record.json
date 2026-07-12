@@ -1,0 +1,94 @@
+{
+  "baselineId": "NOB-001",
+  "name": "National Observatory Baseline 001",
+  "status": "COMPLETE_PARTIAL_COVERAGE",
+  "coverageComplete": false,
+  "partialSignals": [
+    {
+      "signal": "SOT-SECURITYTXT-001",
+      "coverage": 7428,
+      "pct": 43.5
+    }
+  ],
+  "rubric": "TS-RUBRIC-v1.0",
+  "signalScope": [
+    "A (Email Trust)",
+    "B (Domain Trust)",
+    "C (Control Transparency)"
+  ],
+  "authority": {
+    "cohortId": "ORG-AUTHORITY-001",
+    "selectionId": "org-authority-599986411945",
+    "totalOrganisations": 35752,
+    "verifiedDomains": 17057
+  },
+  "startedAt": "2026-07-06T23:56:55.336Z",
+  "finishedAt": "2026-07-07T08:50:07.222Z",
+  "collectionDurationSec": null,
+  "durationSec": 31992,
+  "eligibleVerified": 17057,
+  "successfulScans": 17057,
+  "failedScans": 0,
+  "retry": {
+    "totalRetried": 0,
+    "totalRecovered": 0,
+    "perSignal": {},
+    "note": "no separate retry pass executed"
+  },
+  "collectorFailures": null,
+  "observationCount": 126827,
+  "evidenceCount": 126827,
+  "trustProfiles": 17057,
+  "trustScores": 4903,
+  "insufficientObservation": 12154,
+  "coreCompleteProfiles": 2013,
+  "validation": {
+    "everyScoredOrgInAuthority": true,
+    "orphanObservations": 0,
+    "oneOrgPerObservation": true,
+    "noLegacyRegistryRef": true,
+    "deterministic": true
+  },
+  "coverage": {
+    "SOT-SPF-001": {
+      "table": "signal_facts_spf",
+      "distinctDomains": 17057,
+      "rows": 17057
+    },
+    "SOT-DMARC-001": {
+      "table": "signal_facts_dmarc",
+      "distinctDomains": 17057,
+      "rows": 17057
+    },
+    "SOT-DKIM-001": {
+      "table": "signal_facts_dkim",
+      "distinctDomains": 17057,
+      "rows": 17057
+    },
+    "SOT-DNSSEC-001": {
+      "table": "signal_facts_dnssec",
+      "distinctDomains": 17057,
+      "rows": 17057
+    },
+    "SOT-CAA-001": {
+      "table": "signal_facts_caa",
+      "distinctDomains": 17057,
+      "rows": 17057
+    },
+    "SOT-MTASTS-001": {
+      "table": "signal_facts_mtasts",
+      "distinctDomains": 17057,
+      "rows": 17057
+    },
+    "SOT-SECURITYHEADERS-001": {
+      "table": "signal_securityheaders_v1",
+      "distinctDomains": 17057,
+      "rows": 17057
+    },
+    "SOT-SECURITYTXT-001": {
+      "table": "signal_securitytxt_v1",
+      "distinctDomains": 7428,
+      "rows": 7428
+    }
+  }
+}

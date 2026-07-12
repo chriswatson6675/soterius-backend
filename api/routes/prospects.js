@@ -2,12 +2,13 @@ const express = require('express');
 const router  = express.Router();
 const { AppError, ValidationError } = require('../../infra/utils/errors');
 const logger   = require('../../infra/utils/logger');
-const { executeScan } = require('../services/scanService');
 const { validateDomain } = require('../../infra/utils/validators');
+const { computeBenchmarkAggregates } = require('../services/benchmarkAggregation');
+const { runOnDemandObservation } = require('../../observatory/on-demand/on-demand-observation');
 const {
   findOrCreateProspect, createProspect, getProspects, getProspectById,
   updateProspect, updateProspectLastScanned, deleteProspect,
-  saveScan, getScanHistory, getBenchmarkData,
+  getScanHistory, getBenchmarkData,
 } = require('../../infra/database');
 
 // ── Admin auth guard ──────────────────────────────────────────────────────────
@@ -23,132 +24,117 @@ function requireAdmin(req, res, next) {
 router.use(requireAdmin);
 
 // ── POST /api/prospects/quick-scan ───────────────────────────────────────────
-// Research Mode: find-or-create a prospect by website, run a full scan, persist
-// the result, and return immediately — no gate form required.
-// Optimised for batch use: a single API call handles the full workflow.
-router.post('/quick-scan', async (req, res, next) => {
-  try {
+// Research Mode: find-or-create a prospect by website and trigger a fresh
+// canonical observation for it — no gate form required.
+//
+// ENG-012 §1.2 / §2 item 1 (T3.4, ENG-013 WP3): previously called the legacy
+// scan service's synchronous scan function directly and persisted its
+// derived score object to the scans table. Now delegates to the SAME
+// on-demand orchestrator the
+// authenticated customer-facing trigger uses (backend/api/routes/
+// observation-sessions.js's POST /on-demand) — reusing runOnDemandObservation
+// unmodified, never re-implementing it (no duplicate orchestration). Response
+// is now async (202 + sessionId), matching that route's own contract, since
+// the canonical pipeline is not a synchronous call. Caller polls
+// GET /api/observation-sessions/:id for completion.
+//
+// Note: this endpoint no longer writes a `scans` row or updates a prospect's
+// legacy scan-history/last_scanned by scan CONTENT — canonical Observations
+// are domain-keyed, not prospect-keyed (ENG-007 §4.6). last_scanned is still
+// updated, marking that an observation was requested, not that a legacy scan
+// completed — a deliberate, minimal preservation of that one side effect
+// (recorded in ENG-013 WP3's implementation summary as a behaviour change).
+function createQuickScanHandler(deps = {}) {
+  const {
+    findOrCreateProspectFn = findOrCreateProspect,
+    updateProspectLastScannedFn = updateProspectLastScanned,
+    runOnDemand = runOnDemandObservation,
+  } = deps;
+
+  return function postQuickScan(req, res, next) {
     const { firm_name, website, sector, location, source } = req.body;
 
-    if (!website) throw new ValidationError('website is required');
+    if (!website) return next(new ValidationError('website is required'));
 
     const domain = String(website).trim().toLowerCase()
       .replace(/^https?:\/\//, '')
       .replace(/\/$/, '');
-    if (!validateDomain(domain)) throw new ValidationError(`Invalid website domain: ${domain}`);
+    if (!validateDomain(domain)) return next(new ValidationError(`Invalid website domain: ${domain}`));
 
-    const prospectResult = await findOrCreateProspect({
+    findOrCreateProspectFn({
       firm_name: firm_name ? String(firm_name).trim() : domain,
       website:   domain,
       sector:    sector   ? String(sector).trim()   : null,
       location:  location ? String(location).trim() : null,
       source:    source   ? String(source).trim()   : 'manual',
-    });
+    }).then((prospectResult) => {
+      if (!prospectResult.success) {
+        return next(new AppError(prospectResult.error || 'Failed to find or create prospect', 500));
+      }
 
-    if (!prospectResult.success) {
-      throw new AppError(prospectResult.error || 'Failed to find or create prospect', 500);
-    }
+      const prospect = prospectResult.prospect;
+      let responded = false;
 
-    const prospect = prospectResult.prospect;
+      runOnDemand(domain, {
+        requestedBy: null,
+        onSessionCreated: (session) => {
+          responded = true;
+          updateProspectLastScannedFn(prospect.id).catch((err) => {
+            logger.error(`quick-scan: failed to update last_scanned for ${prospect.id}: ${err.message}`);
+          });
+          logger.info(`quick-scan: on-demand observation triggered for ${prospect.firm_name} (${domain}) — session ${session.id}`);
+          res.status(202).json({
+            success:    true,
+            prospectId: prospect.id,
+            created:    prospectResult.created ?? true,
+            domain,
+            sessionId:  session.id,
+          });
+        },
+      }).then((result) => {
+        if (!responded) {
+          logger.error(`quick-scan: on-demand session creation failed for ${domain}: ${result.error}`);
+          res.status(502).json({ success: false, error: result.error || 'on-demand observation failed to start' });
+        }
+      }).catch((err) => {
+        logger.error(`quick-scan: on-demand observation pipeline threw for ${domain}: ${err.message}`);
+        if (!responded) res.status(502).json({ success: false, error: 'on-demand observation failed to start' });
+      });
+    }).catch(next);
+  };
+}
 
-    const { score, riskLevel, scannedAt, totalPoints, maxPoints, scanners, scoreObject } =
-      await executeScan(domain);
-
-    const scanRecord = await saveScan(domain, scoreObject, scanners, prospect.id);
-    const scanId = scanRecord.success ? scanRecord.id : null;
-
-    if (!scanRecord.success) {
-      logger.error(`quick-scan: failed to persist scan for ${domain}: ${scanRecord.error}`);
-    } else {
-      await updateProspectLastScanned(prospect.id);
-      logger.info(`quick-scan: ${prospect.firm_name} (${domain}) → ${score}% (${riskLevel})`);
-    }
-
-    res.json({
-      success:    true,
-      prospectId: prospect.id,
-      created:    prospectResult.created ?? true,
-      domain,
-      scannedAt,
-      score,
-      riskLevel,
-      totalPoints,
-      maxPoints,
-      scanners,
-      scoreObject,
-      scanId,
-    });
-  } catch (err) {
-    next(err);
-  }
-});
+router.post('/quick-scan', createQuickScanHandler());
 
 // ── GET /api/prospects/benchmarks ─────────────────────────────────────────────
 // Aggregates all prospect-linked scans into benchmark statistics:
 //   bySector, byLocation, bandDistribution, topFailedChecks
-router.get('/benchmarks', async (req, res, next) => {
-  try {
-    const raw = await getBenchmarkData();
+//
+// ENG-012 §1.3 / §2 item 1 (T3.3, ENG-013 WP3): the aggregation itself is
+// delegated to computeBenchmarkAggregates() — the single canonical
+// implementation shared with backend/api/routes/benchmarks.js. This route no
+// longer re-derives the aggregation inline.
+function createGetProspectBenchmarks(getBenchmarkDataFn = getBenchmarkData) {
+  return async function getProspectBenchmarks(req, res, next) {
+    try {
+      const raw = await getBenchmarkDataFn();
+      const agg = computeBenchmarkAggregates(raw);
 
-    const bySector    = {};
-    const byLocation  = {};
-    const bandCounts  = {};
-    const failedChecks = {};
-
-    for (const scan of raw) {
-      const prospect = scan.prospects;
-      if (!prospect) continue;
-
-      const score  = Number(scan.overall_score);
-      const band   = scan.risk_band || 'Unknown';
-      const sector = prospect.sector   || 'Unknown';
-      const loc    = prospect.location || 'Unknown';
-
-      if (!bySector[sector])   bySector[sector]   = { scores: [] };
-      if (!byLocation[loc])    byLocation[loc]     = { scores: [] };
-      bySector[sector].scores.push(score);
-      byLocation[loc].scores.push(score);
-
-      bandCounts[band] = (bandCounts[band] || 0) + 1;
-
-      for (const scanner of (scan.scanner_results || [])) {
-        for (const check of (scanner.checks || [])) {
-          if (check.status === 'FAIL') {
-            failedChecks[check.name] = (failedChecks[check.name] || 0) + 1;
-          }
-        }
-      }
+      res.json({
+        success:          true,
+        totalScans:       agg.totalScans,
+        bySector:         agg.bySector,
+        byLocation:       agg.byLocation,
+        bandDistribution: agg.bandDistribution,
+        topFailedChecks:  agg.topFailedChecks,
+      });
+    } catch (err) {
+      next(err);
     }
+  };
+}
 
-    function aggregateGroup(group) {
-      return Object.entries(group)
-        .map(([label, { scores }]) => ({
-          label,
-          count:    scores.length,
-          avgScore: scores.length ? Math.round(scores.reduce((s, v) => s + v, 0) / scores.length) : 0,
-          minScore: scores.length ? Math.min(...scores) : 0,
-          maxScore: scores.length ? Math.max(...scores) : 0,
-        }))
-        .sort((a, b) => b.count - a.count);
-    }
-
-    const topFailedChecks = Object.entries(failedChecks)
-      .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 20);
-
-    res.json({
-      success:          true,
-      totalScans:       raw.length,
-      bySector:         aggregateGroup(bySector),
-      byLocation:       aggregateGroup(byLocation),
-      bandDistribution: bandCounts,
-      topFailedChecks,
-    });
-  } catch (err) {
-    next(err);
-  }
-});
+router.get('/benchmarks', createGetProspectBenchmarks());
 
 // ── GET /api/prospects ────────────────────────────────────────────────────────
 // Returns all prospects ordered: unscanned first, then least recently scanned.
@@ -261,45 +247,60 @@ router.delete('/:id', async (req, res, next) => {
 });
 
 // ── POST /api/prospects/:id/scan ──────────────────────────────────────────────
-// Triggers a full security scan for a prospect, persists the scan record with
-// prospect_id set, and updates last_scanned on the prospect.
-router.post('/:id/scan', async (req, res, next) => {
-  try {
-    const prospect = await getProspectById(req.params.id);
-    if (!prospect) return res.status(404).json({ success: false, error: 'Prospect not found' });
+// Triggers a fresh canonical observation for a prospect's domain.
+//
+// ENG-012 §1.2 / §2 item 1 (T3.4, ENG-013 WP3): same migration as quick-scan
+// above — delegates to the shared, unmodified runOnDemandObservation
+// orchestrator rather than the legacy scan service's synchronous scan
+// function. Async (202 + sessionId); caller polls
+// GET /api/observation-sessions/:id.
+function createProspectScanHandler(deps = {}) {
+  const {
+    getProspectByIdFn = getProspectById,
+    updateProspectLastScannedFn = updateProspectLastScanned,
+    runOnDemand = runOnDemandObservation,
+  } = deps;
 
-    const domain = prospect.website;
-    if (!validateDomain(domain)) throw new ValidationError(`Prospect has invalid domain: ${domain}`);
+  return function postProspectScan(req, res, next) {
+    getProspectByIdFn(req.params.id).then((prospect) => {
+      if (!prospect) return res.status(404).json({ success: false, error: 'Prospect not found' });
 
-    const { score, riskLevel, scannedAt, totalPoints, maxPoints, scanners, scoreObject } =
-      await executeScan(domain);
+      const domain = prospect.website;
+      if (!validateDomain(domain)) return next(new ValidationError(`Prospect has invalid domain: ${domain}`));
 
-    const scanRecord = await saveScan(domain, scoreObject, scanners, prospect.id);
-    const scanId = scanRecord.success ? scanRecord.id : null;
+      let responded = false;
 
-    if (!scanRecord.success) {
-      logger.error(`Failed to persist scan for prospect ${prospect.id}: ${scanRecord.error}`);
-    } else {
-      await updateProspectLastScanned(prospect.id);
-      logger.info(`Prospect scan stored: ${scanId} for ${prospect.firm_name} (${domain})`);
-    }
+      runOnDemand(domain, {
+        requestedBy: null,
+        onSessionCreated: (session) => {
+          responded = true;
+          updateProspectLastScannedFn(prospect.id).catch((err) => {
+            logger.error(`prospect scan: failed to update last_scanned for ${prospect.id}: ${err.message}`);
+          });
+          logger.info(`Prospect on-demand observation triggered: session ${session.id} for ${prospect.firm_name} (${domain})`);
+          res.status(202).json({
+            success:    true,
+            prospectId: prospect.id,
+            domain,
+            sessionId:  session.id,
+          });
+        },
+      }).then((result) => {
+        if (!responded) {
+          logger.error(`Prospect scan: session creation failed for ${domain}: ${result.error}`);
+          res.status(502).json({ success: false, error: result.error || 'on-demand observation failed to start' });
+        }
+      }).catch((err) => {
+        logger.error(`Prospect scan: pipeline threw for ${domain}: ${err.message}`);
+        if (!responded) res.status(502).json({ success: false, error: 'on-demand observation failed to start' });
+      });
+    }).catch(next);
+  };
+}
 
-    res.json({
-      success:    true,
-      prospectId: prospect.id,
-      domain,
-      scannedAt,
-      score,
-      riskLevel,
-      totalPoints,
-      maxPoints,
-      scanners,
-      scoreObject,
-      scanId,
-    });
-  } catch (err) {
-    next(err);
-  }
-});
+router.post('/:id/scan', createProspectScanHandler());
 
 module.exports = router;
+module.exports.createQuickScanHandler       = createQuickScanHandler;
+module.exports.createGetProspectBenchmarks  = createGetProspectBenchmarks;
+module.exports.createProspectScanHandler    = createProspectScanHandler;

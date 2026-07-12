@@ -2,68 +2,84 @@ const express = require('express');
 const router = express.Router();
 const { generatePDF } = require('../pdf-generator/generator');
 const { adaptScannersForPDF } = require('../../infra/utils/pdfAdapter');
-const { ValidationError } = require('../../infra/utils/errors');
+const { ValidationError, AppError } = require('../../infra/utils/errors');
 const logger = require('../../infra/utils/logger');
+const derivation = require('../services/scan-derivation-service');
+const { getScanById } = require('../../infra/database');
 
-// Normalise riskLevel to the five-band keys the generator expects.
-function normaliseRisk(riskLevel, score) {
+// Maps a canonical risk label (always derived server-side — never client
+// input, see below) onto the five-band keys the PDF generator expects.
+function riskLabelToPdfKey(riskLevel) {
   const l = String(riskLevel || '').toLowerCase().replace(/\s+/g, '');
-  if (l === 'excellent')                                        return 'excellent';
-  if (l === 'good' || l === 'green' || l === 'low')            return 'good';
-  if (l === 'moderaterisk' || l === 'moderate')                return 'moderate';
-  if (l === 'highrisk' || l === 'high' || l === 'amber' || l === 'medium') return 'high';
-  if (l === 'criticalrisk' || l === 'critical' || l === 'red') return 'critical';
-  // score-based fallback
-  if (typeof score === 'number') {
-    if (score >= 90) return 'excellent';
-    if (score >= 75) return 'good';
-    if (score >= 60) return 'moderate';
-    if (score >= 40) return 'high';
-  }
+  if (l === 'excellent')     return 'excellent';
+  if (l === 'good')          return 'good';
+  if (l === 'moderaterisk')  return 'moderate';
+  if (l === 'highrisk')      return 'high';
   return 'critical';
 }
 
-router.post('/report', async (req, res, next) => {
-  try {
-    const { domain, timestamp, results, scanners, overallScore, riskLevel, scoreObject } = req.body;
+// POST /api/report — body: { scanId }
+//
+// ENG-011 §3 / ENG-012 §1.2 / §2 item 1 (T3.1, ENG-013 WP3) remediation: this
+// endpoint previously accepted overallScore/riskLevel/scoreObject/results/
+// scanners directly from the request body and rendered them into a PDF with
+// no server-side re-derivation at all — resolveRiskLevel() even preferred a
+// caller-supplied riskLevel outright over any score-based derivation. That
+// was the single most severe finding in ENG-011's convergence audit.
+//
+// Every trust-bearing field is now derived server-side from the persisted
+// scanner_results — the evidence of record for the referenced scan
+// (infra/database.js's own contract: score/risk-band are "a NON-AUTHORITATIVE
+// DERIVED CACHE... recomputable at any time from scanner_results"). A caller
+// can now only choose WHICH already-persisted scan to render; it can no
+// longer influence WHAT the rendered result says. No new write occurs here —
+// this route only reads an existing, immutable `scans` row (append-only
+// invariant, CLAUDE.md, untouched).
+function createPostReport(getScanByIdFn = getScanById, generatePDFFn = generatePDF) {
+  return async function postReport(req, res, next) {
+    try {
+      const { scanId } = req.body;
+      if (!scanId) throw new ValidationError('scanId is required');
 
-    if (!domain) throw new ValidationError('domain is required');
+      const scan = await getScanByIdFn(scanId);
+      if (!scan) return res.status(404).json({ success: false, error: 'Scan not found' });
+      if (!Array.isArray(scan.scanner_results)) {
+        throw new AppError('Scan record has no scanner results to derive from', 500);
+      }
 
-    // Accept either the legacy `results` object or the new `scanners` array
-    // (frontend sends scanners; older callers may send results directly)
-    const adaptedResults = results
-      || (Array.isArray(scanners) ? adaptScannersForPDF(scanners) : null);
+      logger.info(`PDF report requested for scan ${scanId} (${scan.domain})`);
 
-    if (!adaptedResults || typeof adaptedResults !== 'object') {
-      throw new ValidationError('Either a results object or a scanners array is required');
+      const derived = derivation.deriveScanPresentation(scan.scanner_results, scan.scanned_at);
+      const adaptedResults = adaptScannersForPDF(derived.scanners);
+
+      const raw = await generatePDFFn({
+        domain:       scan.domain,
+        timestamp:    scan.scanned_at,
+        results:      adaptedResults,
+        overallScore: derived.score,
+        riskLevel:    riskLabelToPdfKey(derived.riskLevel),
+        scoreObject:  derived.scoreObject,
+      });
+      // Puppeteer 22+ returns Uint8Array; Express 4 res.send() JSON-stringifies
+      // anything that isn't a Buffer, so we must convert explicitly.
+      const pdf = Buffer.isBuffer(raw) ? raw : Buffer.from(raw);
+
+      const safeDomain = String(scan.domain).replace(/[^a-zA-Z0-9.-]/g, '-');
+      const dateStr = new Date().toISOString().split('T')[0];
+      const filename = `${safeDomain}-security-report-${dateStr}.pdf`;
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader('Content-Length', pdf.length);
+      res.send(pdf);
+    } catch (err) {
+      next(err);
     }
+  };
+}
 
-    logger.info(`PDF report requested for ${domain}`);
-
-    const riskKey = normaliseRisk(riskLevel, overallScore);
-    const raw = await generatePDF({
-      domain,
-      timestamp,
-      results: adaptedResults,
-      overallScore,
-      riskLevel: riskKey,
-      scoreObject,
-    });
-    // Puppeteer 22+ returns Uint8Array; Express 4 res.send() JSON-stringifies
-    // anything that isn't a Buffer, so we must convert explicitly.
-    const pdf = Buffer.isBuffer(raw) ? raw : Buffer.from(raw);
-
-    const safeDomain = domain.replace(/[^a-zA-Z0-9.-]/g, '-');
-    const dateStr = new Date().toISOString().split('T')[0];
-    const filename = `${safeDomain}-security-report-${dateStr}.pdf`;
-
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.setHeader('Content-Length', pdf.length);
-    res.send(pdf);
-  } catch (err) {
-    next(err);
-  }
-});
+router.post('/report', createPostReport());
 
 module.exports = router;
+module.exports.createPostReport = createPostReport;
+module.exports.riskLabelToPdfKey = riskLabelToPdfKey;

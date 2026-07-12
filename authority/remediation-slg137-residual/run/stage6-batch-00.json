@@ -1,0 +1,377 @@
+[
+  {
+    "organisation_id": "ORG-252FDCABB908",
+    "organisation_name": "ABIGAIL DAYKIN SOLICITORS",
+    "stored_domain": "abigaildaykinsolicitors.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "350659",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWNSRA:YES",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-AB90698D5673",
+    "organisation_name": "Aldgate Chambers Solicitors",
+    "stored_domain": "acsolicitors.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "821470",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWNSRA:YES",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-E63C08B36790",
+    "organisation_name": "720 PERFORMANCE LIMITED",
+    "stored_domain": "720performance.co.uk",
+    "regulators": [
+      "FCA"
+    ],
+    "identifiers": {
+      "frn": "957154",
+      "sraIdentifier": null,
+      "companiesHouseNumber": "13427347"
+    },
+    "organisation_status": "CH:active | FCA:Authorised",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-90435FE3114C",
+    "organisation_name": "Advanced Capital Solutions Limited",
+    "stored_domain": "acs-ins.co.uk",
+    "regulators": [
+      "FCA"
+    ],
+    "identifiers": {
+      "frn": "308509",
+      "sraIdentifier": null,
+      "companiesHouseNumber": "03365879"
+    },
+    "organisation_status": "CH:active | FCA:Authorised",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-50B2A0C5A0FF",
+    "organisation_name": "abrdn Holdings Limited",
+    "stored_domain": "aderdeen-asset.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "79596",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-775D44A2BF11",
+    "organisation_name": "ADELPHA FINANCE LTD",
+    "stored_domain": "adelphafinance.com",
+    "regulators": [
+      "FCA"
+    ],
+    "identifiers": {
+      "frn": "950925",
+      "sraIdentifier": null,
+      "companiesHouseNumber": "10409159"
+    },
+    "organisation_status": "CH:active | FCA:Authorised",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-EC69D29BF501",
+    "organisation_name": "LINES SOLICITORS LIMITED",
+    "stored_domain": "ajamessolicitors.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "637901",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWNSRA:YES",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-B1D5932E1029",
+    "organisation_name": "Alderley Insurance Limited",
+    "stored_domain": "alderleyinsurancebrokers.com",
+    "regulators": [
+      "FCA"
+    ],
+    "identifiers": {
+      "frn": "1052498",
+      "sraIdentifier": null,
+      "companiesHouseNumber": "15272336"
+    },
+    "organisation_status": "CH:active | FCA:Authorised",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-227C23DAE972",
+    "organisation_name": "ALLIANZ LEGAL PROTECTION",
+    "stored_domain": "allianzlegalprotection.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "287748",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-7746B535630D",
+    "organisation_name": "ARCHDIOCESE OF LIVERPOOL",
+    "stored_domain": "archdiocese-liverpool.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "71054",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-D57B43C3BA84",
+    "organisation_name": "Acumen Pensions and Investments Limited",
+    "stored_domain": "acumenpensionsandinvestments.co.uk",
+    "regulators": [
+      "FCA"
+    ],
+    "identifiers": {
+      "frn": "915729",
+      "sraIdentifier": null,
+      "companiesHouseNumber": "11837442"
+    },
+    "organisation_status": "CH:active | FCA:Authorised",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-B84736828730",
+    "organisation_name": "Archer Insurance Services Limited",
+    "stored_domain": "archerinsurance.org",
+    "regulators": [
+      "FCA"
+    ],
+    "identifiers": {
+      "frn": "310577",
+      "sraIdentifier": null,
+      "companiesHouseNumber": "02649983"
+    },
+    "organisation_status": "CH:active | FCA:Authorised",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-E05B8D1870B2",
+    "organisation_name": "Adelphi Special Risks Limited",
+    "stored_domain": "adelphispecialrisks.co.uk",
+    "regulators": [
+      "FCA"
+    ],
+    "identifiers": {
+      "frn": "601531",
+      "sraIdentifier": null,
+      "companiesHouseNumber": "08485364"
+    },
+    "organisation_status": "CH:active | FCA:Authorised",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-3D420DE82AA3",
+    "organisation_name": "ASHER & TOMAR",
+    "stored_domain": "asherandtomar.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "525498",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWNSRA:YES",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-C48E09CCCF97",
+    "organisation_name": "ATRIUM UNDERWRITING PLC",
+    "stored_domain": "atrium-um.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "372146",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-6C4D70DFFAED",
+    "organisation_name": "A&E Wealth Solutions Limited",
+    "stored_domain": "aewealth.uk",
+    "regulators": [
+      "FCA"
+    ],
+    "identifiers": {
+      "frn": "813553",
+      "sraIdentifier": null,
+      "companiesHouseNumber": "10443804"
+    },
+    "organisation_status": "CH:active | FCA:Authorised",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-66DB4397A7A1",
+    "organisation_name": "ADMIRAL GROUP PLC",
+    "stored_domain": "admiralgroup.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "417403",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-095B5F33AC32",
+    "organisation_name": "BARBARA THUBRON",
+    "stored_domain": "barbara-thubron.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "71998",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWNSRA:YES",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-91A3A4831571",
+    "organisation_name": "Ellerd Investments Limited",
+    "stored_domain": "beacon.ifa.co.uk",
+    "regulators": [
+      "FCA"
+    ],
+    "identifiers": {
+      "frn": "125196",
+      "sraIdentifier": null,
+      "companiesHouseNumber": "00670695"
+    },
+    "organisation_status": "CH:active | FCA:Authorised",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-737D76E080CC",
+    "organisation_name": "JPM (INSURANCE MANAGEMENT) LIMITED",
+    "stored_domain": "beaminsurance.co.uk",
+    "regulators": [
+      "FCA"
+    ],
+    "identifiers": {
+      "frn": "305763",
+      "sraIdentifier": null,
+      "companiesHouseNumber": "03867939"
+    },
+    "organisation_status": "CH:active | FCA:Authorised",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-0FDC2570055B",
+    "organisation_name": "Advance Mortgage Solutions (UK) Ltd",
+    "stored_domain": "bestamortgageoptions.co.uk",
+    "regulators": [
+      "FCA"
+    ],
+    "identifiers": {
+      "frn": "301718",
+      "sraIdentifier": null,
+      "companiesHouseNumber": "04232478"
+    },
+    "organisation_status": "CH:active | FCA:Authorised",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-8E9CD1FA9EB0",
+    "organisation_name": "BOURNE JAFFA & CO INCORPORATING THE FORMER PRACTICE OF WILD & CO",
+    "stored_domain": "bournejaffasolicitors.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "78726",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWNSRA:YES",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-BC8573BFB345",
+    "organisation_name": "BRAIDWOOD LAW PRACTICE SOLICITORS",
+    "stored_domain": "braidwoodlaw.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "522436",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWNSRA:YES",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-C33707A3B96B",
+    "organisation_name": "BLACK NORMAN",
+    "stored_domain": "blacknorman.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "62666",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWNSRA:CEASE",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-6D5272C7D069",
+    "organisation_name": "BANK OF IRELAND",
+    "stored_domain": "bank-of-ireland.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "310826",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  }
+]

@@ -7,12 +7,15 @@ const scanRouter             = require('./api/routes/scan');
 const reportRouter           = require('./api/routes/report');
 const gateRouter             = require('./api/routes/gate');
 const prospectsRouter        = require('./api/routes/prospects');
-const organisationsRouter    = require('./api/routes/organisations');
 const scansRouter            = require('./api/routes/scans');
 const benchmarksRouter       = require('./api/routes/benchmarks');
 const improvementQueueRouter = require('./api/routes/improvement-queue');
 const meRouter               = require('./api/routes/me');
 const portfolioRouter        = require('./api/routes/portfolio');
+const organisationRouter     = require('./api/routes/organisation');
+const renewalRouter          = require('./api/routes/renewal');
+const observationSessionsRouter = require('./api/routes/observation-sessions');
+const publicScanRouter       = require('./api/routes/public-scan');
 const logger = require('./infra/utils/logger');
 const { AppError } = require('./infra/utils/errors');
 
@@ -57,6 +60,18 @@ const corsOptions = {
 const app = express();
 const httpServer = createServer(app);
 
+// ENG-010 §2.3/§8 (T1.1, ENG-013 WP1): Railway terminates the public
+// connection and forwards to this container behind its own edge — without
+// this setting, req.ip reflects Railway's internal forwarding address, not
+// the real client, which would silently defeat every IP-keyed control the
+// public scan protection layer (backend/api/middleware/publicScan*.js)
+// depends on. Configurable via TRUST_PROXY (default: 1 hop) because the
+// exact proxy depth must be verified against Railway's live topology, not
+// guessed (ENG-010 §10 open question 2 — carried forward, not resolved by
+// this default; confirm before relying on IP-keyed limits in production).
+const trustProxyDepth = process.env.TRUST_PROXY !== undefined ? Number(process.env.TRUST_PROXY) : 1;
+app.set('trust proxy', trustProxyDepth);
+
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions)); // explicit preflight handler for all routes
 app.use(express.json());
@@ -71,12 +86,15 @@ app.get('/health', (req, res) => {
 app.use('/api/scan',              scanRouter);
 app.use('/api/gate',              gateRouter);
 app.use('/api/prospects',         prospectsRouter);
-app.use('/api/organisations',     organisationsRouter);
 app.use('/api/scans',             scansRouter);
 app.use('/api/benchmarks',        benchmarksRouter);
 app.use('/api/improvement-queue', improvementQueueRouter);
 app.use('/api/me',                meRouter);
 app.use('/api/portfolio',         portfolioRouter);
+app.use('/api/organisation',      organisationRouter);
+app.use('/api/renewal',           renewalRouter);
+app.use('/api/observation-sessions', observationSessionsRouter);
+app.use('/api/public-scan',       publicScanRouter);
 app.use('/api',                   reportRouter);
 
 app.use((req, res) => {

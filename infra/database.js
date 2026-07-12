@@ -14,6 +14,17 @@ function getClient() {
 }
 
 // ── Scan history (permanent per-scan records) ─────────────────────────────────
+//
+// ADR-SYS-008 Phase A (re-designation, no schema change): `scanner_results` is
+// the preserved evidence of record for a scan. `overall_score` / `risk_band` /
+// `score_object` are a NON-AUTHORITATIVE DERIVED CACHE — a reproducible-on-demand
+// snapshot of what the canonical derivation service (scan-derivation-service.js,
+// wrapping scanService.deriveTrustScore) computed at write time, kept here only
+// to avoid recomputing on every read. No consumer should treat these three
+// columns as evidence; they are recomputable at any time from `scanner_results`
+// under the current (or a future, versioned) methodology. Narrowing this
+// contract or retiring the cache columns is ADR-SYS-008 Phase B — explicitly not
+// authorised yet; the columns are retained here unchanged.
 
 async function saveScan(domain, scoreObject, scanners, prospectId = null) {
   try {
@@ -23,10 +34,10 @@ async function saveScan(domain, scoreObject, scanners, prospectId = null) {
         domain,
         scanned_at:      scoreObject.timestamp      || new Date().toISOString(),
         scoring_version: scoreObject.scoringVersion  || 'v1.0',
-        overall_score:   scoreObject.percentage      ?? null,
-        risk_band:       scoreObject.riskBand        ?? null,
-        score_object:    scoreObject,
-        scanner_results: scanners,
+        overall_score:   scoreObject.percentage      ?? null, // derived cache — see header comment above
+        risk_band:       scoreObject.riskBand        ?? null, // derived cache — see header comment above
+        score_object:    scoreObject,                          // derived cache — see header comment above
+        scanner_results: scanners,                              // evidence of record
         prospect_id:     prospectId                  ?? null,
       }])
       .select('id')
@@ -580,15 +591,22 @@ async function addPortfolioItem(customerId, organisationId, addedByUserId, clien
 }
 
 /**
- * Lists a tenant's portfolio, joined with organisation summary fields
- * available on prospects (no additional round trip). Unavailable fields are
- * returned as null, never invented.
+ * Lists a tenant's portfolio as canonical Organisation ids + item metadata.
+ *
+ * ADR-SYS-010 Platform Convergence: organisation_id now holds a canonical
+ * ORG-* id (migration 038), not a prospects.id. The old prospects join is
+ * gone — deliberately, not translated. Organisation display fields (name,
+ * domain, trust, …) are resolved by the consuming Experience through the
+ * canonical Organisation layer (GET /api/organisation/:id), keeping the
+ * portfolio strictly to what it owns (which organisations a tenant tracks),
+ * per OC-7. `organisation` is null here — the summary is not the portfolio's
+ * to hold.
  */
 async function getPortfolioItems(customerId, client = getClient()) {
   try {
     const { data, error } = await client
       .from('organisation_portfolio_items')
-      .select('id, organisation_id, is_home, added_by_user_id, added_at, prospects(id, firm_name, website, sector, location, last_scanned)')
+      .select('id, organisation_id, is_home, added_by_user_id, added_at')
       .eq('customer_id', customerId)
       .order('added_at', { ascending: false });
 
@@ -596,18 +614,11 @@ async function getPortfolioItems(customerId, client = getClient()) {
 
     return (data ?? []).map(row => ({
       id:             row.id,
-      organisationId: row.organisation_id,
+      organisationId: row.organisation_id,   // canonical ORG-* id
       isHome:         row.is_home,
       addedByUserId:  row.added_by_user_id,
       addedAt:        row.added_at,
-      organisation: row.prospects ? {
-        id:            row.prospects.id,
-        name:          row.prospects.firm_name  ?? null,
-        domain:        row.prospects.website    ?? null,
-        sector:        row.prospects.sector     ?? null,
-        location:      row.prospects.location   ?? null,
-        lastScannedAt: row.prospects.last_scanned ?? null,
-      } : null,
+      organisation:   null,                   // resolved via the canonical Organisation layer
     }));
   } catch (err) {
     logger.error(`getPortfolioItems threw: ${err.message}`);
@@ -660,6 +671,7 @@ async function removePortfolioItem(customerId, organisationId, client = getClien
 }
 
 module.exports = {
+  getClient,
   saveScan, getScanHistory, getScanById,
   getScans, getScanWithOrg, getLatestScansByDomains,
   saveSubmission, getSubmissionByEmail, getAllSubmissions, getSubmissionById,

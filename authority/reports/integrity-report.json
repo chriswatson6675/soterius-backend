@@ -1,0 +1,283 @@
+{
+  "generatedAt": "2026-07-11T14:59:25.398Z",
+  "datasetSha256": "599986411945d0eadd3df0a57af50833068a09b1ea9c925fe9155a5cf5ae0769",
+  "metrics": {
+    "schemaVersion": 1,
+    "summary": {
+      "totalOrganisations": 35752,
+      "verifiedDomains": 17057,
+      "strongIdentifiersByProvider": {
+        "companiesHouse": 15565,
+        "fca": 10388,
+        "sra": 25086,
+        "ukprn": 166,
+        "lei": 1483
+      }
+    },
+    "identityIntegrity": {
+      "strongIdentifierCollisions": 0,
+      "collisionDetail": [],
+      "identityAlgorithmFingerprint": "92ece3372957bae5",
+      "identityBasisDistribution": {
+        "cn": 15565,
+        "frn": 1176,
+        "sra": 18746,
+        "ukprn": 166,
+        "nd-domain": 90,
+        "nd-nodomain": 9
+      }
+    },
+    "reconstructability": {
+      "total": 35752,
+      "reconstructable": 35712,
+      "nonReconstructable": 40,
+      "reconstructablePercent": 99.8881,
+      "reasons": {
+        "unexported-identity-input (ifUuid or pre-resolution domain)": 40
+      },
+      "records": [
+        {
+          "organisationId": "ORG-00689F2FC7DD",
+          "name": "Saltus Partners LLP",
+          "reason": "unexported-identity-input (ifUuid or pre-resolution domain)"
+        },
+        {
+          "organisationId": "ORG-08277D91F969",
+          "name": "Sussex Partners UK Ltd",
+          "reason": "unexported-identity-input (ifUuid or pre-resolution domain)"
+        },
+        {
+          "organisationId": "ORG-0AAD7814522B",
+          "name": "Mirabaud & Cie (Europe) S.A. (UK branch)",
+          "reason": "unexported-identity-input (ifUuid or pre-resolution domain)"
+        },
+        {
+          "organisationId": "ORG-11DAB94B8957",
+          "name": "EKHINOS LIMITED",
+          "reason": "unexported-identity-input (ifUuid or pre-resolution domain)"
+        },
+        {
+          "organisationId": "ORG-1E13BEB39A16",
+          "name": "Air Capital Partners Limited",
+          "reason": "unexported-identity-input (ifUuid or pre-resolution domain)"
+        },
+        {
+          "organisationId": "ORG-216AF4C95F1B",
+          "name": "KfW IPEX-Bank GmbH",
+          "reason": "unexported-identity-input (ifUuid or pre-resolution domain)"
+        },
+        {
+          "organisationId": "ORG-2AE137A011FB",
+          "name": "Beaumont Cornish Limited",
+          "reason": "unexported-identity-input (ifUuid or pre-resolution domain)"
+        },
+        {
+          "organisationId": "ORG-2F9E85F8720A",
+          "name": "LONDON STONE SECURITIES LTD",
+          "reason": "unexported-identity-input (ifUuid or pre-resolution domain)"
+        },
+        {
+          "organisationId": "ORG-306B610EAB59",
+          "name": "ACT Financial Solutions B.V",
+          "reason": "unexported-identity-input (ifUuid or pre-resolution domain)"
+        },
+        {
+          "organisationId": "ORG-3D5B10F0FB5D",
+          "name": "Hamburg Commercial Bank AG",
+          "reason": "unexported-identity-input (ifUuid or pre-resolution domain)"
+        },
+        {
+          "organisationId": "ORG-3FB15EA6E451",
+          "name": "Warburg Pincus International LLC",
+          "reason": "unexported-identity-input (ifUuid or pre-resolution domain)"
+        },
+        {
+          "organisationId": "ORG-40797C515C21",
+          "name": "Deutsche Pfandbriefbank AG",
+          "reason": "unexported-identity-input (ifUuid or pre-resolution domain)"
+        },
+        {
+          "organisationId": "ORG-5387E950A73B",
+          "name": "Trinity Group Limited",
+          "reason": "unexported-identity-input (ifUuid or pre-resolution domain)"
+        },
+        {
+          "organisationId": "ORG-55A33F3263C1",
+          "name": "Fraser Finance Limited",
+          "reason": "unexported-identity-input (ifUuid or pre-resolution domain)"
+        },
+        {
+          "organisationId": "ORG-5755F59DDF9F",
+          "name": "JPMorgan Chase Bank, National Association",
+          "reason": "unexported-identity-input (ifUuid or pre-resolution domain)"
+        },
+        {
+          "organisationId": "ORG-5AD1E8342491",
+          "name": "Bound Rates Limited",
+          "reason": "unexported-identity-input (ifUuid or pre-resolution domain)"
+        },
+        {
+          "organisationId": "ORG-5F206D00D3D9",
+          "name": "Praefinium Partners Ltd",
+          "reason": "unexported-identity-input (ifUuid or pre-resolution domain)"
+        },
+        {
+          "organisationId": "ORG-62BCAF44277D",
+          "name": "NIBC Bank N.V",
+          "reason": "unexported-identity-input (ifUuid or pre-resolution domain)"
+        },
+        {
+          "organisationId": "ORG-6A426FC21441",
+          "name": "Throgmorton Capital Management Limited",
+          "reason": "unexported-identity-input (ifUuid or pre-resolution domain)"
+        },
+        {
+          "organisationId": "ORG-6C114BDF21FF",
+          "name": "Merrill Lynch International",
+          "reason": "unexported-identity-input (ifUuid or pre-resolution domain)"
+        },
+        {
+          "organisationId": "ORG-70A7B4F7E5BA",
+          "name": "Keyridge Asset Management Limited",
+          "reason": "unexported-identity-input (ifUuid or pre-resolution domain)"
+        },
+        {
+          "organisationId": "ORG-77A41A68161E",
+          "name": "Capital International Limited",
+          "reason": "unexported-identity-input (ifUuid or pre-resolution domain)"
+        },
+        {
+          "organisationId": "ORG-8607C1E5D6DA",
+          "name": "UniCredit S.p.A",
+          "reason": "unexported-identity-input (ifUuid or pre-resolution domain)"
+        },
+        {
+          "organisationId": "ORG-916100CD8E8E",
+          "name": "Zadig Asset Management LLP",
+          "reason": "unexported-identity-input (ifUuid or pre-resolution domain)"
+        },
+        {
+          "organisationId": "ORG-9314FD3402A2",
+          "name": "UTI International Limited",
+          "reason": "unexported-identity-input (ifUuid or pre-resolution domain)"
+        },
+        {
+          "organisationId": "ORG-98AFC9EACFBC",
+          "name": "Kennet Partners Limited",
+          "reason": "unexported-identity-input (ifUuid or pre-resolution domain)"
+        },
+        {
+          "organisationId": "ORG-A65669FEB4E0",
+          "name": "Mount Street Portfolio Advisers GmbH",
+          "reason": "unexported-identity-input (ifUuid or pre-resolution domain)"
+        },
+        {
+          "organisationId": "ORG-BB116D589D2D",
+          "name": "Hassium Asset Management LLP",
+          "reason": "unexported-identity-input (ifUuid or pre-resolution domain)"
+        },
+        {
+          "organisationId": "ORG-C04BBF205F7E",
+          "name": "Kepler Cheuvreux",
+          "reason": "unexported-identity-input (ifUuid or pre-resolution domain)"
+        },
+        {
+          "organisationId": "ORG-C924FC72D57F",
+          "name": "David Booler & Company",
+          "reason": "unexported-identity-input (ifUuid or pre-resolution domain)"
+        },
+        {
+          "organisationId": "ORG-DAB4CE26EC6D",
+          "name": "Wolverine Trading UK Limited",
+          "reason": "unexported-identity-input (ifUuid or pre-resolution domain)"
+        },
+        {
+          "organisationId": "ORG-DBFF104E47AE",
+          "name": "Atlantic-Pacific Capital Limited",
+          "reason": "unexported-identity-input (ifUuid or pre-resolution domain)"
+        },
+        {
+          "organisationId": "ORG-E1CB410DF09F",
+          "name": "Leonteq Securities (Europe) GmbH",
+          "reason": "unexported-identity-input (ifUuid or pre-resolution domain)"
+        },
+        {
+          "organisationId": "ORG-EAFD13F828F6",
+          "name": "Spayne Lindsay & Co. LLP",
+          "reason": "unexported-identity-input (ifUuid or pre-resolution domain)"
+        },
+        {
+          "organisationId": "ORG-EBB456B7817F",
+          "name": "BlackRock Institutional Trust Company, N.A.",
+          "reason": "unexported-identity-input (ifUuid or pre-resolution domain)"
+        },
+        {
+          "organisationId": "ORG-EC1E320B9572",
+          "name": "Norddeutsche Landesbank Girozentrale",
+          "reason": "unexported-identity-input (ifUuid or pre-resolution domain)"
+        },
+        {
+          "organisationId": "ORG-EEF3709D12DC",
+          "name": "GF Financial Markets (UK) Limited",
+          "reason": "unexported-identity-input (ifUuid or pre-resolution domain)"
+        },
+        {
+          "organisationId": "ORG-F041A2D43072",
+          "name": "Guinness Atkinson Asset Management, Inc",
+          "reason": "unexported-identity-input (ifUuid or pre-resolution domain)"
+        },
+        {
+          "organisationId": "ORG-F5B433A6D183",
+          "name": "Susquehanna International Securities Limited - UK Branch",
+          "reason": "unexported-identity-input (ifUuid or pre-resolution domain)"
+        },
+        {
+          "organisationId": "ORG-F945550048F1",
+          "name": "Goodbody Stockbrokers Unlimited Company",
+          "reason": "unexported-identity-input (ifUuid or pre-resolution domain)"
+        }
+      ]
+    },
+    "transparency": {
+      "identityReviewGroups": 322,
+      "recordsRequiringGovernedReview": 670,
+      "reviewGroupPatterns": {
+        "distinct-strong-identifiers": 317,
+        "one-strong-rest-domain-only": 5
+      },
+      "exportCompleteness": {
+        "unexportedIdentityInputs": [
+          "ifUuid"
+        ],
+        "recordsAffectedByUnexportedInputs": 40
+      }
+    }
+  },
+  "health": {
+    "overall": "GOOD",
+    "checks": [
+      {
+        "dimension": "strong-identifier-uniqueness",
+        "metric": 0,
+        "status": "PASS",
+        "basis": "0 collisions required; any collision is a constitutional identity failure"
+      },
+      {
+        "dimension": "external-reconstructability",
+        "metric": 99.8881,
+        "status": "GOOD",
+        "basis": "100% ideal; >=99.5% good; >=95% watch; <95% concern"
+      },
+      {
+        "dimension": "transparency-review-backlog",
+        "metric": 322,
+        "status": "INFO",
+        "basis": "count reported for trend; health is directional (see historical comparison), not a fixed threshold"
+      }
+    ]
+  },
+  "comparison": {
+    "available": false,
+    "note": "dataset unchanged since previous report (same build re-audited) — no comparison"
+  }
+}

@@ -1,0 +1,377 @@
+[
+  {
+    "organisation_id": "ORG-02DB9039C445",
+    "organisation_name": "NAVIGATION FINANCIAL SERVICES LIMITED",
+    "stored_domain": "navigationfs.com",
+    "regulators": [
+      "FCA"
+    ],
+    "identifiers": {
+      "frn": "192626",
+      "sraIdentifier": null,
+      "companiesHouseNumber": "03895415"
+    },
+    "organisation_status": "CH:active | FCA:Authorised",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-E04C1E356FEB",
+    "organisation_name": "MUBADALA INFRASTRUCTURE PARTNERS LTD",
+    "stored_domain": "mubadala.ae",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "499285",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-376CED37358B",
+    "organisation_name": "WYNTER BEE RESOURCES LTD",
+    "stored_domain": "peopleoftheday.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "563294",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-78DD1A4143E6",
+    "organisation_name": "NEWLAW LEGAL LIMITED",
+    "stored_domain": "new-law.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "567578",
+      "companiesHouseNumber": "07200038"
+    },
+    "organisation_status": "CH:active | SRA:YES",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-7D05B15DE75E",
+    "organisation_name": "PERSONAL TOUCH FINANCIAL SERVICES LIMITED",
+    "stored_domain": "personaltouch.fs.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "451080",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-E19A1F6BF33C",
+    "organisation_name": "Peter Dodd",
+    "stored_domain": "peterdoddmotoringlawsolicitor.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "8012428",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-D818EAE46ED1",
+    "organisation_name": "Personal Retirement Planning Ltd",
+    "stored_domain": "personalretirementplanningltd.com",
+    "regulators": [
+      "FCA"
+    ],
+    "identifiers": {
+      "frn": "781803",
+      "sraIdentifier": null,
+      "companiesHouseNumber": "10687241"
+    },
+    "organisation_status": "CH:active | FCA:Authorised",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-6854F78E6947",
+    "organisation_name": "PETERSONS",
+    "stored_domain": "petersons-solicitors.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "569071",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWNSRA:YES",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-11D1043FCD07",
+    "organisation_name": "NCTM STUDIO LEGALE ASSOCIATO",
+    "stored_domain": "nctm.it",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "489844",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-90EF2D088B30",
+    "organisation_name": "CNOOC PETROLEUM EUROPE LIMITED",
+    "stored_domain": "nexeninc.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "371432",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-8637C3FABC3A",
+    "organisation_name": "NEWSPAPER SOCIETY",
+    "stored_domain": "newspapersoc.org.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "63904",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-0841ABC2B034",
+    "organisation_name": "NHS Resolution",
+    "stored_domain": "nhsla.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "223100",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-81DE8D130F73",
+    "organisation_name": "PUBLIC SERVICES OMBUDSMAN FOR WALES",
+    "stored_domain": "ombudsman-wales.org.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "64796",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-D7CCDCBC2990",
+    "organisation_name": "NPS PROPERTY CONSULTANTS LIMITED",
+    "stored_domain": "nps.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "447206",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-EB3E8B1E77CE",
+    "organisation_name": "NORWICH UNIVERSITY OF THE ARTS",
+    "stored_domain": "nua.ac.uk",
+    "regulators": [
+      "HE"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": null,
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-05FB8DA9EFEF",
+    "organisation_name": "OSMANS SOLICITORS",
+    "stored_domain": "osmansolicitors.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "399780",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWNSRA:YES",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-D8F5B56AE965",
+    "organisation_name": "ONE HOUSING GROUP",
+    "stored_domain": "onehousinggroup.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "523749",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-E9BB529E9EE2",
+    "organisation_name": "P GEORGE & CO",
+    "stored_domain": "pgeorgesolicitors.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "173402",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWNSRA:YES",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-094DAEC58DD0",
+    "organisation_name": "DLA PIPER LLP (US)",
+    "stored_domain": "piperrudnick.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "73001",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-997DA33E1CE9",
+    "organisation_name": "PYTHON",
+    "stored_domain": "pplex.ch",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "79415",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-B466E0E30AFF",
+    "organisation_name": "PEEL PORTS GROUP LTD",
+    "stored_domain": "peelports.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "598411",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-CDF06FCAAE70",
+    "organisation_name": "Phoenix Partnership (Financial Services) Limited",
+    "stored_domain": "phoenixpartnership.com",
+    "regulators": [
+      "FCA"
+    ],
+    "identifiers": {
+      "frn": "305711",
+      "sraIdentifier": null,
+      "companiesHouseNumber": "04769409"
+    },
+    "organisation_status": "CH:active | FCA:Authorised",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-5E02FCAFF69F",
+    "organisation_name": "ENJEA AVOCATS",
+    "stored_domain": "ricard-demeure-associes.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "614987",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-A422889B2243",
+    "organisation_name": "REEVE-SIMS LIMITED",
+    "stored_domain": "reeve-sims.co.uk",
+    "regulators": [
+      "FCA"
+    ],
+    "identifiers": {
+      "frn": "163450",
+      "sraIdentifier": null,
+      "companiesHouseNumber": "04214484"
+    },
+    "organisation_status": "CH:active | FCA:Authorised",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-5AFEC516D604",
+    "organisation_name": "RITS SOLICITORS",
+    "stored_domain": "ritssolicitors.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "628421",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWNSRA:YES",
+    "companies_house_status": null
+  }
+]

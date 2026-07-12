@@ -13,21 +13,19 @@
 // function). Run with: npm run bootstrap:dev (from backend/).
 
 const { getClient, loadEnv, findOrCreateAuthUser } = require('./supabase-auth');
+const resolve = require('../organisation/resolve');
 
 const DEFAULT_CONFIG = {
   email: process.env.DEV_USER_EMAIL || 'dev@soterius.local',
   password: process.env.DEV_USER_PASSWORD || 'DevPassword123!',
   customerName: process.env.DEV_CUSTOMER_NAME || 'Dev Test Organisation',
-  // Used only if the prospects table is completely empty (a fresh clone with
-  // no Signal Lab / population-acquisition data yet) — otherwise the first
-  // existing prospect is used instead, so a developer sees real data where
-  // it's available.
-  fallbackProspect: {
-    firm_name: 'Dev Test Organisation',
-    website: 'devtestorg.example.com',
-    sector: 'other',
-    source: 'manual',
-  },
+  // Optional: which canonical Organisation to seed the dev portfolio with.
+  // A name / SRA / CH / FRN query resolved through the canonical Organisation
+  // Resolution Service. If unset, the first organisation in Repository
+  // Authority is used, so a developer sees a real, resolvable organisation.
+  // There is NO prospects fallback and no synthetic organisation — the dev
+  // portfolio only ever holds a canonical ORG-* id (see resolveDevOrganisationId).
+  orgQuery: process.env.DEV_ORG_QUERY || null,
 };
 
 // ── Step functions — each is independently find-or-create / idempotent ──────
@@ -77,29 +75,39 @@ async function findOrCreateMembership(client, customerId, userId) {
   return { membership: created, created: true };
 }
 
-async function findOrCreatePortfolioOrganisation(client, fallbackProspect) {
-  const { data: existing, error: fetchError } = await client
-    .from('prospects')
-    .select('*')
-    .order('first_seen', { ascending: true })
-    .limit(1)
-    .maybeSingle();
-  if (fetchError) throw new Error(`prospects lookup failed: ${fetchError.message}`);
-  if (existing) return { organisation: existing, created: false };
+/**
+ * Resolve the canonical ORG-* id to seed the dev portfolio with, through the
+ * canonical Organisation Resolution Service — never the legacy prospects table.
+ * A dev portfolio row must hold a canonical ORG-* id (migration 038); a
+ * prospect UUID here was the F-1 identity conflation this replaces.
+ *
+ * `resolver` is injectable so this is testable without Repository Authority on
+ * disk. Throws (fails the bootstrap) with a clear, actionable message when no
+ * canonical organisation can be resolved — the dev environment is genuinely
+ * not ready, and a silent/synthetic fallback would just re-introduce F-1.
+ */
+async function resolveDevOrganisationId({ orgQuery } = {}, resolver = resolve) {
+  if (orgQuery) {
+    const found = resolver.search(orgQuery);
+    if (!found.ok) throw new Error(`Organisation resolution failed: ${found.error}`);
+    if (!found.results.length) {
+      throw new Error(`No canonical organisation matched DEV_ORG_QUERY="${orgQuery}". Try a different name/SRA/CH/FRN, or unset DEV_ORG_QUERY to use the first organisation in Repository Authority.`);
+    }
+    return { organisationId: found.results[0].id };
+  }
 
-  const { data: created, error: insertError } = await client
-    .from('prospects')
-    .insert([fallbackProspect])
-    .select('*')
-    .single();
-  if (insertError) throw new Error(`prospects fallback insert failed: ${insertError.message}`);
-
-  return { organisation: created, created: true };
+  const first = resolver.firstOrganisationId();
+  if (!first.ok) {
+    throw new Error(`Cannot seed the dev portfolio — ${first.error}`);
+  }
+  return { organisationId: first.organisationId };
 }
 
 /**
  * At most one portfolio item is ever created per customer by this script —
  * if one already exists (any organisation), it's left alone, never swapped.
+ * `organisationId` is a canonical ORG-* id (from resolveDevOrganisationId),
+ * never a prospect UUID.
  */
 async function findOrCreatePortfolioItem(client, customerId, organisationId, addedByUserId) {
   const { data: existing, error: fetchError } = await client
@@ -120,20 +128,15 @@ async function findOrCreatePortfolioItem(client, customerId, organisationId, add
   return { item: created, created: true };
 }
 
-async function bootstrapDev(client, configOverrides = {}) {
-  const config = {
-    ...DEFAULT_CONFIG,
-    ...configOverrides,
-    fallbackProspect: { ...DEFAULT_CONFIG.fallbackProspect, ...(configOverrides.fallbackProspect ?? {}) },
-  };
+async function bootstrapDev(client, configOverrides = {}, resolver = resolve) {
+  const config = { ...DEFAULT_CONFIG, ...configOverrides };
 
   const { user, created: userCreated } = await findOrCreateAuthUser(client, { ...config, role: 'customer' });
   const { customer, created: customerCreated } = await findOrCreateCustomer(client, config.customerName);
   const { membership, created: membershipCreated } = await findOrCreateMembership(client, customer.id, user.id);
-  const { organisation, created: organisationCreated } =
-    await findOrCreatePortfolioOrganisation(client, config.fallbackProspect);
+  const { organisationId } = await resolveDevOrganisationId(config, resolver);
   const { item: portfolioItem, created: portfolioItemCreated } =
-    await findOrCreatePortfolioItem(client, customer.id, organisation.id, user.id);
+    await findOrCreatePortfolioItem(client, customer.id, organisationId, user.id);
 
   return {
     email: config.email,
@@ -141,7 +144,7 @@ async function bootstrapDev(client, configOverrides = {}) {
     user, userCreated,
     customer, customerCreated,
     membership, membershipCreated,
-    organisation, organisationCreated,
+    organisationId,
     portfolioItem, portfolioItemCreated,
   };
 }
@@ -150,7 +153,7 @@ module.exports = {
   bootstrapDev,
   findOrCreateCustomer,
   findOrCreateMembership,
-  findOrCreatePortfolioOrganisation,
+  resolveDevOrganisationId,
   findOrCreatePortfolioItem,
   DEFAULT_CONFIG,
 };
@@ -165,7 +168,7 @@ if (require.main === module) {
       console.log(`  Login password: ${result.password}`);
       console.log(`  Customer:       ${result.customer.name} (${result.customerCreated ? 'created' : 'already existed'})`);
       console.log(`  Membership:     ${result.membershipCreated ? 'created' : 'already existed'} — role: ${result.membership.tenant_role}`);
-      console.log(`  Organisation:   ${result.organisation.firm_name} — ${result.organisation.website} (${result.organisationCreated ? 'created as fallback dev prospect' : 'existing prospect reused'})`);
+      console.log(`  Organisation:   ${result.organisationId} (canonical Repository Authority id)`);
       console.log(`  Portfolio item: ${result.portfolioItemCreated ? 'created' : 'already existed'}`);
       console.log('\nStart the backend (npm run dev, in backend/) and the frontend (npm run dev, in frontend/), then log in at /login with the email/password above.\n');
       process.exit(0);

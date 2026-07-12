@@ -1,0 +1,60 @@
+{
+  "generated_at_note": "engineering validation only — not a baseline",
+  "collector": "SOT-SECURITYHEADERS-001-v2",
+  "baseline_run": "34fa4a90-dd4e-4497-8a01-0d38f9b00134",
+  "concurrency": 25,
+  "tested": 2115,
+  "prev_buckets": {
+    "TLS_ERROR": 724,
+    "CONNECTION_ERROR": 866,
+    "NOT_OBSERVED": 525
+  },
+  "recovered_total": 770,
+  "recovered_via_source_auth_fix": 621,
+  "recovered_incidental": 149,
+  "still_tls_error": 0,
+  "still_connection_error": 1102,
+  "still_not_observed": 243,
+  "collector_threw_c1_violations": 0,
+  "transition_matrix": {
+    "TLS_ERROR": {
+      "RESPONSE_OBSERVED": 621,
+      "TLS_ERROR": 0,
+      "CONNECTION_ERROR": 20,
+      "NOT_OBSERVED": 83,
+      "COLLECTOR_THREW": 0
+    },
+    "CONNECTION_ERROR": {
+      "RESPONSE_OBSERVED": 13,
+      "TLS_ERROR": 0,
+      "CONNECTION_ERROR": 808,
+      "NOT_OBSERVED": 45,
+      "COLLECTOR_THREW": 0
+    },
+    "NOT_OBSERVED": {
+      "RESPONSE_OBSERVED": 136,
+      "TLS_ERROR": 0,
+      "CONNECTION_ERROR": 274,
+      "NOT_OBSERVED": 115,
+      "COLLECTOR_THREW": 0
+    }
+  },
+  "recovered_by_verdict_all": {
+    "CERT_EXPIRED": 126,
+    "CHAIN_VERIFIED": 361,
+    "SELF_SIGNED": 31,
+    "CHAIN_UNVERIFIABLE": 47,
+    "HOSTNAME_MISMATCH": 176,
+    "SELF_SIGNED_IN_CHAIN": 29
+  },
+  "recovered_by_verdict_source_auth_fix": {
+    "CERT_EXPIRED": 126,
+    "CHAIN_VERIFIED": 216,
+    "SELF_SIGNED": 31,
+    "CHAIN_UNVERIFIABLE": 47,
+    "HOSTNAME_MISMATCH": 176,
+    "SELF_SIGNED_IN_CHAIN": 25
+  },
+  "unauthenticated_captures": 409,
+  "chain_verified_captures": 361
+}

@@ -4,23 +4,37 @@ const { AppError, ValidationError } = require('../../infra/utils/errors');
 const {
   addPortfolioItem, getPortfolioItems, getPortfolioItem, removePortfolioItem,
 } = require('../../infra/database');
+const resolve = require('../../organisation/resolve');
+const { summariseById } = require('../../organisation/summarise');
 const { requireAuth }   = require('../middleware/requireAuth');
 const { attachTenant }  = require('../middleware/attachTenant');
 const { requireTenant } = require('../middleware/requireTenant');
 
-// Each handler is a factory over its DB dependency, mirroring the
+// Canonical organisation id shape, per organisation/identity.js#canonicalOrgId:
+// "ORG-" + the first 12 hex chars of a SHA-1, upper-cased. This is the ONLY
+// value the portfolio may store — a legacy prospect UUID or any free text is
+// rejected at the API layer (F-3), never persisted.
+const ORG_ID_RE = /^ORG-[0-9A-F]{12}$/;
+
+// Each handler is a factory over its dependencies, mirroring the
 // requireAuth/attachTenant/requirePortfolio middleware pattern, so route
-// logic is testable without a real Supabase connection.
+// logic is testable without a real Supabase connection or dataset on disk.
 
 // GET /api/portfolio
-// Returns the caller's portfolio, joined with organisation summary fields.
-// Returns PortfolioItemDTO[] directly (no wrapper) — matches the
-// organisations.js sub-resource convention (signals/timeline/improvement-queue).
-function createGetPortfolio(getPortfolioItemsFn = getPortfolioItems) {
+// Returns the caller's portfolio. The stored row is a canonical ORG-* id only;
+// each item's `organisation` summary is resolved here through the canonical
+// Organisation layer (the same source the detail view uses), never duplicated
+// into the portfolio table. Returns PortfolioItemDTO[] directly (no wrapper) —
+// matches the organisations.js sub-resource convention.
+function createGetPortfolio(getPortfolioItemsFn = getPortfolioItems, summariseFn = summariseById) {
   return async function getPortfolio(req, res, next) {
     try {
       const items = await getPortfolioItemsFn(req.tenant.customer.id);
-      res.json(items);
+      const hydrated = items.map((item) => ({
+        ...item,
+        organisation: summariseFn(item.organisationId),
+      }));
+      res.json(hydrated);
     } catch (err) {
       next(err);
     }
@@ -29,12 +43,20 @@ function createGetPortfolio(getPortfolioItemsFn = getPortfolioItems) {
 
 // POST /api/portfolio
 // Body: { organisationId }. Idempotent add — 201 if newly added, 200 if the
-// organisation was already in the portfolio.
-function createPostPortfolio(addPortfolioItemFn = addPortfolioItem) {
+// organisation was already in the portfolio. Accepts ONLY a canonical ORG-*
+// id that resolves to a real Repository Authority organisation (F-3) — a bad
+// shape is 400, an unknown-but-well-formed id is 404; neither reaches the DB.
+function createPostPortfolio(addPortfolioItemFn = addPortfolioItem, reverseFn = resolve.reverse) {
   return async function postPortfolio(req, res, next) {
     try {
       const { organisationId } = req.body;
       if (!organisationId) throw new ValidationError('organisationId is required');
+      if (!ORG_ID_RE.test(organisationId)) {
+        throw new ValidationError('organisationId must be a canonical ORG-* identifier');
+      }
+
+      const resolved = reverseFn(organisationId);
+      if (!resolved.ok) throw new AppError(`Unknown organisation: ${organisationId}`, 404);
 
       const result = await addPortfolioItemFn(req.tenant.customer.id, organisationId, req.user.id);
       if (!result.success) throw new AppError(result.error || 'Failed to add to portfolio', 500);

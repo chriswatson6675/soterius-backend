@@ -1,0 +1,377 @@
+[
+  {
+    "organisation_id": "ORG-BB8A0D2E96FE",
+    "organisation_name": "STATE STREET GLOBAL ADVISORS LIMITED",
+    "stored_domain": "ssga.statestr.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "363285",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-80336FDBD751",
+    "organisation_name": "Squire Patton Boggs MNP",
+    "stored_domain": "squiresanders.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "300459",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWNSRA:YES",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-EC18F0FBF67C",
+    "organisation_name": "STEADMAN JONES LTD",
+    "stored_domain": "steadmanjones.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "385800",
+      "companiesHouseNumber": "04453531"
+    },
+    "organisation_status": "CH:active | SRA:YES",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-DA5249F3C831",
+    "organisation_name": "Smart Financial Products Limited",
+    "stored_domain": "smartfinancialproducts.co.uk",
+    "regulators": [
+      "FCA"
+    ],
+    "identifiers": {
+      "frn": "751091",
+      "sraIdentifier": null,
+      "companiesHouseNumber": "10177792"
+    },
+    "organisation_status": "CH:active | FCA:Authorised",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-92FE01C01EC9",
+    "organisation_name": "TEACO ASSOCIATES",
+    "stored_domain": "teaco-assoc.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "534974",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-0666628D6706",
+    "organisation_name": "STAINES & CAMPBELL",
+    "stored_domain": "stainesandcampbell.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "558502",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWNSRA:CEASE",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-9C0371CCCE3C",
+    "organisation_name": "SHARPE & PERL",
+    "stored_domain": "sharpeandperl.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "77015",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWNSRA:REVOKE",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-5FE0A97385EE",
+    "organisation_name": "STENNETT AND STENNETT LTD",
+    "stored_domain": "stennett-stennett.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "564879",
+      "companiesHouseNumber": "07666275"
+    },
+    "organisation_status": "CH:active | SRA:YES",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-372F0B7E1126",
+    "organisation_name": "THE SINGH PARTNERSHIP LTD",
+    "stored_domain": "thesinghpartership.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "605620",
+      "companiesHouseNumber": "08639445"
+    },
+    "organisation_status": "CH:active | SRA:YES",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-D8503F8A1978",
+    "organisation_name": "G D THIRU & CO ADVOCATES & SOLICITORS",
+    "stored_domain": "thirusolicitors.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "512844",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-3CFF3C5986C0",
+    "organisation_name": "THORNTONS FINANCIAL SERVICES LIMITED",
+    "stored_domain": "thorntonsinsuranceservices.co.uk",
+    "regulators": [
+      "FCA"
+    ],
+    "identifiers": {
+      "frn": "837294",
+      "sraIdentifier": null,
+      "companiesHouseNumber": "11773158"
+    },
+    "organisation_status": "CH:active | FCA:Authorised",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-4944C8F908C4",
+    "organisation_name": "TECHNOLOGY COMMERCIAL AND OUTSOURCING LAW LIMITED",
+    "stored_domain": "tcosolicitors.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "513000",
+      "companiesHouseNumber": "06885744"
+    },
+    "organisation_status": "CH:active | SRA:YES",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-0489BD9CFFA2",
+    "organisation_name": "SPORTSDIRECT.COM RETAIL LIMITED",
+    "stored_domain": "sportsdirect.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "566506",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-5A8F225E231F",
+    "organisation_name": "St Law Solicitors Limited",
+    "stored_domain": "stlaw.org.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "566535",
+      "companiesHouseNumber": "07872669"
+    },
+    "organisation_status": "CH:active | SRA:INTERVENE",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-3FB0ACF0FDCE",
+    "organisation_name": "SUFFOLK LIFE GROUP PLC",
+    "stored_domain": "suffolklife.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "173851",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-D0A9BB780E30",
+    "organisation_name": "M & S.M.ANDREW LIMITED",
+    "stored_domain": "townandcountryfinance.co.uk",
+    "regulators": [
+      "FCA"
+    ],
+    "identifiers": {
+      "frn": "674628",
+      "sraIdentifier": null,
+      "companiesHouseNumber": "06018994"
+    },
+    "organisation_status": "CH:active | FCA:Authorised",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-15859283AC27",
+    "organisation_name": "SGS UNITED KINGDOM LTD",
+    "stored_domain": "uk.sgs.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "460383",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-3039541297B9",
+    "organisation_name": "CITIZENS ADVICE BUREAU",
+    "stored_domain": "suttoncabx.org.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "427801",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-E2F4AA3026F5",
+    "organisation_name": "Synergy Solicitors Limited",
+    "stored_domain": "synergysolicitors.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "636023",
+      "companiesHouseNumber": "10509657"
+    },
+    "organisation_status": "CH:active | SRA:YES",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-5D11E5EAB725",
+    "organisation_name": "THRINGS TRUSTEE COMPANY LTD",
+    "stored_domain": "ttuk.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "556530",
+      "companiesHouseNumber": "07355127"
+    },
+    "organisation_status": "CH:active | SRA:YES",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-5F80E5235248",
+    "organisation_name": "TRANS GLOBAL GROUP LIMITED",
+    "stored_domain": "tgfml.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "388869",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-19BD41D31B20",
+    "organisation_name": "Verlander Carpenter & Co Limited",
+    "stored_domain": "verlandercarpenter.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "8012456",
+      "companiesHouseNumber": "16310225"
+    },
+    "organisation_status": "CH:active | SRA:YES",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-950F5E7C8D4E",
+    "organisation_name": "Jumeirah International LLC",
+    "stored_domain": "tapthemarket.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "427160",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-99CF66149359",
+    "organisation_name": "KENT LAW CLINIC",
+    "stored_domain": "ukc.ac.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "173929",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-8ADEBF6571B6",
+    "organisation_name": "UNIPART GROUP LIMITED",
+    "stored_domain": "unipart.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "301110",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  }
+]

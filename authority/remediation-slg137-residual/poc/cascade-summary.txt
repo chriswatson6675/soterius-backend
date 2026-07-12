@@ -1,0 +1,196 @@
+=== JOANNE JONES LIMITED | simpsonjones.co.uk ===
+ s1 outcome: MAX_HOPS 301->301->301->301->301->301->301->301->301->301->301->301->301->301->301->301->301->301->301->301
+ s1 final url: https://simpsonjones.co.uk/www.nelsonslaw.co.uk/press-releases/nelsons-simpson-jones/www.nelsonslaw.co.uk/press-releases/nelsons-simpson-jones/www.nelsonslaw.co.uk/press-releases/nelsons-simpson-jones/www.nelsonslaw.co.uk/press-releases/nelsons-simpson-jones/www.nelsonslaw.co.uk/press-releases/nelsons-simpson-jones/www.nelsonslaw.co.uk/press-releases/nelsons-simpson-jones/www.nelsonslaw.co.uk/press-releases/nelsons-simpson-jones/www.nelsonslaw.co.uk/press-releases/nelsons-simpson-jones/www.nelsonslaw.co.uk/press-releases/nelsons-simpson-jones/www.nelsonslaw.co.uk/press-releases/nelsons-simpson-jones/www.nelsonslaw.co.uk/press-releases/nelsons-simpson-jones/www.nelsonslaw.co.uk/press-releases/nelsons-simpson-jones/www.nelsonslaw.co.uk/press-releases/nelsons-simpson-jones/www.nelsonslaw.co.uk/press-releases/nelsons-simpson-jones/www.nelsonslaw.co.uk/press-releases/nelsons-simpson-jones/www.nelsonslaw.co.uk/press-releases/nelsons-simpson-jones/www.nelsonslaw.co.uk/press-releases/nelsons-simpson-jones/www.nelsonslaw.co.uk/press-releases/nelsons-simpson-jones/www.nelsonslaw.co.uk/press-releases/nelsons-simpson-jones/
+ s2 candidates: ["eu-smtp-inbound-1.mimecast.com","eu-smtp-inbound-2.mimecast.com","spf.protection.outlook.com","eu.","tiedata.com"] mx: [ 'eu-smtp-inbound-1.mimecast.com', 'eu-smtp-inbound-2.mimecast.com' ] cname: null
+ s3 sra: REVOKE websites: null officeWebsites: [ 'www.simpsonjones.co.uk' ] prevNames: null tradingNames: null
+ s4 CH status: active prevNames: undefined
+ s4 filings: CH01:2021-04-09, CH01:2016-06-13, TM02:2012-08-29, AP03:2009-12-11, AP01:2009-12-11
+
+=== SPENCERS SOLICITORS LIMITED | spencerssolicitors.com ===
+ s1 outcome: ERROR_MID_CHAIN 301->301->TIMEOUT
+ s1 final url: https://encuentrodemusicos.com/web/inscriptions
+ s2 candidates: [] mx: null cname: null
+ s3 sra: REVOKE websites: null officeWebsites: [ 'www.SpencersSolicitors.com' ] prevNames: null tradingNames: null
+ s4 CH status: liquidation prevNames: [{"ceased_on":"2011-10-07","effective_from":"2007-06-29","name":"CS2 LAWYERS LIMITED"},{"ceased_on":"2007-06-29","effective_from":"2007-01-19","name":"ACRAMAN (437) LIMITED"}]
+ s4 filings: LIQ03:2026-06-26, LIQ03:2025-06-09, LIQ03:2024-06-22, LIQ02:2023-05-20, 600:2023-05-11
+
+=== 720 PERFORMANCE LIMITED | 720performance.co.uk ===
+ s1 outcome: UNREACHABLE ENOTFOUND
+ s1 final url: https://720performance.co.uk/
+ s2 candidates: [] mx: null cname: null
+ s3 fca website: [ 'https://www.720performance.co.uk' ] | status: Authorised
+ s4 CH status: active prevNames: undefined
+ s4 filings: AP01:2021-12-10
+
+=== Abacus Advice Ltd | aaltd.co.uk ===
+ s1 outcome: UNREACHABLE ENOTFOUND
+ s1 final url: https://aaltd.co.uk/
+ s2 candidates: ["aspmx.l.google.com","alt1.aspmx.l.google.com","alt2.aspmx.l.google.com","alt3.aspmx.l.google.com","alt4.aspmx.l.google.com","aaltd.co.uk"] mx: [
+  'aspmx.l.google.com',
+  'alt1.aspmx.l.google.com',
+  'alt2.aspmx.l.google.com',
+  'alt3.aspmx.l.google.com',
+  'alt4.aspmx.l.google.com'
+] cname: null
+ s3 fca website: [ 'www.aaltd.co.uk' ] | status: Authorised
+ s4 CH status: active prevNames: undefined
+ s4 filings: CH03:2022-12-15, CH03:2018-03-16, CH01:2018-03-16, CH01:2010-04-07, TM01:2010-02-22
+
+=== AC INS Consultants Ltd | acinsurance.co.uk ===
+ s1 outcome: UNREACHABLE ENOTFOUND
+ s1 final url: https://acinsurance.co.uk/
+ s2 candidates: ["alt2.aspmx.l.google.com","alt4.aspmx.l.google.com","alt1.aspmx.l.google.com","alt3.aspmx.l.google.com","aspmx.l.google.com"] mx: [
+  'alt2.aspmx.l.google.com',
+  'alt4.aspmx.l.google.com',
+  'alt1.aspmx.l.google.com',
+  'alt3.aspmx.l.google.com',
+  'aspmx.l.google.com'
+] cname: null
+ s3 fca website: [ 'www.acinsurance.co.uk' ] | status: Authorised
+ s4 CH status: active prevNames: undefined
+ s4 filings: CH01:2025-11-14, CH01:2025-11-14, TM01:2024-08-01, CH01:2022-11-02, CH01:2022-11-02
+
+=== ADNAN HANIF SOLICITORS | adnanhanifsolicitors.com ===
+ s1 outcome: UNREACHABLE ENOTFOUND
+ s1 final url: https://adnanhanifsolicitors.com/
+ s2 candidates: [] mx: null cname: null
+ s3 sra: INTERVENE websites: null officeWebsites: [ 'www.adnanhanifsolicitors.com' ] prevNames: null tradingNames: null
+
+=== ANW LAW LTD | anwlaw.co.uk ===
+ s1 outcome: UNREACHABLE ENOTFOUND
+ s1 final url: https://anwlaw.co.uk/
+ s2 candidates: ["mx01.ionos.co.uk","mx00.ionos.co.uk"] mx: [ 'mx01.ionos.co.uk', 'mx00.ionos.co.uk' ] cname: null
+ s3 sra: REVOKE websites: null officeWebsites: [ 'anwlaw.co.uk' ] prevNames: null tradingNames: null
+ s4 CH status: active prevNames: undefined
+ s4 filings: CH01:2025-02-28, CH01:2023-01-13, CH01:2022-05-27, CH01:2022-05-26, CH01:2022-02-05
+
+=== ASCOT LAWYERS | ascotlawyers.co.uk ===
+ s1 outcome: UNREACHABLE ENOTFOUND
+ s1 final url: https://ascotlawyers.co.uk/
+ s2 candidates: [] mx: null cname: null
+ s3 sra: CEASE websites: [ 'www.ascotlawyers.co.uk' ] officeWebsites: [ 'www.ascotlawyers.co.uk' ] prevNames: null tradingNames: null
+
+=== 2 ENTERTAIN LIMITED | 2entertain.co.uk ===
+ s1 outcome: UNREACHABLE ENOTFOUND
+ s1 final url: https://2entertain.co.uk/
+ s2 candidates: ["cluster8.eu.messagelabs.com","cluster8a.eu.messagelabs.com","vali.email"] mx: [ 'cluster8.eu.messagelabs.com', 'cluster8a.eu.messagelabs.com' ] cname: null
+ s3 sra: null websites: null officeWebsites: [ 'www.2entertain.co.uk' ] prevNames: null tradingNames: null
+
+=== ALLENS | aar.com.au ===
+ s1 outcome: UNREACHABLE ENOTFOUND
+ s1 final url: https://aar.com.au/
+ s2 candidates: ["au-smtp-inbound-1.mimecast.com","au-smtp-inbound-2.mimecast.com","au."] mx: [ 'au-smtp-inbound-1.mimecast.com', 'au-smtp-inbound-2.mimecast.com' ] cname: null
+ s3 sra: null websites: null officeWebsites: [ 'www.aar.com.au', 'www.aar.com.au' ] prevNames: null tradingNames: null
+
+=== ABIGAIL DAYKIN SOLICITORS | abigaildaykinsolicitors.co.uk ===
+ s1 outcome: UNREACHABLE ENOTFOUND
+ s1 final url: https://abigaildaykinsolicitors.co.uk/
+ s2 candidates: [] mx: null cname: null
+ s3 sra: YES websites: [ 'www.abigaildaykinsolicitors.co.uk' ] officeWebsites: [ 'www.abigaildaykinsolicitors.co.uk' ] prevNames: [ 'ABIGAIL DAYKIN & CO' ] tradingNames: null
+
+=== Advanced Capital Solutions Limited | acs-ins.co.uk ===
+ s1 outcome: UNREACHABLE EPROTO
+ s1 final url: https://acs-ins.co.uk/
+ s2 candidates: ["acs-ins-co-uk.mail.protection.outlook.com","ms49516810.msv1.invalid","acsins-co-uk0i.mail.protection.outlook.com","ms71408077.msv1.invalid","ms64388570.msv1.invalid","spf.protection.outlook.com"] mx: [
+  'acs-ins-co-uk.mail.protection.outlook.com',
+  'ms49516810.msv1.invalid',
+  'acsins-co-uk0i.mail.protection.outlook.com',
+  'ms71408077.msv1.invalid',
+  'ms64388570.msv1.invalid'
+] cname: null
+ s3 fca website: [ 'www.acs-ins.co.uk' ] | status: Authorised
+ s4 CH status: active prevNames: [{"ceased_on":"2002-09-27","effective_from":"1997-05-06","name":"PRIDEGLORY LIMITED"}]
+ s4 filings: CH01:2014-05-13, CH01:2010-05-13, 288a:2007-08-20, 288b:2007-08-13, 288b:2007-08-13
+
+=== ActiveQuote Limited | activequote.com ===
+ s1 outcome: RESOLVED 301->200
+ s1 final url: https://www.activequote.com/
+ s2 candidates: ["activequote-com.mail.protection.outlook.com","spf.protection.outlook.com","activequote.com"] mx: [ 'activequote-com.mail.protection.outlook.com' ] cname: null
+ s3 fca website: [ 'www.activequote.com' ] | status: Authorised
+ s4 CH status: active prevNames: [{"ceased_on":"2014-11-26","effective_from":"2009-03-23","name":"ACTIVEQUOTE HEALTH LIMITED"},{"ceased_on":"2009-03-23","effective_from":"2008-12-04","name":"MANDACO 591 LIMITED"}]
+ s4 filings: TM02:2024-10-10, AP03:2024-10-10, CH01:2024-09-25, AP01:2024-08-16, AP01:2024-08-16
+
+=== Acumen Pensions and Investments Limited | acumenpensionsandinvestments.co.uk ===
+ s1 outcome: UNREACHABLE TIMEOUT
+ s1 final url: https://acumenpensionsandinvestments.co.uk/
+ s2 candidates: ["mx1.123-reg.co.uk","mx0.123-reg.co.uk"] mx: [ 'mx1.123-reg.co.uk', 'mx0.123-reg.co.uk' ] cname: null
+ s3 fca website: [ 'www.acumenpensionsandinvestments.co.uk' ] | status: Authorised
+ s4 CH status: active prevNames: [{"ceased_on":"2019-04-04","effective_from":"2019-02-20","name":"ACUMEN PENSION AND INVESTMENTS LIMITED"}]
+ s4 filings: TM01:2021-05-10, AP01:2021-02-25, TM01:2020-02-20
+
+=== ACCOLADE WINES LIMITED | accolade-wines.com ===
+ s1 outcome: RESOLVED 301->200
+ s1 final url: https://vinarchy.com/
+ s2 candidates: ["au-smtp-inbound-1.mimecast.com","au-smtp-inbound-2.mimecast.com","mxa-00855801.gslb.pphosted.com","mxb-00855801.gslb.pphosted.com","accolade-wines.com"] mx: [
+  'au-smtp-inbound-1.mimecast.com',
+  'au-smtp-inbound-2.mimecast.com',
+  'mxa-00855801.gslb.pphosted.com',
+  'mxb-00855801.gslb.pphosted.com'
+] cname: null
+ s3 sra: null websites: null officeWebsites: [ 'www.accolade-wines.com' ] prevNames: null tradingNames: null
+
+=== ACKERS & COMPANY | ackers-solicitors.co.uk ===
+ s1 outcome: RESOLVED 302->200
+ s1 final url: https://ackers-solicitors.co.uk/cgi-sys/suspendedpage.cgi
+ s2 candidates: ["ackerssolicitors-co-uk01e.mail.protection.outlook.com","spf.protection.outlook.com"] mx: [ 'ackerssolicitors-co-uk01e.mail.protection.outlook.com' ] cname: null
+ s3 sra: YES websites: [ 'www.ackers-solicitors.co.uk' ] officeWebsites: [ 'www.ackers-solicitors.co.uk' ] prevNames: null tradingNames: null
+
+=== ACTIVISION BLIZZARD UK LTD | activision.com ===
+ s1 outcome: RESOLVED 302->200
+ s1 final url: https://www.activision.com/
+ s2 candidates: ["activision-com.mail.protection.outlook.com"] mx: [ 'activision-com.mail.protection.outlook.com' ] cname: null
+ s3 sra: null websites: null officeWebsites: [ 'www.activision.com' ] prevNames: null tradingNames: null
+
+=== ACUMENSION LIMITED | acumension.com ===
+ s1 outcome: RESOLVED 301->200
+ s1 final url: https://dwfgroup.com/en/services/costs
+ s2 candidates: ["eu-smtp-inbound-2.mimecast.com","eu-smtp-inbound-1.mimecast.com","acumension.com"] mx: [ 'eu-smtp-inbound-2.mimecast.com', 'eu-smtp-inbound-1.mimecast.com' ] cname: null
+ s3 sra: YES websites: [ 'www.acumension.com' ] officeWebsites: [ 'www.acumension.com', 'www.acumension.com' ] prevNames: null tradingNames: null
+ s4 CH status: active prevNames: [{"ceased_on":"2010-04-20","effective_from":"1998-07-08","name":"LEGAL COSTS ASSOCIATES LIMITED"}]
+ s4 filings: AP01:2025-08-05, TM01:2025-08-01, TM01:2024-11-14, AP01:2023-12-05, TM01:2023-12-05
+
+=== Brampton Solicitors | bramptonsolicitors.co.uk ===
+ s1 outcome: UNREACHABLE EAI_AGAIN
+ s1 final url: https://bramptonsolicitors.co.uk/
+ s2 candidates: [] mx: null cname: null
+ s3 sra: REVOKE websites: null officeWebsites: [ 'bramptonsolicitors.co.uk' ] prevNames: null tradingNames: null
+
+=== CHORION LIMITED | chorion.co.uk ===
+ s1 outcome: UNREACHABLE EAI_AGAIN
+ s1 final url: https://chorion.co.uk/
+ s2 candidates: [] mx: null cname: null
+ s3 sra: null websites: null officeWebsites: [ 'www.chorion.co.uk' ] prevNames: null tradingNames: null
+
+=== DYFED-POWYS POLICE AUTHORITY | dyfedpowyspoliceauthority.co.uk ===
+ s1 outcome: UNREACHABLE EAI_AGAIN
+ s1 final url: https://dyfedpowyspoliceauthority.co.uk/
+ s2 candidates: [] mx: null cname: null
+ s3 sra: null websites: null officeWebsites: [ 'www.dyfedpowyspoliceauthority.co.uk' ] prevNames: null tradingNames: null
+
+=== COVENTRY UNIVERSITY | coventry.ac.uk ===
+ s1 outcome: UNREACHABLE ENOTFOUND
+ s1 final url: https://coventry.ac.uk/
+ s2 candidates: ["mxb-007f9501.gslb.pphosted.com","mxa-007f9501.gslb.pphosted.com","emaildefense.proofpoint.com"] mx: [ 'mxb-007f9501.gslb.pphosted.com', 'mxa-007f9501.gslb.pphosted.com' ] cname: null
+
+=== Aldgate Chambers Solicitors | acsolicitors.uk ===
+ s1 outcome: UNREACHABLE ENOTFOUND
+ s1 final url: https://acsolicitors.uk/
+ s2 candidates: [] mx: null cname: null
+ s3 sra: YES websites: [ 'https://acsolicitors.uk/' ] officeWebsites: [ 'acsolicitors.uk/' ] prevNames: null tradingNames: null
+
+=== Adam Libah Solicitors Ltd | adamlibah.com ===
+ s1 outcome: RESOLVED 301->200
+ s1 final url: https://www.adamlibah.com/
+ s2 candidates: ["adamlibah-com.mail.protection.outlook.com","spf.web-hosting.com","spf.protection.outlook.com"] mx: [ 'adamlibah-com.mail.protection.outlook.com' ] cname: null
+ s3 sra: YES websites: [ 'adamlibah.com' ] officeWebsites: [ 'adamlibah.com' ] prevNames: null tradingNames: [ 'Adam Libah Solicitors' ]
+ s4 CH status: active prevNames: [{"ceased_on":"2021-03-30","effective_from":"2016-07-14","name":"LIBAH CONSULTANCY LTD"}]
+ s4 filings: CH01:2026-02-18, CH01:2025-07-11, CH01:2025-05-22, CH01:2024-11-29, CH01:2024-10-24
+
+=== Adaurum Limited | adaurum.com ===
+ s1 outcome: RESOLVED 302->302->200
+ s1 final url: https://www.names.co.uk/default/holding/unbranded/domain/adaurum.com
+ s2 candidates: ["adaurum-com.mail.protection.outlook.com","spf.protection.outlook.com"] mx: [ 'adaurum-com.mail.protection.outlook.com' ] cname: null
+ s3 fca website: [ 'www.adaurum.com' ] | status: Authorised
+ s4 CH status: active prevNames: undefined
+ s4 filings: TM02:2015-07-23, TM02:2015-07-23, TM01:2014-05-28, CH01:2011-08-18, CH01:2011-08-18
+

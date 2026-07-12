@@ -2,6 +2,7 @@
 
 const puppeteer = require('puppeteer');
 const logger    = require('../../infra/utils/logger');
+const derivation = require('../services/scan-derivation-service');
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
 const C = {
@@ -19,16 +20,23 @@ const C = {
 };
 
 // ── Security Rating ───────────────────────────────────────────────────────────
-function calcRating(pct) {
-  return Math.round(Math.min(100, Math.max(0, pct || 0)) / 100 * 999);
-}
+// Rating value and risk-band label are both derived via the canonical
+// derivation service (ADR-SYS-008 Phase A) — no threshold ladder is
+// re-implemented here. Colour/background tokens are a presentation-only
+// concern local to this generator, keyed off the label the service returns.
+const calcRating = derivation.deriveRating999;
+
+const RATING_BAND_COLORS = {
+  'Excellent':     { color: '#15803D', bg: '#DCFCE7' },
+  'Good':          { color: '#16A34A', bg: '#D1FAE5' },
+  'Moderate Risk': { color: '#D97706', bg: '#FEF9C3' },
+  'High Risk':     { color: '#EA580C', bg: '#FFEDD5' },
+  'Critical Risk': { color: '#DC2626', bg: '#FEE2E2' },
+};
 
 function ratingBand(r) {
-  if (r >= 899) return { label: 'Excellent',     color: '#15803D', bg: '#DCFCE7' };
-  if (r >= 749) return { label: 'Good',          color: '#16A34A', bg: '#D1FAE5' };
-  if (r >= 599) return { label: 'Moderate Risk', color: '#D97706', bg: '#FEF9C3' };
-  if (r >= 400) return { label: 'High Risk',     color: '#EA580C', bg: '#FFEDD5' };
-  return              { label: 'Critical Risk',  color: '#DC2626', bg: '#FEE2E2' };
+  const label = derivation.deriveRating999Label(r);
+  return { label, ...RATING_BAND_COLORS[label] };
 }
 
 // ── Business language ─────────────────────────────────────────────────────────

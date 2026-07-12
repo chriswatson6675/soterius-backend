@@ -1,6 +1,7 @@
 'use strict';
 
 const tls = require('tls');
+const crypto = require('crypto');
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -379,21 +380,30 @@ function _extractCertificateEvidence(peerCert, collectedAt) {
     ? peerCert.fingerprint256.replace(/:/g, '').toLowerCase()
     : null;
 
-  // ── Signature algorithm ───────────────────────────────────────────────
-  const signatureAlgorithm = peerCert.sigalg || null;
+  // ── Signature algorithm (C-7) ──────────────────────────────────────────
+  // Node's tls.PeerCertificate object has no documented `sigalg` property —
+  // it does not exist on the object returned by getPeerCertificate(), so the
+  // previous `peerCert.sigalg || null` always evaluated to null. There is no
+  // documented Node TLS/crypto API that exposes the certificate's signature
+  // algorithm without manual ASN.1 parsing of the TBSCertificate structure.
+  // This is a genuine v1 collection ceiling (same class of limitation as
+  // Certificate Policy OIDs, §7.17/C-1) — explicitly preserved as null,
+  // never inferred or guessed. See SLG-101 §2.3 / SLG-103 for the record.
+  const signatureAlgorithm = null;
 
-  // ── Public key ────────────────────────────────────────────────────────
-  let keyType  = null;
-  let keyBits  = null;
-  let keyCurve = null;
-
-  if (typeof peerCert.bits === 'number') {
-    keyType = 'RSA';
-    keyBits = peerCert.bits;
-  } else if (peerCert.asn1Curve || peerCert.nistCurve) {
-    keyType  = 'EC';
-    keyCurve = peerCert.asn1Curve || peerCert.nistCurve || null;
-  }
+  // ── Public key (C-6 fix) ────────────────────────────────────────────────
+  // Previous logic classified any certificate with a numeric peerCert.bits
+  // as RSA, checking the EC-only asn1Curve/nistCurve fields only as a
+  // fallback. In practice, this Node/OpenSSL runtime populates `bits` for
+  // EC keys too (256 for P-256, 384 for P-384) while never populating
+  // asn1Curve/nistCurve — so every EC certificate was misclassified as RSA
+  // with the curve's bit-length reported as the RSA key size (C-6).
+  //
+  // Fixed by reading the key algorithm from crypto.X509Certificate, built
+  // from the certificate's raw DER bytes (peerCert.raw — a documented
+  // PeerCertificate field) — a documented, version-stable Node crypto API,
+  // rather than the undocumented bits/asn1Curve/nistCurve properties.
+  const { keyType, keyBits, keyCurve } = _extractKeyInfo(peerCert);
 
   // ── Validity dates ────────────────────────────────────────────────────
   const leafNotBefore = _parseDate(peerCert.valid_from, 'valid_from', parseErrors);
@@ -502,6 +512,57 @@ function _certAbsenceEvidence(presentState, parseErrors = []) {
   };
 }
 
+// ── Public key extraction (C-6) ────────────────────────────────────────────────
+
+/**
+ * Derives key type/size/curve from the certificate's raw DER bytes via
+ * crypto.X509Certificate — a documented Node API — rather than the
+ * undocumented PeerCertificate `bits`/`asn1Curve`/`nistCurve` properties.
+ *
+ * @param {object} peerCert - Node TLS peer certificate object
+ * @returns {{keyType: string|null, keyBits: number|null, keyCurve: string|null}}
+ */
+function _extractKeyInfo(peerCert) {
+  if (!peerCert.raw) {
+    return { keyType: null, keyBits: null, keyCurve: null };
+  }
+
+  try {
+    const x509 = new crypto.X509Certificate(peerCert.raw);
+    const publicKey = x509.publicKey;
+    const asymType = publicKey.asymmetricKeyType || null;
+    const details = publicKey.asymmetricKeyDetails || {};
+
+    if (asymType === 'rsa' || asymType === 'rsa-pss') {
+      return {
+        keyType: 'RSA',
+        keyBits: typeof details.modulusLength === 'number' ? details.modulusLength : null,
+        keyCurve: null,
+      };
+    }
+
+    if (asymType === 'ec') {
+      return {
+        keyType: 'EC',
+        keyBits: typeof details.modulusLength === 'number' ? details.modulusLength : null,
+        keyCurve: details.namedCurve || null,
+      };
+    }
+
+    if (asymType) {
+      // e.g. ed25519, ed448, dsa — real key type, preserved verbatim;
+      // bits/curve are not meaningfully defined for these in the same sense.
+      return { keyType: asymType.toUpperCase(), keyBits: null, keyCurve: null };
+    }
+
+    return { keyType: null, keyBits: null, keyCurve: null };
+  } catch (_) {
+    // X509Certificate construction or key inspection failed (malformed DER,
+    // unsupported key algorithm). Preserve null — never guess.
+    return { keyType: null, keyBits: null, keyCurve: null };
+  }
+}
+
 // ── Certificate chain traversal ───────────────────────────────────────────────
 
 function _extractChain(leafCert) {
@@ -554,7 +615,10 @@ function _buildIntermediateEntry(cert, position) {
       : null,
     not_before:         _parseDate(cert.valid_from, null, []),
     not_after:          _parseDate(cert.valid_to,   null, []),
-    signature_algorithm: cert.sigalg || null,
+    // C-7: cert.sigalg is not a documented Node property (always undefined);
+    // signature algorithm is not observable via the documented API for
+    // intermediate certificates either. Explicitly null, never guessed.
+    signature_algorithm: null,
     is_self_signed:     false,
   };
 }

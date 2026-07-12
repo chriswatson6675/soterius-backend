@@ -43,6 +43,22 @@ function makeLeafCert(overrides = {}) {
   };
 }
 
+// ── Real DER fixtures for public-key classification tests (C-6/C-7) ──────────
+// Genuine self-signed certificates generated via openssl (RSA 2048 and EC
+// P-256/prime256v1), used to exercise the real crypto.X509Certificate parsing
+// path in _extractKeyInfo — mock peerCert objects alone cannot validate this,
+// since the fix reads from the certificate's actual raw DER bytes.
+
+const REAL_RSA_CERT_DER = Buffer.from(
+  'MIIDHzCCAgegAwIBAgIUUZmgONG0FIvQeLqUzFIlTddg+EgwDQYJKoZIhvcNAQELBQAwHzEdMBsGA1UEAwwUcnNhLXRlc3QuZXhhbXBsZS5jb20wHhcNMjYwNzA4MTk1NTIzWhcNMjcwNzA4MTk1NTIzWjAfMR0wGwYDVQQDDBRyc2EtdGVzdC5leGFtcGxlLmNvbTCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAK5HTm88xrw5MjsnDRiwVcLubx+EWvK9/TQNdnMWMqtSMYxgj5FlFTWXkwB1Wz1e56wBIWu9QteZF3blETZf51L7MZjHa+r3H71kVExhYVPUKnVub+Y7a11mWNwCndlwvJEK3pF7XQpBmj/8124TLDElWC7YWVCHWvH8GGK4AuX6iH5nWf6ohsaW+BJFLmuHTV2yxOVoHRgMIkycJBAe1bV55w5uugye6AB43Pr0MMbUgwsiiUFs6abGZkGX28jWE1SJx6AdNdGJVMSSIBpK+TGVaS/t43gLly9cQuzd50m3XmvLp/Gfhh8vl+ZMATT6Woi6zhbUb0DRLr18JzNXEQcCAwEAAaNTMFEwHQYDVR0OBBYEFIMW2xCIIlQwuLX0sFOg15/P4q6QMB8GA1UdIwQYMBaAFIMW2xCIIlQwuLX0sFOg15/P4q6QMA8GA1UdEwEB/wQFMAMBAf8wDQYJKoZIhvcNAQELBQADggEBAGsOvc0bnd2QqVWSTgRlhrO8VP+Pb8yGkdEwvFNppuOz+puaExdvbeU4ayErPKzDhpSTbah8sCJPOKwgVLBPRSUgeCegFhuNyEuoI1nzUsmWa3b9wS/zNGxcgCSRTwgL1WKO+naaPlybVraau+qG41RiXSW327VZ1kojknKzLi2ljenY/aVPYkFSNdNpWgdvu5QsxpXQMkcPhs+RzofUAMZYQHJ8AnCwajvtE8Cqu2YOUFm+A8G/9X/wcgW67CD0LDZBl9KMZKlricfNp1KZg8ncF6MIVUUKblFIZ5THzdDLQm/ZbABZ2eyMnhmEawdjUmo+G5etMv62XdtnAUUJjqI=',
+  'base64'
+);
+
+const REAL_EC_CERT_DER = Buffer.from(
+  'MIIBkDCCATegAwIBAgIUXAzbJU5fN1nK9R1Oj/97nLxkqjAwCgYIKoZIzj0EAwIwHjEcMBoGA1UEAwwTZWMtdGVzdC5leGFtcGxlLmNvbTAeFw0yNjA3MDgxOTU1MjNaFw0yNzA3MDgxOTU1MjNaMB4xHDAaBgNVBAMME2VjLXRlc3QuZXhhbXBsZS5jb20wWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAATiuzFFNwD8zFtTr3Wf/I8acKa7igEsYfkJUKrx8NL2BQOQXcfDgcvRSg4pT7YVUjyZNpPgL9/pMMQLEg09pVqho1MwUTAdBgNVHQ4EFgQULJmd7x7aeS5i93cNwxQ26DJ4SakwHwYDVR0jBBgwFoAULJmd7x7aeS5i93cNwxQ26DJ4SakwDwYDVR0TAQH/BAUwAwEB/zAKBggqhkjOPQQDAgNHADBEAiAMXKKbl37xRjAJkTfiUSdd/OU4Ca4ybSbs8WLqHuukywIgF9dk18xT7RaN4QRckNtc5F0VOTVq/nLjWjFRh2PSZV0=',
+  'base64'
+);
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 let savedConnect;
@@ -438,6 +454,70 @@ describe('certificate fields', () => {
     });
     assert.deepEqual(result.leaf_aia_ocsp_urls,      []);
     assert.deepEqual(result.leaf_aia_ca_issuers_urls, []);
+  });
+});
+
+// ── Category 5b — Public key classification regression (C-6 / C-7) ───────────
+
+describe('public key classification (C-6/C-7 regression)', () => {
+  before(() => { savedConnect = tls.connect; });
+  after(() => { tls.connect = savedConnect; });
+
+  test('C-6: real RSA-2048 certificate is classified RSA with correct bit size, no curve', async () => {
+    const result = await collect('rsa-test.example.com', {
+      peerCert: makeLeafCert({ raw: REAL_RSA_CERT_DER }),
+    });
+    assert.equal(result.leaf_key_type,  'RSA');
+    assert.equal(result.leaf_key_bits,  2048);
+    assert.equal(result.leaf_key_curve, null);
+  });
+
+  test('C-6: real EC/prime256v1 certificate is classified EC with correct curve, no RSA bits', async () => {
+    const result = await collect('ec-test.example.com', {
+      // Deliberately include a `bits: 256` field (as the pre-fix collector
+      // would see from Node for some EC certs) to prove the fix no longer
+      // trusts peerCert.bits for key-type classification — it must derive
+      // the type from the real DER via crypto.X509Certificate instead.
+      peerCert: makeLeafCert({ raw: REAL_EC_CERT_DER, bits: 256, asn1Curve: undefined, nistCurve: undefined }),
+    });
+    assert.equal(result.leaf_key_type,  'EC');
+    assert.equal(result.leaf_key_curve, 'prime256v1');
+    assert.equal(result.leaf_key_bits,  null);
+  });
+
+  test('C-6: no regression — RSA classification unaffected when peerCert.bits is also present', async () => {
+    const result = await collect('rsa-test.example.com', {
+      peerCert: makeLeafCert({ raw: REAL_RSA_CERT_DER, bits: 2048 }),
+    });
+    assert.equal(result.leaf_key_type, 'RSA');
+    assert.equal(result.leaf_key_bits, 2048);
+  });
+
+  test('C-6: malformed raw DER falls back to null rather than throwing or guessing', async () => {
+    const result = await collect('example.com', {
+      peerCert: makeLeafCert({ raw: Buffer.from('not a real certificate') }),
+    });
+    assert.equal(result.leaf_key_type,  null);
+    assert.equal(result.leaf_key_bits,  null);
+    assert.equal(result.leaf_key_curve, null);
+    // Malformed key material must not abort the whole extraction.
+    assert.equal(result.certificate_present, 'CERTIFICATE_PRESENTED');
+  });
+
+  test('C-6: absent raw field falls back to null (legacy/mocked peerCert with no DER bytes)', async () => {
+    const result = await collect('example.com', {
+      peerCert: makeLeafCert({ raw: undefined }),
+    });
+    assert.equal(result.leaf_key_type,  null);
+    assert.equal(result.leaf_key_bits,  null);
+    assert.equal(result.leaf_key_curve, null);
+  });
+
+  test('C-7: leaf_signature_algorithm is always null — no longer read from nonexistent peerCert.sigalg', async () => {
+    const result = await collect('example.com', {
+      peerCert: makeLeafCert({ sigalg: 'sha256WithRSAEncryption' }), // present in mock, must be ignored
+    });
+    assert.equal(result.leaf_signature_algorithm, null);
   });
 });
 

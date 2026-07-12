@@ -1,0 +1,377 @@
+[
+  {
+    "organisation_id": "ORG-2FB81FCB6607",
+    "organisation_name": "ROBERT LEE LAW OFFICES (HONG KONG)",
+    "stored_domain": "robertlewlaw.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "547509",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-043A32D5D544",
+    "organisation_name": "Richardson Mail Limited",
+    "stored_domain": "richardsonmail.co.uk",
+    "regulators": [
+      "FCA"
+    ],
+    "identifiers": {
+      "frn": "838385",
+      "sraIdentifier": null,
+      "companiesHouseNumber": "07384980"
+    },
+    "organisation_status": "CH:active | FCA:Authorised",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-DFCF9B466718",
+    "organisation_name": "S A Salam",
+    "stored_domain": "salamsolicitor.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "806017",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-27397A3AD975",
+    "organisation_name": "QAMAR ISLAM LTD",
+    "stored_domain": "qamar.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "569471",
+      "companiesHouseNumber": "08057071"
+    },
+    "organisation_status": "CH:active | SRA:YES",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-12DB9C6784CB",
+    "organisation_name": "QATARGAS OPERATING COMPANY LIMITED",
+    "stored_domain": "qatargas.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "473329",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-A937644256F5",
+    "organisation_name": "QUADRILLION WEALTH MANAGEMENT LTD.",
+    "stored_domain": "quadrillion-wml.co.uk",
+    "regulators": [
+      "FCA"
+    ],
+    "identifiers": {
+      "frn": "584985",
+      "sraIdentifier": null,
+      "companiesHouseNumber": "07956254"
+    },
+    "organisation_status": "CH:active | FCA:Authorised",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-4B41528FD628",
+    "organisation_name": "RIAZ SOLICITORS",
+    "stored_domain": "riazsolicitors.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "424803",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWNSRA:YES",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-D1D07C77095C",
+    "organisation_name": "SCION INSURANCE SERVICES LIMITED",
+    "stored_domain": "scioninsurance.co",
+    "regulators": [
+      "FCA"
+    ],
+    "identifiers": {
+      "frn": "311208",
+      "sraIdentifier": null,
+      "companiesHouseNumber": "00845449"
+    },
+    "organisation_status": "CH:active | FCA:Authorised",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-07A82CEEE53E",
+    "organisation_name": "RADLEYS (LONDON) LLP",
+    "stored_domain": "radleyssolicitors.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "573792",
+      "companiesHouseNumber": "OC380129"
+    },
+    "organisation_status": "CH:active | SRA:YES",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-082B8A49B7A3",
+    "organisation_name": "SANNE FIDUCIARY SERVICES LIMITED",
+    "stored_domain": "sannegroup.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "498795",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-DCD1C6BD4E36",
+    "organisation_name": "RAYMOND JAMES INVESTMENT SERVICES LIMITED",
+    "stored_domain": "raymondjames.uk.com",
+    "regulators": [
+      "FCA"
+    ],
+    "identifiers": {
+      "frn": "194713",
+      "sraIdentifier": null,
+      "companiesHouseNumber": "03779657"
+    },
+    "organisation_status": "CH:active | FCA:Authorised - applied to cancel",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-9106D6687C62",
+    "organisation_name": "Richard Lamb",
+    "stored_domain": "sevenoaks-law.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "804731",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-A4F7AB243D98",
+    "organisation_name": "SEAGO BUTLER STOPPS FINANCIAL SERVICES LIMITED",
+    "stored_domain": "seagobutlerstopps.co.uk",
+    "regulators": [
+      "FCA"
+    ],
+    "identifiers": {
+      "frn": "303822",
+      "sraIdentifier": null,
+      "companiesHouseNumber": "04278083"
+    },
+    "organisation_status": "CH:active | FCA:Authorised",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-D99D99EC28DD",
+    "organisation_name": "SOUTHAMPTON FOOTBALL CLUB",
+    "stored_domain": "saintsfc.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "613984",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-19EAA93FD7D3",
+    "organisation_name": "FOLKESTONE AND HYTHE DISTRICT COUNCIL",
+    "stored_domain": "shepway.gov.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "65534",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-16C2C9712D3E",
+    "organisation_name": "SECURE RISK SOLUTIONS LTD",
+    "stored_domain": "securers.co.uk",
+    "regulators": [
+      "FCA"
+    ],
+    "identifiers": {
+      "frn": "673706",
+      "sraIdentifier": null,
+      "companiesHouseNumber": "09022450"
+    },
+    "organisation_status": "CH:active | FCA:Authorised",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-B5CA09DE7051",
+    "organisation_name": "R W Hemmings & Co Ltd",
+    "stored_domain": "rwhemmings.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "8003531",
+      "companiesHouseNumber": "14604981"
+    },
+    "organisation_status": "CH:active | SRA:YES",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-9BA467627CBA",
+    "organisation_name": "Raymond James Financial International Limited",
+    "stored_domain": "raymondjames.com",
+    "regulators": [
+      "FCA"
+    ],
+    "identifiers": {
+      "frn": "188244",
+      "sraIdentifier": null,
+      "companiesHouseNumber": "03127076"
+    },
+    "organisation_status": "CH:active | FCA:Authorised",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-6CE72BBB3476",
+    "organisation_name": "THE RUGBY FOOTBALL UNION",
+    "stored_domain": "rfu.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "426585",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-88ABD68930E8",
+    "organisation_name": "Riversure Limited",
+    "stored_domain": "riversure.com",
+    "regulators": [
+      "FCA"
+    ],
+    "identifiers": {
+      "frn": "304301",
+      "sraIdentifier": null,
+      "companiesHouseNumber": "04514294"
+    },
+    "organisation_status": "CH:active | FCA:Authorised",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-C34FE22F69FB",
+    "organisation_name": "SOLICITORS DISCIPLINARY TRIBUNAL",
+    "stored_domain": "solicitorstribunal.org",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "352866",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-1D3D3782571F",
+    "organisation_name": "SOUTH DERBYSHIRE DISTRICT COUNCIL",
+    "stored_domain": "south-derbys.gov.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "177943",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-BB8A6C5041CE",
+    "organisation_name": "SARASIN PARTNERS LLP",
+    "stored_domain": "sarasin.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "348302",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-393E8BC5E9AF",
+    "organisation_name": "SHEAN SOLICITORS LIMITED",
+    "stored_domain": "sheansolicitors.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "425584",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWNSRA:CEASE",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-45C688AC354C",
+    "organisation_name": "SPRINGFIELD SOLICITORS LIMITED",
+    "stored_domain": "springfieldsolcictors.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "536072",
+      "companiesHouseNumber": "07192087"
+    },
+    "organisation_status": "CH:active | SRA:YES",
+    "companies_house_status": "active"
+  }
+]

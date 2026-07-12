@@ -1,0 +1,29 @@
+{
+  "run_label": "NOB-CAA-001",
+  "signal": "SOT-CAA-001",
+  "category": "B — Domain Trust (Signal 1)",
+  "population": 17057,
+  "cohort_id": "ORG-AUTHORITY-001",
+  "window": {
+    "after": "2026-07-06T23:57:33Z",
+    "before": "2026-07-07T00:08:09Z"
+  },
+  "collected_span": {
+    "earliest": "2026-07-06T23:57:33.155+00:00",
+    "latest": "2026-07-07T00:08:08.062+00:00"
+  },
+  "counts": {
+    "observations": 17057,
+    "raw_rows": 17057,
+    "duplicate_rows": 0,
+    "records": 2640
+  },
+  "sha256": {
+    "observations": "785a4973adc8cbc881b920eb6b5f9a9c82eccae4ec528567382d65cd18e5742d"
+  },
+  "signal_version": 1,
+  "observation_completeness_pct": 99.496,
+  "nonobservation_rate_pct": 0.504,
+  "publication_rate_pct": 2.679,
+  "schema_integrity_violations": 0
+}

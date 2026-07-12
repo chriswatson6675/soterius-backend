@@ -1,0 +1,377 @@
+[
+  {
+    "organisation_id": "ORG-9AE69458F3B4",
+    "organisation_name": "EUROPEAN METAL RECYCLING LIMITED",
+    "stored_domain": "emrltd.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "546412",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-79B1C8A23B59",
+    "organisation_name": "Edward McCourt & Company LLP",
+    "stored_domain": "edwardmccourt.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "647685",
+      "companiesHouseNumber": "OC421154"
+    },
+    "organisation_status": "CH:active | SRA:YES",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-7F584D60BB6F",
+    "organisation_name": "EATON ADAMS LEGAL LIMITED",
+    "stored_domain": "eatonadams.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "655907",
+      "companiesHouseNumber": "11730997"
+    },
+    "organisation_status": "CH:active | SRA:YES",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-8FCA2E97ED99",
+    "organisation_name": "Teledyne UK Limited",
+    "stored_domain": "e2v.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "537470",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-933F3CE550B5",
+    "organisation_name": "Esken Limited",
+    "stored_domain": "esken.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "634681",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-71FAF31F4F04",
+    "organisation_name": "TAHMINA & CO SOLICITORS LTD",
+    "stored_domain": "essexcriminaldefence.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "648788",
+      "companiesHouseNumber": "11343426"
+    },
+    "organisation_status": "CH:active | SRA:YES",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-767EC0AC85AB",
+    "organisation_name": "Essex Finance Limited",
+    "stored_domain": "essexfinance.co.uk",
+    "regulators": [
+      "FCA"
+    ],
+    "identifiers": {
+      "frn": "657558",
+      "sraIdentifier": null,
+      "companiesHouseNumber": "03717991"
+    },
+    "organisation_status": "CH:active | FCA:Authorised",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-EBE5F253F1B6",
+    "organisation_name": "EMSO & CO SOLICITORS",
+    "stored_domain": "emsoandcosolicitors.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "8003291",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWNSRA:YES",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-0DD21FC4E5B8",
+    "organisation_name": "Eaton Electric Limited",
+    "stored_domain": "eaton.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "614671",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-50852BA66ECE",
+    "organisation_name": "EVENDEN SOLICITORS AND ADVOCATES",
+    "stored_domain": "evendensols.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "637096",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWNSRA:YES",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-7A45827D8ADF",
+    "organisation_name": "ENTERTAINMENT ONE UK LIMITED",
+    "stored_domain": "entertainmentone.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "388843",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-AEE33585353F",
+    "organisation_name": "IRESS PORTAL LIMITED",
+    "stored_domain": "exchange.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "535573",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-791536F5B02D",
+    "organisation_name": "EVERSHEDS",
+    "stored_domain": "eversheds.ch",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "516449",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-23C252257458",
+    "organisation_name": "Excello Libertas Limited",
+    "stored_domain": "excellolibertas.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "833800",
+      "companiesHouseNumber": "13354444"
+    },
+    "organisation_status": "CH:active | SRA:YES",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-CED5E2725D93",
+    "organisation_name": "EXCELSIOR VITA FINANCIAL SERVICES LTD",
+    "stored_domain": "excelsiorvita.com",
+    "regulators": [
+      "FCA"
+    ],
+    "identifiers": {
+      "frn": "911649",
+      "sraIdentifier": null,
+      "companiesHouseNumber": "12107576"
+    },
+    "organisation_status": "CH:active | FCA:Authorised",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-E8708A9A418D",
+    "organisation_name": "EXPERT FINANCIAL SOLUTIONS LIMITED",
+    "stored_domain": "expertwealth.co.uk",
+    "regulators": [
+      "FCA"
+    ],
+    "identifiers": {
+      "frn": "401295",
+      "sraIdentifier": null,
+      "companiesHouseNumber": "05046798"
+    },
+    "organisation_status": "CH:active | FCA:Authorised",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-72D678B64532",
+    "organisation_name": "FIRST ADVANTAGE LITIGATION CONSULTING LLC",
+    "stored_domain": "fadvlit.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "569263",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-A86197162DC3",
+    "organisation_name": "EMMA WILLIAMS FAMILY LAW",
+    "stored_domain": "ewilliamsfamilylaw.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "619827",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWNSRA:YES",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-8E1297EB6D26",
+    "organisation_name": "FARFETCH UK LIMITED",
+    "stored_domain": "farfetch.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "619400",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-50896D521E4D",
+    "organisation_name": "EVANS POWELL & CO",
+    "stored_domain": "evanspowell.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "60538",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWNSRA:YES",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-0D0B88CD2DEC",
+    "organisation_name": "EVERSHEDS SUTHERLAND (INTERNATIONAL) LLP",
+    "stored_domain": "eversheds-sutherland.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "383181",
+      "companiesHouseNumber": "OC304065"
+    },
+    "organisation_status": "CH:active | SRA:YES",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-798FDA1C7FFA",
+    "organisation_name": "Facility Review Ltd",
+    "stored_domain": "facilityreview.co.uk",
+    "regulators": [
+      "FCA"
+    ],
+    "identifiers": {
+      "frn": "830122",
+      "sraIdentifier": null,
+      "companiesHouseNumber": "10136058"
+    },
+    "organisation_status": "CH:active | FCA:Authorised",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-08A6E013E23B",
+    "organisation_name": "FIRST CHOICE HOMES OLDHAM",
+    "stored_domain": "fcho.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "559605",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-0F060752902C",
+    "organisation_name": "FERNEDENE FINANCIAL PLANNING LIMITED",
+    "stored_domain": "fernedene.com",
+    "regulators": [
+      "FCA"
+    ],
+    "identifiers": {
+      "frn": "490740",
+      "sraIdentifier": null,
+      "companiesHouseNumber": "06717196"
+    },
+    "organisation_status": "CH:active | FCA:Authorised",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-550F3173F3E3",
+    "organisation_name": "ETIHAD AIRWAYS PJSC",
+    "stored_domain": "etihadairways.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "561085",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  }
+]

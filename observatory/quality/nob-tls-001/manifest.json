@@ -1,0 +1,27 @@
+{
+  "run_label": "NOB-TLS-001",
+  "run_id": "54275e58-1784-6b9c-cccf-e97002b21f62",
+  "source_run_id": "a4f9d8ce-b4af-4607-8406-6f882bdc4bf6",
+  "signal": "SOT-TLS-001",
+  "model": "TLS-QM-v1.0",
+  "baseline": "NOB-TLS-001 national TLS baseline",
+  "population": 17057,
+  "scored": 15882,
+  "not_scored_total": 1175,
+  "not_scored_by_reason": {
+    "NOT_OBSERVED": 1175
+  },
+  "calc_failures": 0,
+  "sha256": {
+    "observations": "3798cd638e4a4c6f35d2e98e8349299863abe7eddf2e0119d432bc87fec207e1",
+    "quality_scores": "a03e632c07e4604d484e74771b0baac0efdf1c082426b9e4d65e671c7a18b00c"
+  },
+  "mean": 99.0653,
+  "median": 100,
+  "distinct_values": [
+    25,
+    90,
+    100
+  ],
+  "provenance": "Scored from signal_tls_v1 (NOB-TLS-001, run_id a4f9d8ce-b4af-4607-8406-6f882bdc4bf6) via tls-quality.js (TLS-QM-v1.0); SLG-098 calibration."
+}

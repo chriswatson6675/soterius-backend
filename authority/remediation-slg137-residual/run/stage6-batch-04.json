@@ -1,0 +1,377 @@
+[
+  {
+    "organisation_id": "ORG-CA8956967B86",
+    "organisation_name": "Finance & Leasing (London) Limited",
+    "stored_domain": "financeleasing.co.uk",
+    "regulators": [
+      "FCA"
+    ],
+    "identifiers": {
+      "frn": "730723",
+      "sraIdentifier": null,
+      "companiesHouseNumber": "01537235"
+    },
+    "organisation_status": "CH:active | FCA:Authorised",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-1CFEDDDE5309",
+    "organisation_name": "EVERSHEDS SUTHERLAND (FRANCE) LLP",
+    "stored_domain": "eversheds.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "567215",
+      "companiesHouseNumber": "OC367681"
+    },
+    "organisation_status": "CH:active | SRA:YES",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-D45A0BCC37C0",
+    "organisation_name": "Financing Enterprise Limited",
+    "stored_domain": "financingenterprise.co.uk",
+    "regulators": [
+      "FCA"
+    ],
+    "identifiers": {
+      "frn": "754697",
+      "sraIdentifier": null,
+      "companiesHouseNumber": "06620363"
+    },
+    "organisation_status": "CH:active | FCA:Authorised",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-4226E70CF73F",
+    "organisation_name": "FEMALE INDEPENDENT LTD.",
+    "stored_domain": "femaleindependent.co.uk",
+    "regulators": [
+      "FCA"
+    ],
+    "identifiers": {
+      "frn": "303137",
+      "sraIdentifier": null,
+      "companiesHouseNumber": "SC245607"
+    },
+    "organisation_status": "CH:active | FCA:Authorised",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-42343E174C0A",
+    "organisation_name": "FYLDE BOROUGH COUNCIL",
+    "stored_domain": "flyde.gov.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "64120",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-9803DAB343C8",
+    "organisation_name": "FAIRHURST MENUHIN & CO LTD",
+    "stored_domain": "fmc-solicitors.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "598877",
+      "companiesHouseNumber": "07872324"
+    },
+    "organisation_status": "CH:active | SRA:YES",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-812E05145AB8",
+    "organisation_name": "Flex Mortgages Limited",
+    "stored_domain": "flexlimited.co.uk",
+    "regulators": [
+      "FCA"
+    ],
+    "identifiers": {
+      "frn": "731242",
+      "sraIdentifier": null,
+      "companiesHouseNumber": "07184659"
+    },
+    "organisation_status": "CH:active | FCA:Authorised",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-ABA4B331B357",
+    "organisation_name": "Findlay Park Partners LLP",
+    "stored_domain": "findlaypark.com",
+    "regulators": [
+      "FCA"
+    ],
+    "identifiers": {
+      "frn": "222907",
+      "sraIdentifier": null,
+      "companiesHouseNumber": "OC303640"
+    },
+    "organisation_status": "CH:active | FCA:Authorised",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-D91E141B3500",
+    "organisation_name": "CLOSECOURTT LIMITED",
+    "stored_domain": "frederickjamesjewellers.co.uk.co.uk",
+    "regulators": [
+      "FCA"
+    ],
+    "identifiers": {
+      "frn": "741372",
+      "sraIdentifier": null,
+      "companiesHouseNumber": "01987261"
+    },
+    "organisation_status": "CH:active | FCA:Authorised",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-BE421F247B2B",
+    "organisation_name": "FOX HARTLEY",
+    "stored_domain": "foxhartley.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "325646",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWNSRA:CEASE",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-604EAF006AC3",
+    "organisation_name": "FALCON GROUP ADMINISTRATIVE SERVICES (UK) LTD.",
+    "stored_domain": "falcontradecorp.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "562512",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-44E306665804",
+    "organisation_name": "Friends Advisers Ltd",
+    "stored_domain": "friendsfinancialadvisers.co.uk",
+    "regulators": [
+      "FCA"
+    ],
+    "identifiers": {
+      "frn": "726600",
+      "sraIdentifier": null,
+      "companiesHouseNumber": "09657297"
+    },
+    "organisation_status": "CH:active | FCA:Authorised",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-5DECD720212B",
+    "organisation_name": "GE MONEY HOME LENDING",
+    "stored_domain": "gemoney.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "69577",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-5244174F21EA",
+    "organisation_name": "FIRST STATE INVESTMENTS",
+    "stored_domain": "firststate.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "330861",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-D82F37BA8A64",
+    "organisation_name": "Yorkshire Mortgage Solutions Limited",
+    "stored_domain": "firthfinancial.co.uk",
+    "regulators": [
+      "FCA"
+    ],
+    "identifiers": {
+      "frn": "778717",
+      "sraIdentifier": null,
+      "companiesHouseNumber": "10596215"
+    },
+    "organisation_status": "CH:active | FCA:Authorised",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-E55027C42271",
+    "organisation_name": "GLG PARTNERS LP",
+    "stored_domain": "glgpartners.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "351852",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-81926B5BFF2B",
+    "organisation_name": "CHANNEL 5 BROADCASTING LTD",
+    "stored_domain": "five.tv",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "206877",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-E01360CCECC5",
+    "organisation_name": "Greenkite Ignite Limited",
+    "stored_domain": "greenkitassociates.com",
+    "regulators": [
+      "FCA"
+    ],
+    "identifiers": {
+      "frn": "1041613",
+      "sraIdentifier": null,
+      "companiesHouseNumber": "16621560"
+    },
+    "organisation_status": "CH:active | FCA:Authorised",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-E41A89DA5A71",
+    "organisation_name": "GREEN VALLEY FINANCIAL SERVICES LIMITED",
+    "stored_domain": "greenvalleyfinancialservices.co.uk",
+    "regulators": [
+      "FCA"
+    ],
+    "identifiers": {
+      "frn": "765981",
+      "sraIdentifier": null,
+      "companiesHouseNumber": "08423027"
+    },
+    "organisation_status": "CH:active | FCA:Authorised",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-E6122CC6781D",
+    "organisation_name": "FOREMAN & CO LIMITED",
+    "stored_domain": "foremanlegal.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "499325",
+      "companiesHouseNumber": "06656338"
+    },
+    "organisation_status": "CH:active | SRA:YES",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-C06BA4577AEF",
+    "organisation_name": "GILL JENNINGS & EVERY LLP (PATENTS & TRADE MARK ATTORNEYS)",
+    "stored_domain": "gje.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "75879",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-0EC7A3BAA589",
+    "organisation_name": "Hanson Insurance Services Limited",
+    "stored_domain": "hansoninsurance.co.uk",
+    "regulators": [
+      "FCA"
+    ],
+    "identifiers": {
+      "frn": "307423",
+      "sraIdentifier": null,
+      "companiesHouseNumber": "03677102"
+    },
+    "organisation_status": "CH:active | FCA:Authorised",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-376C02D9B965",
+    "organisation_name": "HAWKINS HATTON CORPORATE LAWYERS LIMITED",
+    "stored_domain": "hawkinshatton.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "566795",
+      "companiesHouseNumber": "07151902"
+    },
+    "organisation_status": "CH:active | SRA:YES",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-409F12FC7B14",
+    "organisation_name": "AXA Partners SAS-UK",
+    "stored_domain": "genworth.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "368458",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-C82ABB8B670D",
+    "organisation_name": "Disclosure and Barring Service",
+    "stored_domain": "hmcourts-service.gov.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "224769",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  }
+]

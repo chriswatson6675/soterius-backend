@@ -1,0 +1,30 @@
+{
+  "run_label": "NOB-DNSSEC-001",
+  "run_id": "06b434e1-6ffe-e096-71b4-0bccaf6eb1a3",
+  "signal": "SOT-DNSSEC-001",
+  "model": "DNSSEC-QM-v1.0",
+  "baseline": "NOB-DNSSEC-001 national DNSSEC baseline",
+  "baseline_window": {
+    "start": "2026-07-06T23:57:33.368Z",
+    "end": "2026-07-07T00:08:10.030Z"
+  },
+  "population": 17057,
+  "scored": 17024,
+  "not_scored_incomplete": 33,
+  "not_scored_anomalous": 0,
+  "anomalous_domains": [],
+  "calc_failures": 0,
+  "sha256": {
+    "observations": "2225e28ef0b67c4aaa866b6b099e0ad0cc920e131317c93539dfcdd33259adf9",
+    "quality_scores": "c1e5c04907dece8994384ebac256a8d05dface1790f1e9e75eb0c38a55a47460"
+  },
+  "mean": 4.402,
+  "median": 0,
+  "distinct_values": [
+    0,
+    40,
+    95,
+    100
+  ],
+  "provenance": "Scored from signal_facts_dnssec (NOB-DNSSEC-001 window) via dnssec-quality.js (DNSSEC-QM-v1.0); SLG-080 calibration; SLG-081 commissioning."
+}

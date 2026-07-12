@@ -1,0 +1,377 @@
+[
+  {
+    "organisation_id": "ORG-FA8F15DF0C79",
+    "organisation_name": "GENTING CASINOS UK LIMITED",
+    "stored_domain": "gentinguk.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "566673",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-C28167C5F682",
+    "organisation_name": "HER MAJESTY'S COURTS SERVICE (NORTH WALES)",
+    "stored_domain": "hmcourts.service.gov.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "265830",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-FCF0556D58DA",
+    "organisation_name": "Hodge Reversions Limited",
+    "stored_domain": "hodge.bank.co.uk",
+    "regulators": [
+      "FCA"
+    ],
+    "identifiers": {
+      "frn": "950898",
+      "sraIdentifier": null,
+      "companiesHouseNumber": "13226905"
+    },
+    "organisation_status": "CH:active | FCA:Authorised - applied to cancel",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-CCDE981FD730",
+    "organisation_name": "HISUN & CO LONDON",
+    "stored_domain": "hisunlaw.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "508215",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-9B641A5D2015",
+    "organisation_name": "HQ LAW LIMITED",
+    "stored_domain": "hqlaw.ltd",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "631351",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWNSRA:YES",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-EF100E8400A3",
+    "organisation_name": "GOLDEN LEAVER LLP",
+    "stored_domain": "goldenleaver.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "508584",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWNSRA:CEASE",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-AFFA3B0DC39B",
+    "organisation_name": "HARROWELL & ATKINS",
+    "stored_domain": "harrowell-atkins.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "50781",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWNSRA:YES",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-C24FAB75F853",
+    "organisation_name": "INTERNATIONAL CHAMBER OF SHIPPING",
+    "stored_domain": "ics-shipping.org.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "471687",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-D5B97FE73EB4",
+    "organisation_name": "LLOYDS BANKING GROUP (RETAIL & WEALTH LEGAL)",
+    "stored_domain": "hbosplc.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "65057",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-AE3D40DAC947",
+    "organisation_name": "Incommunities Limited",
+    "stored_domain": "incommunitiesgroup.org",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "384234",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-A3AA3D1B9D59",
+    "organisation_name": "123-Reg Limited",
+    "stored_domain": "heg.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "615804",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-A05800A29E46",
+    "organisation_name": "Informed Choice (South West) Limited",
+    "stored_domain": "infomedchoice-sw.co.uk",
+    "regulators": [
+      "FCA"
+    ],
+    "identifiers": {
+      "frn": "136258",
+      "sraIdentifier": null,
+      "companiesHouseNumber": "01738451"
+    },
+    "organisation_status": "CH:active | FCA:Authorised",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-7E2C77792A5B",
+    "organisation_name": "INTEC TELECOM SYSTEMS PLC",
+    "stored_domain": "intec-telecoms-systems.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "426567",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-D0D782EFEB17",
+    "organisation_name": "Redde Ltd",
+    "stored_domain": "helphire.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "79235",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-9DF6F8DE7E36",
+    "organisation_name": "HEYTHROP COLLEGE",
+    "stored_domain": "heythrop.ac.uk",
+    "regulators": [
+      "HE"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": null,
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-8EADBF841EFF",
+    "organisation_name": "INSTITUTE OF EDUCATION, UNIVERSITY OF LONDON",
+    "stored_domain": "ioe.ac.uk",
+    "regulators": [
+      "HE"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": null,
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-81B5F3B1A3B9",
+    "organisation_name": "Netsai Mupikata",
+    "stored_domain": "islingtonwills.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "670412",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-074AB3FD945E",
+    "organisation_name": "Pepper Advantage UK",
+    "stored_domain": "hml.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "66423",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-F08B9F9338F9",
+    "organisation_name": "JK Mortgage Brokers Ltd",
+    "stored_domain": "jkmortgagebrokers.co.uk",
+    "regulators": [
+      "FCA"
+    ],
+    "identifiers": {
+      "frn": "1047042",
+      "sraIdentifier": null,
+      "companiesHouseNumber": "16206028"
+    },
+    "organisation_status": "CH:active | FCA:Authorised",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-82D2CE0F9F25",
+    "organisation_name": "Jeremy Lawrence Limited",
+    "stored_domain": "jlmoney.co.uk",
+    "regulators": [
+      "FCA"
+    ],
+    "identifiers": {
+      "frn": "727863",
+      "sraIdentifier": null,
+      "companiesHouseNumber": "05224859"
+    },
+    "organisation_status": "CH:active | FCA:Authorised",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-42B367CF3A2C",
+    "organisation_name": "ICG PLC",
+    "stored_domain": "icgplc.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "565486",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-AC9945B5E225",
+    "organisation_name": "Johnson's Solicitors",
+    "stored_domain": "johnsons-solicitors.joleaf.org",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "590584",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWNSRA:YES",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-04D6E6CA0BF5",
+    "organisation_name": "HOUSE OF FRASER LTD",
+    "stored_domain": "houseoffraser.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "174284",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-3DF08B8C6C76",
+    "organisation_name": "HUNTER SKY LIMITED",
+    "stored_domain": "huntersky.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "614451",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-C8C88F445FC9",
+    "organisation_name": "J. & W. WEBSTER & CO. LIMITED",
+    "stored_domain": "jwwebsster.co.uk",
+    "regulators": [
+      "FCA"
+    ],
+    "identifiers": {
+      "frn": "304658",
+      "sraIdentifier": null,
+      "companiesHouseNumber": "00527774"
+    },
+    "organisation_status": "CH:active | FCA:Authorised",
+    "companies_house_status": "active"
+  }
+]

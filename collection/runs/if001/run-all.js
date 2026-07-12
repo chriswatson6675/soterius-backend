@@ -1,5 +1,25 @@
 'use strict';
 
+// ⚠ SUPERSEDED (Sprint 12) — legacy payload-only national orchestrator.
+//
+// This file writes observations DIRECTLY to the signal_facts_* / *_v1 tables
+// (payload only): no Collection Programme, no Collection Run, no canonical
+// Observation envelope, no Organisation resolution — so its observations are NOT
+// Organisation-History-eligible. It is retained ONLY because it still owns two
+// things the canonical path does not yet cover: the TLS-RPT signal (dormant; no
+// envelope/adapter) and the COLLECTION_REPORT.md / RUN_REGISTER reporting.
+//
+// The canonical national path is now:
+//   backend/collection/runs/national/run-national.js
+//     node run-national.js <signal|tls-certificate|all>
+// which routes every Observatory-native signal through runCollectionSession()
+// (Collection Programme → Run → Observation → Organisation resolution → History).
+//
+// DO NOT add new national collection through this file. New national collections
+// MUST use run-national.js. This file should be retired once the canonical runner
+// reaches parity on reporting and TLS-RPT is dispositioned.
+//
+// ── (original header) ─────────────────────────────────────────────────────────
 // Signal Lab Collection Orchestrator
 //
 // Obtains organisations from the canonical Organisation Dataset (the Repository
@@ -24,6 +44,7 @@ require('dotenv').config({ path: require('node:path').join(__dirname, '../../../
 
 const path           = require('node:path');
 const fs             = require('node:fs');
+const dns            = require('node:dns');
 const { randomUUID } = require('node:crypto');
 const { createClient } = require('@supabase/supabase-js');
 
@@ -37,7 +58,13 @@ const { collectTlsRpt,         SIGNAL_ID: TLSRPT_ID,  SIGNAL_VERSION: TLSRPT_VER
 const { collectDnssec,         SIGNAL_ID: DNSSEC_ID,  SIGNAL_VERSION: DNSSEC_VER  } = require('../../signals/dnssec/dnssec-collector');
 const { collectCaa,            SIGNAL_ID: CAA_ID,     SIGNAL_VERSION: CAA_VER     } = require('../../signals/caa/caa-collector');
 const { collectSecurityTxt   } = require('../../signals/securitytxt/securitytxt-collector');
-const { collectSecurityHeaders } = require('../../signals/securityheaders/securityheaders-collector');
+const { collectSecurityHeaders, COLLECTOR_VERSION: SECURITYHEADERS_VER } = require('../../signals/securityheaders/securityheaders-collector');
+
+// Category D — TLS & Certificate (ADR-COL-003 shared collection domain).
+// One TLS session per domain feeds both SOT-TLS-001 and SOT-CERTIFICATE-001.
+const { createRunContext, collectTLSSession } = require('../../signals/tls/tls-collection-layer');
+const { extractTLSEvidence,         promotedScalars: tlsScalars }  = require('../../signals/tls/tls-extractor');
+const { extractCertificateEvidence, promotedScalars: certScalars } = require('../../signals/tls/certificate-extractor');
 
 // ── Organisation source ───────────────────────────────────────────────────────
 // The Observatory obtains the organisations it scans through the Organisation
@@ -293,6 +320,47 @@ function caaInsert(domain, r) {
   };
 }
 
+function tlsInsert(domain, runId, tlsEvidence) {
+  const scalars = tlsScalars(tlsEvidence);
+  return {
+    run_id:                runId,
+    domain,
+    collected_at:          tlsEvidence.collected_at,
+    signal_version:        '1.0.0',
+    collector_version:     COLLECTOR_VERSION,
+    endpoint_state:        scalars.endpoint_state,
+    negotiated_version:    scalars.negotiated_version,
+    cipher_suite_standard: scalars.cipher_suite_standard,
+    forward_secrecy:       scalars.forward_secrecy,
+    alpn_protocol:         scalars.alpn_protocol,
+    http2_negotiated:      scalars.http2_negotiated,
+    cipher_key_exchange:   tlsEvidence.cipher_key_exchange,
+    evidence:              tlsEvidence,
+  };
+}
+
+function certInsert(domain, runId, certEvidence) {
+  const scalars = certScalars(certEvidence);
+  return {
+    run_id:                  runId,
+    domain,
+    collected_at:            certEvidence.collected_at,
+    signal_version:          '1.0.0',
+    collector_version:       COLLECTOR_VERSION,
+    endpoint_state:          scalars.endpoint_state,
+    certificate_present:     scalars.certificate_present,
+    tls_error_code:          scalars.tls_error_code,
+    leaf_days_remaining:     scalars.leaf_days_remaining,
+    leaf_issuer_cn:          scalars.leaf_issuer_cn,
+    leaf_issuer_o:           scalars.leaf_issuer_o,
+    leaf_subject_cn:         scalars.leaf_subject_cn,
+    leaf_is_self_signed:     scalars.leaf_is_self_signed,
+    leaf_is_wildcard:        scalars.leaf_is_wildcard,
+    leaf_fingerprint_sha256: scalars.leaf_fingerprint_sha256,
+    evidence:                certEvidence,
+  };
+}
+
 // ── Per-signal collection functions ──────────────────────────────────────────
 
 async function runSpf(firms, supabase, runId, startedAt) {
@@ -412,10 +480,39 @@ async function runDnssec(firms, supabase, runId, startedAt) {
   return buildStats('SOT-DNSSEC-001', runId, startedAt, results);
 }
 
+// CR-CAA-001 (SLG-067 — CAA Collector Validation, Stage-3 trust gate).
+//
+// CAA is the only signal whose RESPONSE routinely exceeds the 512-byte classic
+// DNS UDP message limit (RFC 1035 §4.2.1): it is an RRset, not a single record.
+// Above 512 bytes the answer is truncated (TC) and must be retried over TCP.
+// Node's default `dns.resolveCaa()` uses the process-wide default c-ares channel,
+// which every other collector in a phase shares — so CAA's TCP fallback competed
+// with seven other DNS signals and failed, recording healthy domains as
+// DNS_FAILURE. The bias was systematic, not random: the largest CAA RRset ever
+// observed in NOB-CAA-001 was 505 bytes (hants.gov.uk, 15 records) while
+// fdean.gov.uk (12 records, 536 bytes) was never observed at all. 59 of the 61
+// DNS_FAILURE domains exceeded 512 bytes.
+//
+// Remedy (operational only — the collector is unchanged and remains suitable per
+// SLG-065/SLG-067): give CAA its OWN c-ares channel via the collector's existing
+// `dnsResolver` injection point, with an explicit timeout and retry count, and
+// isolate CAA into its own observation phase (see DEFAULT_PHASES below).
+const CAA_DNS_TIMEOUT_MS = Number(process.env.CAA_DNS_TIMEOUT_MS ?? 8000);
+const CAA_DNS_TRIES      = Number(process.env.CAA_DNS_TRIES ?? 3);
+
+function makeCaaResolver() {
+  const resolver = new dns.promises.Resolver({ timeout: CAA_DNS_TIMEOUT_MS, tries: CAA_DNS_TRIES });
+  const servers = String(process.env.CAA_DNS_SERVERS ?? '').split(',').map(s => s.trim()).filter(Boolean);
+  if (servers.length) resolver.setServers(servers);   // else inherit the system resolvers
+  // The collector's injection contract is `{ resolveCaa(name) }` — nothing more.
+  return { resolveCaa: (name) => resolver.resolveCaa(name) };
+}
+
 async function runCaa(firms, supabase, runId, startedAt) {
+  const caaResolver = makeCaaResolver();          // one dedicated channel for this signal
   const results = await runWithConcurrency(firms, async (firm, i) => {
     try {
-      const r = await collectCaa(firm.domain);
+      const r = await collectCaa(firm.domain, { dnsResolver: caaResolver });
       const row = caaInsert(firm.domain, r);
       const { error } = await supabase.from('signal_facts_caa').insert(row);
       if ((i + 1) % 100 === 0 || i === firms.length - 1) {
@@ -463,7 +560,7 @@ async function runSecurityTxt(firms, supabase, runId, startedAt) {
 async function runSecurityHeaders(firms, supabase, runId, startedAt) {
   const results = await runWithConcurrency(firms, async (firm, i) => {
     try {
-      const record = await collectSecurityHeaders(firm.domain, COLLECTOR_VERSION);
+      const record = await collectSecurityHeaders(firm.domain, SECURITYHEADERS_VER);
       const { error } = await supabase.from('signal_securityheaders_v1').insert({
         run_id:            runId,
         domain:            record.domain,
@@ -472,6 +569,11 @@ async function runSecurityHeaders(firms, supabase, runId, startedAt) {
         collector_version: record.collector_version,
         endpoint_state:    record.endpoint_state,
         http_probe_state:  record.http_probe_state,
+        // SLG-136 §7 R-1 — source-authentication verdict, recorded inseparably
+        // (also carried verbatim inside https_fetch). Migration 036. Nullable:
+        // legacy v1 rows and non-observed states carry null here.
+        tls_verification_result: record.tls_verification_result,
+        tls_error_code:          record.tls_error_code,
         https_fetch:       record.https_fetch,
         http_probe:        record.http_probe,
         header_inventory:  record.header_inventory,
@@ -487,6 +589,64 @@ async function runSecurityHeaders(firms, supabase, runId, startedAt) {
   }, CONCURRENCY);
 
   return buildStats('SOT-SECURITYHEADERS-001', runId, startedAt, results);
+}
+
+// Category D — TLS & Certificate (ADR-COL-003 shared collection domain).
+//
+// Unlike every other signal here, TLS and Certificate share ONE network
+// observation (one TLS handshake per domain) but write to TWO independent
+// tables under TWO independent run_ids (ADR-COL-003 §9 Decision; SLG-093
+// §2.1). A dedicated RunContext enforces the C-1 single-session guarantee.
+// This function is the Observatory-orchestrator equivalent of
+// `backend/collection/signals/tls/run-category-d.js`'s processDomain loop —
+// same production collect+extract path, wired to the canonical VERIFIED
+// population instead of a CSV cohort.
+//
+// TLS is isolated into its own phase (see DEFAULT_PHASES below): a TLS
+// handshake is a TCP+crypto operation, not a DNS query, so it does not
+// contend with the DNS-resolver-contention classes that isolated SPF/DKIM/CAA
+// (ADR-COL-007; SLG-067 CR-CAA-001) — but it has a materially different
+// per-domain cost profile (network RTT + full handshake vs. a DNS lookup)
+// and giving it its own phase keeps that cost isolated and easy to reason
+// about in the runtime-analysis report (§3).
+async function runTls(firms, supabase, tlsRunId, certRunId, startedAt) {
+  const runContext = createRunContext();
+
+  const results = await runWithConcurrency(firms, async (firm, i) => {
+    let tlsError = null;
+    let tlsDbError = null;
+    let certDbError = null;
+
+    try {
+      const session  = await collectTLSSession(firm.domain, runContext, { timeout: 30000 });
+      const tlsEvid  = extractTLSEvidence(session);
+      const certEvid = extractCertificateEvidence(session);
+
+      const { error: tErr } = await supabase.from('signal_tls_v1').insert(tlsInsert(firm.domain, tlsRunId, tlsEvid));
+      tlsDbError = tErr?.message ?? null;
+
+      const { error: cErr } = await supabase.from('signal_certificate_v1').insert(certInsert(firm.domain, certRunId, certEvid));
+      certDbError = cErr?.message ?? null;
+    } catch (err) {
+      tlsError = err.message ?? String(err);
+    }
+
+    if ((i + 1) % 100 === 0 || i === firms.length - 1) {
+      const pct = String(Math.round(((i + 1) / firms.length) * 100)).padStart(3);
+      console.log(`  [${pct}%] ${i + 1}/${firms.length} complete`);
+    }
+
+    return {
+      domain: firm.domain,
+      tlsResult:  { domain: firm.domain, success: !tlsError && !tlsDbError,  collectorError: tlsError, dbError: tlsDbError },
+      certResult: { domain: firm.domain, success: !tlsError && !certDbError, collectorError: tlsError, dbError: certDbError },
+    };
+  }, CONCURRENCY);
+
+  return [
+    buildStats('SOT-TLS-001',         tlsRunId,  startedAt, results.map(r => r.tlsResult)),
+    buildStats('SOT-CERTIFICATE-001', certRunId, startedAt, results.map(r => r.certResult)),
+  ];
 }
 
 // ── Stats builder ─────────────────────────────────────────────────────────────
@@ -537,8 +697,10 @@ function generateReport(manifest, allStats, globalStart, globalEnd) {
     'SOT-CAA-001':             'signal_facts_caa',
     'SOT-SECURITYTXT-001':     'signal_securitytxt_v1',
     'SOT-SECURITYHEADERS-001': 'signal_securityheaders_v1',
+    'SOT-TLS-001':             'signal_tls_v1',
+    'SOT-CERTIFICATE-001':     'signal_certificate_v1',
   };
-  const V1_SIGNALS = new Set(['SOT-SECURITYTXT-001', 'SOT-SECURITYHEADERS-001']);
+  const V1_SIGNALS = new Set(['SOT-SECURITYTXT-001', 'SOT-SECURITYHEADERS-001', 'SOT-TLS-001', 'SOT-CERTIFICATE-001']);
 
   const lines = [];
 
@@ -562,7 +724,7 @@ function generateReport(manifest, allStats, globalStart, globalEnd) {
   lines.push(`| Cohort | ${manifest.cohort_id} |`);
   lines.push(`| Selection ID | \`${manifest.selection_id}\` |`);
   lines.push(`| Domains in cohort | ${manifest.n} |`);
-  lines.push(`| Signals executed | 9 |`);
+  lines.push(`| Signals executed | ${allStats.length} |`);
   lines.push(`| Total observations attempted | ${overallAttempted} |`);
   lines.push(`| Total observations stored | ${overallCompleted} |`);
   lines.push(`| Total observations failed | ${overallFailed} |`);
@@ -688,7 +850,7 @@ function generateReport(manifest, allStats, globalStart, globalEnd) {
   lines.push('');
 
   const allSignalsComplete    = allStats.every(s => s.completed === manifest.n);
-  const expectedObservations  = manifest.n * 9;
+  const expectedObservations  = manifest.n * allStats.length;
   const actualObservations    = overallCompleted;
   const noSchemaViolations    = allStats.every(s => s.dbErrors === 0);
   const noCollectorFailures   = allStats.every(s => s.collectorErrors === 0);
@@ -698,7 +860,7 @@ function generateReport(manifest, allStats, globalStart, globalEnd) {
   lines.push(`| Cohort size collected | ${manifest.n} domains | ${manifest.n} domains in manifest | ${allSignalsComplete ? '✓ PASS' : '⚠ REVIEW'} |`);
   lines.push(`| Signal rows created | ${expectedObservations} (${manifest.n} × 9) | ${actualObservations} stored | ${actualObservations === expectedObservations ? '✓ PASS' : `⚠ DELTA: ${expectedObservations - actualObservations}`} |`);
   lines.push(`| Schema violations | 0 DB errors | ${allStats.reduce((s, r) => s + r.dbErrors, 0)} DB errors | ${noSchemaViolations ? '✓ PASS' : '✗ FAIL'} |`);
-  lines.push(`| Duplicate-run anomalies | 0 (distinct run UUIDs per signal) | 9 distinct UUIDs generated | ✓ PASS |`);
+  lines.push(`| Duplicate-run anomalies | 0 (distinct run UUIDs per signal) | ${allStats.length} distinct UUIDs generated | ✓ PASS |`);
   lines.push(`| Collector-level failures | 0 | ${allStats.reduce((s, r) => s + r.collectorErrors, 0)} | ${noCollectorFailures ? '✓ PASS' : '⚠ REVIEW'} |`);
   lines.push('');
 
@@ -780,6 +942,8 @@ async function main() {
   const caaRunId    = randomUUID();
   const sectxtRunId = randomUUID();
   const sechdrRunId = randomUUID();
+  const tlsRunId    = randomUUID();
+  const certRunId   = randomUUID();
 
   // Log all UUIDs before collection starts — record in RUN_REGISTER.md per SLG-003
   console.log(`  Execution model: PHASED   Signal concurrency: ${SIGNAL_CONCURRENCY}\n`);
@@ -793,6 +957,8 @@ async function main() {
   console.log(`  SOT-CAA-001              ${caaRunId}`);
   console.log(`  SOT-SECURITYTXT-001      ${sectxtRunId}`);
   console.log(`  SOT-SECURITYHEADERS-001  ${sechdrRunId}`);
+  console.log(`  SOT-TLS-001              ${tlsRunId}`);
+  console.log(`  SOT-CERTIFICATE-001      ${certRunId}`);
   console.log('');
 
   // Each signal is an independent task keyed by signal id. Grouping is decided
@@ -863,6 +1029,14 @@ async function main() {
       console.log(`[${new Date().toISOString()}] SOT-SECURITYHEADERS-001 complete  ${s.completed}/${s.attempted}  ${s.elapsedSec}s  ${s.successRate}%`);
       return s;
     },
+    tls: async () => {
+      const start = Date.now();
+      console.log(`[${new Date(start).toISOString()}] SOT-TLS-001 + SOT-CERTIFICATE-001 started (shared TLS session, ADR-COL-003)`);
+      const [tlsStats, certStats] = await runTls(firms, supabase, tlsRunId, certRunId, start);
+      console.log(`[${new Date().toISOString()}] SOT-TLS-001 complete  ${tlsStats.completed}/${tlsStats.attempted}  ${tlsStats.elapsedSec}s  ${tlsStats.successRate}%`);
+      console.log(`[${new Date().toISOString()}] SOT-CERTIFICATE-001 complete  ${certStats.completed}/${certStats.attempted}  ${certStats.elapsedSec}s  ${certStats.successRate}%`);
+      return [tlsStats, certStats];
+    },
   };
 
   // ── Phased execution ──────────────────────────────────────────────────────
@@ -882,13 +1056,28 @@ async function main() {
   // national baseline as DNS_FAILURE/SERVFAIL (zero timeouts) while every lighter
   // DNS signal resolved the SAME domains (DNSSEC 100%, SPF/DMARC/CAA ~98.8%). This
   // is the same contention class ADR-COL-007 fixed for SPF; the remedy is identical
-  // — its own phase. To isolate a further signal, give it its own phase entry;
-  // leaving signals grouped preserves the parallel model. Overridable via
-  // SIGNAL_PHASES, e.g. "spf|dkim|dmarc,dnssec,...".
+  // — its own phase.
+  //
+  // CAA is isolated third (CR-CAA-001, from SLG-067 — CAA Collector Validation,
+  // 2026-07-08). Its failure mode is distinct from SPF's and DKIM's: not query
+  // VOLUME but response SIZE. A CAA answer is an RRset and routinely exceeds the
+  // 512-byte classic DNS UDP limit (RFC 1035 §4.2.1), forcing a TCP retry that
+  // failed while sharing the default c-ares channel with six other DNS/HTTP
+  // collectors. The result was a SYSTEMATIC presence bias — 59 of the 61
+  // DNS_FAILURE domains had responses over 512 bytes, and the largest RRset ever
+  // observed was 505 bytes — which failed SLG-064 Stage-3 acceptance criterion 3
+  // and disqualified NOB-CAA-001 from calibration. The remedy is its own phase
+  // plus its own resolver channel (see makeCaaResolver above).
+  //
+  // To isolate a further signal, give it its own phase entry; leaving signals
+  // grouped preserves the parallel model. Overridable via SIGNAL_PHASES,
+  // e.g. "spf|dkim|caa|dmarc,dnssec,...".
   const DEFAULT_PHASES = [
     ['spf'],
     ['dkim'],
-    ['dmarc', 'mtasts', 'tlsrpt', 'dnssec', 'caa', 'securitytxt', 'securityheaders'],
+    ['caa'],
+    ['dmarc', 'mtasts', 'tlsrpt', 'dnssec', 'securitytxt', 'securityheaders'],
+    ['tls'],
   ];
   const PHASES = process.env.SIGNAL_PHASES
     ? process.env.SIGNAL_PHASES.split('|').map(p => p.split(',').map(s => s.trim()).filter(Boolean))
@@ -901,7 +1090,7 @@ async function main() {
     console.log(`\n  ── Observation phase ${p + 1}/${PHASES.length}: ${phaseIds.join(', ')}  (signal concurrency ${SIGNAL_CONCURRENCY}) ──`);
     const phaseTasks = phaseIds.map(id => signalTasks[id]);
     const phaseStats = await runSignalsWithConcurrency(phaseTasks, SIGNAL_CONCURRENCY);
-    allStats.push(...phaseStats);
+    allStats.push(...phaseStats.flatMap(s => Array.isArray(s) ? s : [s]));
   }
 
   // ── Overall summary ──────────────────────────────────────────────────────────
@@ -951,6 +1140,6 @@ if (require.main === module) {
 // changes nothing about the standalone run — it still executes when invoked as a
 // script (the require.main guard above).
 module.exports = {
-  getClient,
-  runSpf, runDkim, runDmarc, runMtaSts, runTlsRpt, runDnssec, runCaa, runSecurityTxt, runSecurityHeaders,
+  getClient, makeCaaResolver,
+  runSpf, runDkim, runDmarc, runMtaSts, runTlsRpt, runDnssec, runCaa, runSecurityTxt, runSecurityHeaders, runTls,
 };

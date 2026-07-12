@@ -1,0 +1,377 @@
+[
+  {
+    "organisation_id": "ORG-86073F6EE741",
+    "organisation_name": "KENNEDYS",
+    "stored_domain": "kennedys.com.hk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "421076",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-A022F41B98CD",
+    "organisation_name": "IAN F BRAZIER SOLICITORS",
+    "stored_domain": "ianfbraziersolicitors.yellsites.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "386292",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWNSRA:YES",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-67499F1E8DFD",
+    "organisation_name": "KLF INSURANCE BROKERS LIMITED",
+    "stored_domain": "klf.insurance.com",
+    "regulators": [
+      "FCA"
+    ],
+    "identifiers": {
+      "frn": "304717",
+      "sraIdentifier": null,
+      "companiesHouseNumber": "04705254"
+    },
+    "organisation_status": "CH:active | FCA:Authorised",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-1D3375745054",
+    "organisation_name": "Kingston Mortgages Limited",
+    "stored_domain": "kingston.co.uk",
+    "regulators": [
+      "FCA"
+    ],
+    "identifiers": {
+      "frn": "1048362",
+      "sraIdentifier": null,
+      "companiesHouseNumber": "14955851"
+    },
+    "organisation_status": "CH:active | FCA:Authorised",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-FD27C0C11D08",
+    "organisation_name": "Ilsley Finance Limited",
+    "stored_domain": "ilsleyfinance.co.uk",
+    "regulators": [
+      "FCA"
+    ],
+    "identifiers": {
+      "frn": "716124",
+      "sraIdentifier": null,
+      "companiesHouseNumber": "04572528"
+    },
+    "organisation_status": "CH:active | FCA:Authorised",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-9166E9A15B07",
+    "organisation_name": "LANCASTER CITY COUNCIL",
+    "stored_domain": "lancester.gov.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "65494",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-6021C8F0A135",
+    "organisation_name": "Jay Ram Financial Services Ltd",
+    "stored_domain": "jayram.co.uk",
+    "regulators": [
+      "FCA"
+    ],
+    "identifiers": {
+      "frn": "1025298",
+      "sraIdentifier": null,
+      "companiesHouseNumber": "15673244"
+    },
+    "organisation_status": "CH:active | FCA:Authorised",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-3771E907EEA4",
+    "organisation_name": "Lancashire Insurance Marketing Services Limited",
+    "stored_domain": "lancashiregoup.com",
+    "regulators": [
+      "FCA"
+    ],
+    "identifiers": {
+      "frn": "440717",
+      "sraIdentifier": null,
+      "companiesHouseNumber": "05586830"
+    },
+    "organisation_status": "CH:active | FCA:Authorised",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-A7A917707277",
+    "organisation_name": "LONDON DEVELOPMENT AGENCY",
+    "stored_domain": "lda.gov.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "352538",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-436362B99629",
+    "organisation_name": "LEEDS BECKETT UNIVERSITY",
+    "stored_domain": "leedmet.ac.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "15",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-25BE2E3CF642",
+    "organisation_name": "KENNEDYS (AUSTRALASIA) PTY LTD",
+    "stored_domain": "kennedys-law.com.au",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "461794",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-E8ECD8AE864C",
+    "organisation_name": "GLOBAL AERO MARINE MANAGEMENT AGENCY LIMITED",
+    "stored_domain": "liib.net",
+    "regulators": [
+      "FCA"
+    ],
+    "identifiers": {
+      "frn": "313350",
+      "sraIdentifier": null,
+      "companiesHouseNumber": "03189470"
+    },
+    "organisation_status": "CH:active | FCA:Authorised",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-4C822772D5A8",
+    "organisation_name": "JOSEPH HILL & CO",
+    "stored_domain": "josephhill.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "63616",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWNSRA:YES",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-663A3C1D30DA",
+    "organisation_name": "JOHCM Funds (UK) Limited",
+    "stored_domain": "johcm.co.uk",
+    "regulators": [
+      "FCA"
+    ],
+    "identifiers": {
+      "frn": "810264",
+      "sraIdentifier": null,
+      "companiesHouseNumber": "11325227"
+    },
+    "organisation_status": "CH:active | FCA:Authorised",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-68325C8C2320",
+    "organisation_name": "ARTHUR J GALLAGHER SERVICES (UK) LTD",
+    "stored_domain": "lucasfettes.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "645232",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-B147856AC40D",
+    "organisation_name": "LUTFI & COMPANY ADVOCATES & LEGAL CONSULTANTS",
+    "stored_domain": "lutficbp.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "291566",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-F7DA85718C39",
+    "organisation_name": "KINGSTON UNIVERSITY",
+    "stored_domain": "kingston.ac.uk",
+    "regulators": [
+      "HE"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": null,
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-AD6DFE595187",
+    "organisation_name": "Kinder Peak Insurance Services Limited",
+    "stored_domain": "kinderpeak.com",
+    "regulators": [
+      "FCA"
+    ],
+    "identifiers": {
+      "frn": "305792",
+      "sraIdentifier": null,
+      "companiesHouseNumber": "04674539"
+    },
+    "organisation_status": "CH:active | FCA:Authorised",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-0B4CF888A027",
+    "organisation_name": "MARQUEE WEALTH MANAGEMENT LIMITED",
+    "stored_domain": "marqueem.co.uk",
+    "regulators": [
+      "FCA"
+    ],
+    "identifiers": {
+      "frn": "714162",
+      "sraIdentifier": null,
+      "companiesHouseNumber": "09785845"
+    },
+    "organisation_status": "CH:active | FCA:Authorised",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-A7B0DC1D3084",
+    "organisation_name": "LEX LEGAL UK LIMITED",
+    "stored_domain": "lexsolicitors.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "570829",
+      "companiesHouseNumber": "08179710"
+    },
+    "organisation_status": "CH:active | SRA:YES",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-7BC0CB74F44D",
+    "organisation_name": "Leaseguard Limited",
+    "stored_domain": "leaseguard.co.uk",
+    "regulators": [
+      "FCA"
+    ],
+    "identifiers": {
+      "frn": "308432",
+      "sraIdentifier": null,
+      "companiesHouseNumber": "03715122"
+    },
+    "organisation_status": "CH:active | FCA:Authorised",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-67DBF992D1AA",
+    "organisation_name": "LEEDS METROPOLITAN UNIVERSITY",
+    "stored_domain": "leedsmet.ac.uk",
+    "regulators": [
+      "HE"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": null,
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-3C910EFBCF36",
+    "organisation_name": "LINPAC GROUP LTD",
+    "stored_domain": "linpac.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "404403",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-C50A724277BA",
+    "organisation_name": "LINCOLN'S CHAMBERS SOLICITORS",
+    "stored_domain": "lcsolicitors.org.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "495789",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWNSRA:YES",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-41130DA46654",
+    "organisation_name": "MCKINNEY BANCROFT & HUGHES",
+    "stored_domain": "mckinneys.com.bs",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "470347",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  }
+]

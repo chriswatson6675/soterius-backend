@@ -1,0 +1,23 @@
+{
+  "run_label": "NOB-SECURITYHEADERS-001",
+  "run_id": "8efd9f01-6101-7bf8-0420-b0ae3f8a7c74",
+  "source_run_id": "34fa4a90-dd4e-4497-8a01-0d38f9b00134",
+  "signal": "SOT-SECURITYHEADERS-001",
+  "model": "SECURITYHEADERS-QM-v1.0",
+  "baseline": "NOB-SECURITYHEADERS-001 national Security Headers baseline",
+  "population": 17055,
+  "scored": 14940,
+  "not_scored_total": 2115,
+  "not_scored_by_reason": {
+    "OBSERVATION_INCOMPLETE": 2115
+  },
+  "calc_failures": 0,
+  "sha256": {
+    "observations": "38883e21355bc150277c36fc1486cebdee2a130cb6b7d1bcbc01c8605a5adcc4",
+    "quality_scores": "6f61c9ec018e382cf18dc839e86335c09d1622e0b203fbc61267e93284108b89"
+  },
+  "mean": 27.5143,
+  "median": 19,
+  "distinct_values": 81,
+  "provenance": "Scored from signal_securityheaders_v1 (NOB-SECURITYHEADERS-001, run_id 34fa4a90-dd4e-4497-8a01-0d38f9b00134) via securityheaders-quality.js (SECURITYHEADERS-QM-v1.0); SLG-117 calibration, SLG-120 freeze."
+}

@@ -37,15 +37,32 @@ const tenantReq = (overrides = {}) => ({
 
 // ── GET /api/portfolio ───────────────────────────────────────────────────────
 
-test('getPortfolio — returns the caller\'s portfolio as a bare array', async () => {
-  const items = [{ id: 'p1', organisationId: 'o1', isHome: true, organisation: { id: 'o1', name: 'Smith LLP', domain: 'smithllp.co.uk' } }];
-  const getPortfolio = createGetPortfolio(async (customerId) => (customerId === 'c1' ? items : []));
+test('getPortfolio — returns a bare array, hydrating each item with its canonical organisation summary', async () => {
+  // The DB layer returns ids only (organisation: null); the route resolves the
+  // summary through the canonical Organisation layer (the same source as detail).
+  const items = [{ id: 'p1', organisationId: 'ORG-000000000001', isHome: true, organisation: null }];
+  const summarise = (id) => ({ id, name: 'Smith LLP', domain: 'smithllp.co.uk', sector: null, location: null, lastScannedAt: null });
+  const getPortfolio = createGetPortfolio(async (customerId) => (customerId === 'c1' ? items : []), summarise);
   const req = tenantReq();
   const res = fakeRes();
 
   await getPortfolio(req, res, () => assert.fail('next() should not be called'));
 
-  assert.deepStrictEqual(res.body, items);
+  assert.strictEqual(res.body.length, 1);
+  assert.strictEqual(res.body[0].organisationId, 'ORG-000000000001');
+  assert.deepStrictEqual(res.body[0].organisation, {
+    id: 'ORG-000000000001', name: 'Smith LLP', domain: 'smithllp.co.uk', sector: null, location: null, lastScannedAt: null,
+  });
+});
+
+test('getPortfolio — an unresolvable organisation hydrates to null, not a crash', async () => {
+  const items = [{ id: 'p1', organisationId: 'ORG-000000000009', isHome: true, organisation: null }];
+  const getPortfolio = createGetPortfolio(async () => items, () => null);
+  const res = fakeRes();
+
+  await getPortfolio(tenantReq(), res, () => assert.fail('next() should not be called'));
+
+  assert.strictEqual(res.body[0].organisation, null);
 });
 
 test('getPortfolio — DB errors go to next(err), not a crash', async () => {
@@ -60,8 +77,13 @@ test('getPortfolio — DB errors go to next(err), not a crash', async () => {
 
 // ── POST /api/portfolio ──────────────────────────────────────────────────────
 
+// A valid, resolvable canonical id and an injected reverse() that finds it —
+// the happy-path shape for the add tests below.
+const VALID_ORG_ID = 'ORG-000000000001';
+const reverseFound = (id) => (id === VALID_ORG_ID ? { ok: true, row: { organisationId: id } } : { ok: false, error: 'not found' });
+
 test('postPortfolio — 400 (via next) when organisationId is missing', async () => {
-  const postPortfolio = createPostPortfolio(async () => assert.fail('DB should not be called'));
+  const postPortfolio = createPostPortfolio(async () => assert.fail('DB should not be called'), () => assert.fail('reverse should not be called'));
   const req = tenantReq({ body: {} });
   const { next, calls } = fakeNext();
 
@@ -71,15 +93,42 @@ test('postPortfolio — 400 (via next) when organisationId is missing', async ()
   assert.ok(calls[0][0] instanceof ValidationError);
 });
 
+test('postPortfolio — 400 (via next) when organisationId is not a canonical ORG-* id', async () => {
+  // A legacy prospect UUID (or any free text) must be rejected before the DB —
+  // this is the F-3 guard that keeps non-canonical ids out of the portfolio.
+  const postPortfolio = createPostPortfolio(async () => assert.fail('DB should not be called'), () => assert.fail('reverse should not be called'));
+  const req = tenantReq({ body: { organisationId: '550e8400-e29b-41d4-a716-446655440000' } });
+  const { next, calls } = fakeNext();
+
+  await postPortfolio(req, fakeRes(), next);
+
+  assert.ok(calls[0][0] instanceof ValidationError);
+  assert.match(calls[0][0].message, /canonical ORG-\* identifier/);
+});
+
+test('postPortfolio — 404 (via next) when a well-formed id is unknown to Repository Authority', async () => {
+  const postPortfolio = createPostPortfolio(
+    async () => assert.fail('DB should not be called'),
+    () => ({ ok: false, error: 'No organisation known' }),
+  );
+  const req = tenantReq({ body: { organisationId: 'ORG-ABCDEF012345' } });
+  const { next, calls } = fakeNext();
+
+  await postPortfolio(req, fakeRes(), next);
+
+  assert.ok(calls[0][0] instanceof AppError);
+  assert.strictEqual(calls[0][0].statusCode, 404);
+});
+
 test('postPortfolio — newly added organisation: 201, created: true', async () => {
-  const item = { id: 'p1', customer_id: 'c1', organisation_id: 'o1', added_by_user_id: 'u1' };
+  const item = { id: 'p1', customer_id: 'c1', organisation_id: VALID_ORG_ID, added_by_user_id: 'u1' };
   const postPortfolio = createPostPortfolio(async (customerId, organisationId, userId) => {
     assert.strictEqual(customerId, 'c1');
-    assert.strictEqual(organisationId, 'o1');
+    assert.strictEqual(organisationId, VALID_ORG_ID);
     assert.strictEqual(userId, 'u1');
     return { success: true, item, created: true };
-  });
-  const req = tenantReq({ body: { organisationId: 'o1' } });
+  }, reverseFound);
+  const req = tenantReq({ body: { organisationId: VALID_ORG_ID } });
   const res = fakeRes();
 
   await postPortfolio(req, res, () => assert.fail('next() should not be called'));
@@ -89,9 +138,9 @@ test('postPortfolio — newly added organisation: 201, created: true', async () 
 });
 
 test('postPortfolio — organisation already in the portfolio: 200, created: false', async () => {
-  const item = { id: 'p1', organisation_id: 'o1' };
-  const postPortfolio = createPostPortfolio(async () => ({ success: true, item, created: false }));
-  const req = tenantReq({ body: { organisationId: 'o1' } });
+  const item = { id: 'p1', organisation_id: VALID_ORG_ID };
+  const postPortfolio = createPostPortfolio(async () => ({ success: true, item, created: false }), reverseFound);
+  const req = tenantReq({ body: { organisationId: VALID_ORG_ID } });
   const res = fakeRes();
 
   await postPortfolio(req, res, () => assert.fail('next() should not be called'));
@@ -101,8 +150,8 @@ test('postPortfolio — organisation already in the portfolio: 200, created: fal
 });
 
 test('postPortfolio — a DB failure surfaces as an AppError to next()', async () => {
-  const postPortfolio = createPostPortfolio(async () => ({ success: false, error: 'insert failed' }));
-  const req = tenantReq({ body: { organisationId: 'o1' } });
+  const postPortfolio = createPostPortfolio(async () => ({ success: false, error: 'insert failed' }), reverseFound);
+  const req = tenantReq({ body: { organisationId: VALID_ORG_ID } });
   const { next, calls } = fakeNext();
 
   await postPortfolio(req, fakeRes(), next);

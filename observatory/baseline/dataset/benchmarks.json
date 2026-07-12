@@ -1,0 +1,755 @@
+{
+  "national": {
+    "scored": 4903,
+    "insufficient": 12154,
+    "coreComplete": 2013,
+    "score": {
+      "n": 4903,
+      "min": 53,
+      "max": 923,
+      "mean": 319,
+      "median": 302,
+      "q1": 243,
+      "q3": 392,
+      "deciles": [
+        201,
+        223,
+        254,
+        267,
+        302,
+        338,
+        370,
+        412,
+        456
+      ]
+    },
+    "bands": {
+      "order": [
+        "Excellent",
+        "Good",
+        "Moderate",
+        "High",
+        "Critical",
+        "Insufficient"
+      ],
+      "counts": {
+        "Excellent": 1,
+        "Good": 8,
+        "Moderate": 64,
+        "High": 1074,
+        "Critical": 3756,
+        "Insufficient": 12154
+      }
+    },
+    "signals": {
+      "population": 17057,
+      "A_email": {
+        "SPF": {
+          "observed": 13968,
+          "present": 91.1,
+          "hardfail_all": 59.8,
+          "softfail_all": 29.1,
+          "neutral_all": 0.9,
+          "pass_all": 0.1
+        },
+        "DMARC": {
+          "observed": 17028,
+          "present": 62.2,
+          "reject": 18.4,
+          "quarantine": 16.6,
+          "none": 27.1,
+          "enforcing": 35
+        },
+        "DKIM": {
+          "observable": 7497,
+          "detected_rate_over_scored": 44,
+          "note": "DKIM absence is unprovable (unbounded selectors) → NON_OBSERVED, not a zero"
+        }
+      },
+      "B_domain": {
+        "DNSSEC": {
+          "observed": 17057,
+          "anchored": 4,
+          "island": 1,
+          "unsigned": 95
+        },
+        "CAA": {
+          "observed": 16971,
+          "present": 2.7
+        }
+      },
+      "C_transparency": {
+        "SECURITY_HEADERS": {
+          "web_reachable": 15024,
+          "web_reachable_rate": 88.1,
+          "mean_headers_present": 2.9
+        },
+        "MTA_STS": {
+          "observed": 17018,
+          "record_present": 3.8,
+          "enforce": 2.3,
+          "testing": 1.2
+        },
+        "SECURITY_TXT": {
+          "observed": 6432,
+          "present": 10
+        },
+        "TLS_RPT": {
+          "note": "DORMANT — collected but 0 scoring weight (SLG-036/037)"
+        }
+      }
+    }
+  },
+  "regulatorCohorts": [
+    {
+      "id": "FCA",
+      "label": "FCA-regulated",
+      "organisations": 7376,
+      "scored": 2332,
+      "insufficient": 5044,
+      "coreComplete": 936,
+      "score": {
+        "n": 2332,
+        "min": 53,
+        "max": 923,
+        "mean": 321,
+        "median": 303,
+        "q1": 247,
+        "q3": 392,
+        "deciles": [
+          203,
+          229,
+          255,
+          270,
+          303,
+          337,
+          370,
+          413,
+          460
+        ]
+      },
+      "bands": {
+        "order": [
+          "Excellent",
+          "Good",
+          "Moderate",
+          "High",
+          "Critical",
+          "Insufficient"
+        ],
+        "counts": {
+          "Excellent": 1,
+          "Good": 4,
+          "Moderate": 33,
+          "High": 503,
+          "Critical": 1791,
+          "Insufficient": 5044
+        }
+      },
+      "adoption": {
+        "spf_present": 77.4,
+        "dmarc_enforcing": 32.6,
+        "dkim_detected": 44.6,
+        "dnssec_anchored": 3.9,
+        "caa_present": 2.3,
+        "mtasts_enforce": 1.5,
+        "web_reachable": 90.1,
+        "securitytxt_present": 3.6
+      }
+    },
+    {
+      "id": "PRA",
+      "label": "PRA-regulated",
+      "organisations": 9,
+      "scored": 0,
+      "insufficient": 9,
+      "coreComplete": 0,
+      "score": {
+        "n": 0
+      },
+      "bands": {
+        "order": [
+          "Excellent",
+          "Good",
+          "Moderate",
+          "High",
+          "Critical",
+          "Insufficient"
+        ],
+        "counts": {
+          "Excellent": 0,
+          "Good": 0,
+          "Moderate": 0,
+          "High": 0,
+          "Critical": 0,
+          "Insufficient": 9
+        }
+      },
+      "adoption": {
+        "spf_present": 11.1,
+        "dmarc_enforcing": 55.6,
+        "dkim_detected": 33.3,
+        "dnssec_anchored": 11.1,
+        "caa_present": 11.1,
+        "mtasts_enforce": 0,
+        "web_reachable": 66.7,
+        "securitytxt_present": 11.1
+      }
+    },
+    {
+      "id": "SRA",
+      "label": "SRA-regulated",
+      "organisations": 9543,
+      "scored": 2557,
+      "insufficient": 6986,
+      "coreComplete": 1072,
+      "score": {
+        "n": 2557,
+        "min": 53,
+        "max": 892,
+        "mean": 317,
+        "median": 299,
+        "q1": 240,
+        "q3": 393,
+        "deciles": [
+          201,
+          214,
+          250,
+          267,
+          299,
+          338,
+          370,
+          411,
+          455
+        ]
+      },
+      "bands": {
+        "order": [
+          "Excellent",
+          "Good",
+          "Moderate",
+          "High",
+          "Critical",
+          "Insufficient"
+        ],
+        "counts": {
+          "Excellent": 0,
+          "Good": 4,
+          "Moderate": 31,
+          "High": 567,
+          "Critical": 1955,
+          "Insufficient": 6986
+        }
+      },
+      "adoption": {
+        "spf_present": 73.3,
+        "dmarc_enforcing": 36.4,
+        "dkim_detected": 42.8,
+        "dnssec_anchored": 4,
+        "caa_present": 2.8,
+        "mtasts_enforce": 2.8,
+        "web_reachable": 86.6,
+        "securitytxt_present": 4
+      }
+    },
+    {
+      "id": "HE",
+      "label": "Higher Education",
+      "organisations": 142,
+      "scored": 15,
+      "insufficient": 127,
+      "coreComplete": 5,
+      "score": {
+        "n": 15,
+        "min": 210,
+        "max": 592,
+        "mean": 370,
+        "median": 379,
+        "q1": 264,
+        "q3": 445,
+        "deciles": [
+          232,
+          249,
+          286,
+          346,
+          379,
+          388,
+          421,
+          470,
+          517
+        ]
+      },
+      "bands": {
+        "order": [
+          "Excellent",
+          "Good",
+          "Moderate",
+          "High",
+          "Critical",
+          "Insufficient"
+        ],
+        "counts": {
+          "Excellent": 0,
+          "Good": 0,
+          "Moderate": 0,
+          "High": 5,
+          "Critical": 10,
+          "Insufficient": 127
+        }
+      },
+      "adoption": {
+        "spf_present": 18.3,
+        "dmarc_enforcing": 59.9,
+        "dkim_detected": 85.9,
+        "dnssec_anchored": 4.2,
+        "caa_present": 14.8,
+        "mtasts_enforce": 9.2,
+        "web_reachable": 81.7,
+        "securitytxt_present": 3.5
+      }
+    },
+    {
+      "id": "FCA+PRA",
+      "label": "FCA & PRA (dual)",
+      "organisations": 9,
+      "scored": 0,
+      "insufficient": 9,
+      "coreComplete": 0,
+      "score": {
+        "n": 0
+      },
+      "bands": {
+        "order": [
+          "Excellent",
+          "Good",
+          "Moderate",
+          "High",
+          "Critical",
+          "Insufficient"
+        ],
+        "counts": {
+          "Excellent": 0,
+          "Good": 0,
+          "Moderate": 0,
+          "High": 0,
+          "Critical": 0,
+          "Insufficient": 9
+        }
+      },
+      "adoption": {
+        "spf_present": 11.1,
+        "dmarc_enforcing": 55.6,
+        "dkim_detected": 33.3,
+        "dnssec_anchored": 11.1,
+        "caa_present": 11.1,
+        "mtasts_enforce": 0,
+        "web_reachable": 66.7,
+        "securitytxt_present": 11.1
+      }
+    },
+    {
+      "id": "FCA+SRA",
+      "label": "FCA & SRA (dual)",
+      "organisations": 4,
+      "scored": 1,
+      "insufficient": 3,
+      "coreComplete": 0,
+      "score": {
+        "n": 1,
+        "min": 454,
+        "max": 454,
+        "mean": 454,
+        "median": 454,
+        "q1": 454,
+        "q3": 454,
+        "deciles": [
+          454,
+          454,
+          454,
+          454,
+          454,
+          454,
+          454,
+          454,
+          454
+        ]
+      },
+      "bands": {
+        "order": [
+          "Excellent",
+          "Good",
+          "Moderate",
+          "High",
+          "Critical",
+          "Insufficient"
+        ],
+        "counts": {
+          "Excellent": 0,
+          "Good": 0,
+          "Moderate": 0,
+          "High": 1,
+          "Critical": 0,
+          "Insufficient": 3
+        }
+      },
+      "adoption": {
+        "spf_present": 50,
+        "dmarc_enforcing": 75,
+        "dkim_detected": 50,
+        "dnssec_anchored": 0,
+        "caa_present": 25,
+        "mtasts_enforce": 0,
+        "web_reachable": 100,
+        "securitytxt_present": 50
+      }
+    },
+    {
+      "id": "multi-regulated",
+      "label": "Multi-regulated",
+      "organisations": 13,
+      "scored": 1,
+      "insufficient": 12,
+      "coreComplete": 0,
+      "score": {
+        "n": 1,
+        "min": 454,
+        "max": 454,
+        "mean": 454,
+        "median": 454,
+        "q1": 454,
+        "q3": 454,
+        "deciles": [
+          454,
+          454,
+          454,
+          454,
+          454,
+          454,
+          454,
+          454,
+          454
+        ]
+      },
+      "bands": {
+        "order": [
+          "Excellent",
+          "Good",
+          "Moderate",
+          "High",
+          "Critical",
+          "Insufficient"
+        ],
+        "counts": {
+          "Excellent": 0,
+          "Good": 0,
+          "Moderate": 0,
+          "High": 1,
+          "Critical": 0,
+          "Insufficient": 12
+        }
+      },
+      "adoption": {
+        "spf_present": 23.1,
+        "dmarc_enforcing": 61.5,
+        "dkim_detected": 38.5,
+        "dnssec_anchored": 7.7,
+        "caa_present": 15.4,
+        "mtasts_enforce": 0,
+        "web_reachable": 76.9,
+        "securitytxt_present": 23.1
+      }
+    }
+  ],
+  "bandCohorts": [
+    {
+      "band": "Excellent",
+      "organisations": 1
+    },
+    {
+      "band": "Good",
+      "organisations": 8
+    },
+    {
+      "band": "Moderate",
+      "organisations": 64
+    },
+    {
+      "band": "High",
+      "organisations": 1074
+    },
+    {
+      "band": "Critical",
+      "organisations": 3756
+    },
+    {
+      "band": "Insufficient",
+      "organisations": 12154
+    }
+  ],
+  "sicCohorts": [
+    {
+      "section": "64",
+      "organisations": 3506,
+      "score": {
+        "n": 1111,
+        "min": 53,
+        "max": 923,
+        "mean": 313,
+        "median": 287,
+        "q1": 243,
+        "q3": 379,
+        "deciles": [
+          201,
+          225,
+          252,
+          264,
+          287,
+          321,
+          356,
+          398,
+          449
+        ]
+      }
+    },
+    {
+      "section": "66",
+      "organisations": 2943,
+      "score": {
+        "n": 951,
+        "min": 53,
+        "max": 841,
+        "mean": 320,
+        "median": 302,
+        "q1": 247,
+        "q3": 387,
+        "deciles": [
+          203,
+          238,
+          255,
+          270,
+          302,
+          330,
+          362,
+          409,
+          455
+        ]
+      }
+    },
+    {
+      "section": "65",
+      "organisations": 1257,
+      "score": {
+        "n": 412,
+        "min": 64,
+        "max": 701,
+        "mean": 325,
+        "median": 315,
+        "q1": 240,
+        "q3": 400,
+        "deciles": [
+          197,
+          215,
+          255,
+          276,
+          315,
+          342,
+          379,
+          421,
+          476
+        ]
+      }
+    },
+    {
+      "section": "70",
+      "organisations": 219,
+      "score": {
+        "n": 76,
+        "min": 161,
+        "max": 664,
+        "mean": 317,
+        "median": 296,
+        "q1": 246,
+        "q3": 372,
+        "deciles": [
+          199,
+          224,
+          258,
+          272,
+          296,
+          319,
+          347,
+          407,
+          455
+        ]
+      }
+    },
+    {
+      "section": "82",
+      "organisations": 169,
+      "score": {
+        "n": 45,
+        "min": 111,
+        "max": 566,
+        "mean": 327,
+        "median": 338,
+        "q1": 247,
+        "q3": 405,
+        "deciles": [
+          183,
+          225,
+          263,
+          292,
+          338,
+          360,
+          393,
+          421,
+          452
+        ]
+      }
+    },
+    {
+      "section": "62",
+      "organisations": 73,
+      "score": {
+        "n": 22,
+        "min": 207,
+        "max": 759,
+        "mean": 343,
+        "median": 303,
+        "q1": 259,
+        "q3": 400,
+        "deciles": [
+          223,
+          255,
+          274,
+          291,
+          303,
+          324,
+          392,
+          423,
+          453
+        ]
+      }
+    },
+    {
+      "section": "45",
+      "organisations": 52,
+      "score": {
+        "n": 21,
+        "min": 139,
+        "max": 415,
+        "mean": 292,
+        "median": 263,
+        "q1": 240,
+        "q3": 347,
+        "deciles": [
+          235,
+          240,
+          246,
+          263,
+          263,
+          315,
+          347,
+          377,
+          385
+        ]
+      }
+    },
+    {
+      "section": "68",
+      "organisations": 39,
+      "score": {
+        "n": 8,
+        "min": 201,
+        "max": 285,
+        "mean": 230,
+        "median": 215,
+        "q1": 201,
+        "q3": 250,
+        "deciles": [
+          201,
+          201,
+          202,
+          208,
+          215,
+          224,
+          236,
+          266,
+          284
+        ]
+      }
+    },
+    {
+      "section": "96",
+      "organisations": 33,
+      "score": {
+        "n": 5,
+        "min": 223,
+        "max": 424,
+        "mean": 334,
+        "median": 385,
+        "q1": 223,
+        "q3": 414,
+        "deciles": [
+          223,
+          223,
+          255,
+          320,
+          385,
+          397,
+          408,
+          416,
+          420
+        ]
+      }
+    },
+    {
+      "section": "63",
+      "organisations": 30,
+      "score": {
+        "n": 12,
+        "min": 171,
+        "max": 616,
+        "mean": 320,
+        "median": 307,
+        "q1": 247,
+        "q3": 338,
+        "deciles": [
+          211,
+          247,
+          249,
+          275,
+          307,
+          313,
+          318,
+          380,
+          448
+        ]
+      }
+    },
+    {
+      "section": "69",
+      "organisations": 30,
+      "score": {
+        "n": 12,
+        "min": 199,
+        "max": 454,
+        "mean": 278,
+        "median": 248,
+        "q1": 225,
+        "q3": 328,
+        "deciles": [
+          215,
+          224,
+          225,
+          231,
+          248,
+          255,
+          298,
+          353,
+          362
+        ]
+      }
+    }
+  ]
+}

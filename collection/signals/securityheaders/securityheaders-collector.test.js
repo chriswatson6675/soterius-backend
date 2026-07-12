@@ -1,7 +1,8 @@
 'use strict';
 
 // SOT-SECURITYHEADERS-001 — Test Suite
-// 68 tests across groups A–H.
+// Groups A–H (facts-only evidence model) + I (SLG-136 source-authentication
+// harmonisation, COLLECT-PHILOSOPHY-v1.0 §7 R-1 / C-4/C-5/C-7).
 
 const { describe, test } = require('node:test');
 const assert             = require('node:assert/strict');
@@ -13,8 +14,10 @@ const {
   buildHeaderPairs,
   extractSecurityHeaders,
   classifyError,
+  deriveTlsVerdict,
   SECURITY_HEADER_MAP,
   TLS_ERROR_CODES,
+  VERIFICATION_MAP,
   SIGNAL_VERSION,
   COLLECTOR_VERSION,
   MAX_REDIRECTS,
@@ -80,6 +83,10 @@ function mockRequest(routes) {
     return {
       statusCode: route.status ?? 200,
       rawHeaders,
+      // SLG-136: the injectable requestFn seam carries the source-authentication
+      // verdict verbatim (the default requestFn derives it from the socket).
+      tls_verification_result: route.tls_verification_result ?? null,
+      tls_error_code:          route.tls_error_code ?? null,
       resume() {},
     };
   };
@@ -89,7 +96,7 @@ function mockRequest(routes) {
 
 describe('A. Constants', () => {
   test('A01 — SIGNAL_VERSION has expected format', () => {
-    assert.equal(SIGNAL_VERSION, 'SOT-SECURITYHEADERS-001-v1');
+    assert.equal(SIGNAL_VERSION, 'SOT-SECURITYHEADERS-001-v2');
   });
 
   test('A02 — COLLECTOR_VERSION is non-empty string', () => {
@@ -782,5 +789,129 @@ describe('H. Evidence integrity', () => {
     assert.equal(r.fetch_outcome, 'TLS_ERROR');
     assert.equal(r.redirect_chain.length, 1);
     assert.equal(r.redirect_chain[0].url, 'https://example.com/');
+  });
+});
+
+// ── I. SLG-136 source-authentication harmonisation (§7 R-1, C-4/C-5/C-7) ──────
+// The v1 defect: a failed certificate discarded BOTH the headers AND the verdict
+// (endpoint_state=TLS_ERROR, empty header_pairs). v2: observe the response over
+// an unauthenticated origin and record the verdict inseparably. These tests
+// exercise the permissive-capture path via the injectable requestFn seam.
+
+describe('I. Source-authentication verdict (SLG-136)', () => {
+  test('I01 — deriveTlsVerdict: authorized socket → CHAIN_VERIFIED, no error code', () => {
+    const v = deriveTlsVerdict({ authorized: true });
+    assert.equal(v.tls_verification_result, 'CHAIN_VERIFIED');
+    assert.equal(v.tls_error_code, null);
+  });
+
+  test('I02 — deriveTlsVerdict: expired cert → CERT_EXPIRED, specific code preserved', () => {
+    const v = deriveTlsVerdict({ authorized: false, authorizationError: 'CERT_HAS_EXPIRED' });
+    assert.equal(v.tls_verification_result, 'CERT_EXPIRED');
+    assert.equal(v.tls_error_code, 'CERT_HAS_EXPIRED');
+  });
+
+  test('I03 — deriveTlsVerdict: hostname mismatch mapped, self-signed mapped', () => {
+    assert.equal(deriveTlsVerdict({ authorized: false, authorizationError: 'ERR_TLS_CERT_ALTNAME_INVALID' }).tls_verification_result, 'HOSTNAME_MISMATCH');
+    assert.equal(deriveTlsVerdict({ authorized: false, authorizationError: 'DEPTH_ZERO_SELF_SIGNED_CERT' }).tls_verification_result, 'SELF_SIGNED');
+  });
+
+  test('I04 — deriveTlsVerdict: unmapped auth error → OTHER_TLS_ERROR, raw code kept (C-5)', () => {
+    const v = deriveTlsVerdict({ authorized: false, authorizationError: 'SOME_NOVEL_CODE' });
+    assert.equal(v.tls_verification_result, 'OTHER_TLS_ERROR');
+    assert.equal(v.tls_error_code, 'SOME_NOVEL_CODE');
+  });
+
+  test('I05 — deriveTlsVerdict: non-TLS socket (HTTP probe) → nulls, no verdict invented', () => {
+    const v = deriveTlsVerdict({});
+    assert.equal(v.tls_verification_result, null);
+    assert.equal(v.tls_error_code, null);
+  });
+
+  test('I06 — VERIFICATION_MAP mirrors the TLS collector vocabulary', () => {
+    assert.equal(VERIFICATION_MAP.CERT_HAS_EXPIRED, 'CERT_EXPIRED');
+    assert.equal(VERIFICATION_MAP.ERR_TLS_CERT_ALTNAME_INVALID, 'HOSTNAME_MISMATCH');
+    assert.equal(VERIFICATION_MAP.SELF_SIGNED_CERT_IN_CHAIN, 'SELF_SIGNED_IN_CHAIN');
+  });
+
+  test('I07 — headers ARE captured over a failed certificate (the 653-domain fix)', async () => {
+    // Origin serves headers but its cert is expired. v1 would have discarded both.
+    const httpsReq = mockRequest({
+      'https://expired.example/': {
+        status: 200,
+        headers: { 'Strict-Transport-Security': 'max-age=63072000', 'X-Frame-Options': 'DENY' },
+        tls_verification_result: 'CERT_EXPIRED',
+        tls_error_code: 'CERT_HAS_EXPIRED',
+      },
+    });
+    const httpReq = mockRequest({ 'http://expired.example/': { status: 200 } });
+    const r = await collectSecurityHeaders('expired.example', '2.0.0', {
+      httpsRequestFn: httpsReq, httpRequestFn: httpReq,
+    });
+    // Observation is NOT dropped; endpoint_state reflects the response, not the cert.
+    assert.equal(r.endpoint_state, 'RESPONSE_OBSERVED');
+    assert.equal(r.header_inventory.strict_transport_security.present, true);
+    assert.equal(r.header_inventory.x_frame_options.present, true);
+    // Verdict recorded inseparably (inside https_fetch) AND mirrored at top level.
+    assert.equal(r.https_fetch.tls_verification_result, 'CERT_EXPIRED');
+    assert.equal(r.https_fetch.tls_error_code, 'CERT_HAS_EXPIRED');
+    assert.equal(r.tls_verification_result, 'CERT_EXPIRED');
+    assert.equal(r.tls_error_code, 'CERT_HAS_EXPIRED');
+  });
+
+  test('I08 — clean cert → CHAIN_VERIFIED verdict recorded alongside headers', async () => {
+    const httpsReq = mockRequest({
+      'https://good.example/': {
+        status: 200,
+        headers: { 'Content-Security-Policy': "default-src 'self'" },
+        tls_verification_result: 'CHAIN_VERIFIED',
+      },
+    });
+    const httpReq = mockRequest({ 'http://good.example/': { status: 200 } });
+    const r = await collectSecurityHeaders('good.example', '2.0.0', {
+      httpsRequestFn: httpsReq, httpRequestFn: httpReq,
+    });
+    assert.equal(r.tls_verification_result, 'CHAIN_VERIFIED');
+    assert.equal(r.tls_error_code, null);
+    assert.equal(r.header_inventory.content_security_policy.present, true);
+  });
+
+  test('I09 — terminal verdict reflects the connection that served the headers, and each hop is stamped', async () => {
+    // Redirect from a self-signed origin to a well-authenticated final host.
+    const httpsReq = mockRequest({
+      'https://redir.example/': {
+        status: 301, location: 'https://final.example/',
+        tls_verification_result: 'SELF_SIGNED', tls_error_code: 'DEPTH_ZERO_SELF_SIGNED_CERT',
+      },
+      'https://final.example/': {
+        status: 200, headers: { 'X-Content-Type-Options': 'nosniff' },
+        tls_verification_result: 'CHAIN_VERIFIED',
+      },
+    });
+    const r = await fetchEndpoint('redir.example', { requestFn: httpsReq });
+    assert.equal(r.fetch_outcome, 'RESPONSE_OBSERVED');
+    // Terminal verdict = final host.
+    assert.equal(r.tls_verification_result, 'CHAIN_VERIFIED');
+    // Hop verdict = the redirecting (self-signed) host — preserved per-hop (C-4).
+    assert.equal(r.redirect_chain.length, 1);
+    assert.equal(r.redirect_chain[0].tls_verification_result, 'SELF_SIGNED');
+    assert.equal(r.redirect_chain[0].tls_error_code, 'DEPTH_ZERO_SELF_SIGNED_CERT');
+  });
+
+  test('I10 — genuine TLS-protocol failure (thrown) still → TLS_ERROR, verdict null (C-5)', async () => {
+    // A handshake that throws (protocol mismatch) is NOT a source-auth verdict —
+    // no response observed. Specific cause preserved; verdict null (nothing to record).
+    const httpsReq = mockRequest({ 'https://proto.example/': { error: 'tls_ssl' } });
+    const r = await fetchEndpoint('proto.example', { requestFn: httpsReq });
+    assert.equal(r.fetch_outcome, 'TLS_ERROR');
+    assert.equal(r.tls_verification_result, null);
+    assert.equal(r.tls_error_code, null);
+    assert.deepEqual(r.header_pairs, []);
+  });
+
+  test('I11 — HTTP probe carries no TLS verdict field (not applicable)', async () => {
+    const httpReq = mockRequest({ 'http://plain.example/': { status: 200 } });
+    const r = await fetchProbe('plain.example', { requestFn: httpReq });
+    assert.equal(r.tls_verification_result, undefined); // probe result intentionally omits the field
   });
 });

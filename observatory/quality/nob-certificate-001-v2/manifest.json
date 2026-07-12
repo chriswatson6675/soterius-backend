@@ -1,0 +1,28 @@
+{
+  "run_label": "NOB-CERTIFICATE-001-v2",
+  "run_id": "b8be610a-3d5d-ded3-e297-c77c99d00cd0",
+  "source_run_id": "73808e28-eb01-4610-a5a9-de3765d6bad9",
+  "signal": "SOT-CERTIFICATE-001",
+  "model": "CERTIFICATE-QM-v1.0",
+  "baseline": "NOB-CERTIFICATE-001-v2 corrected national certificate baseline",
+  "population": 17057,
+  "scored": 15869,
+  "not_scored_total": 1188,
+  "not_scored_by_reason": {
+    "NOT_OBSERVED": 1188
+  },
+  "calc_failures": 0,
+  "sha256": {
+    "observations": "c704f8342b34ffe746069d5306e064f353c0662da0a46999087273acb03b1025",
+    "quality_scores": "ad101bbd769b0fedd89b967c560c1799c9041827208bbc469d044867baf13427"
+  },
+  "mean": 93.3435,
+  "median": 100,
+  "distinct_values": [
+    0,
+    90.25,
+    95,
+    100
+  ],
+  "provenance": "Scored from signal_certificate_v1 (NOB-CERTIFICATE-001-v2, run_id 73808e28-eb01-4610-a5a9-de3765d6bad9) via certificate-quality.js (CERTIFICATE-QM-v1.0); SLG-108 calibration, SLG-109 falsification."
+}

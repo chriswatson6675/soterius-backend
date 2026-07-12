@@ -168,30 +168,18 @@ test('addPortfolioItem — surfaces an insert error without throwing', async () 
   assert.deepStrictEqual(result, { success: false, error: 'insert failed' });
 });
 
-test('getPortfolioItems — maps joined prospects rows, nulling unavailable fields', async () => {
+test('getPortfolioItems — returns canonical ORG-* ids + metadata; organisation summary is null (resolved via canonical layer, ADR-SYS-010)', async () => {
   const rows = [
-    {
-      id: 'p1', organisation_id: 'o1', is_home: true, added_by_user_id: 'u1', added_at: '2026-07-01T00:00:00Z',
-      prospects: { id: 'o1', firm_name: 'Smith LLP', website: 'smithllp.co.uk', sector: 'solicitors', location: null, last_scanned: '2026-06-30T00:00:00Z' },
-    },
-    {
-      id: 'p2', organisation_id: 'o2', is_home: false, added_by_user_id: 'u1', added_at: '2026-06-15T00:00:00Z',
-      prospects: { id: 'o2', firm_name: 'Doe & Co', website: 'doeandco.co.uk', sector: null, location: null, last_scanned: null },
-    },
+    { id: 'p1', organisation_id: 'ORG-5C5F9F99DBC8', is_home: true, added_by_user_id: 'u1', added_at: '2026-07-01T00:00:00Z' },
+    { id: 'p2', organisation_id: 'ORG-425AB63B3139', is_home: false, added_by_user_id: 'u1', added_at: '2026-06-15T00:00:00Z' },
   ];
   const { client, calls } = fakeClient({ data: rows, error: null });
 
   const result = await getPortfolioItems('c1', client);
 
   assert.deepStrictEqual(result, [
-    {
-      id: 'p1', organisationId: 'o1', isHome: true, addedByUserId: 'u1', addedAt: '2026-07-01T00:00:00Z',
-      organisation: { id: 'o1', name: 'Smith LLP', domain: 'smithllp.co.uk', sector: 'solicitors', location: null, lastScannedAt: '2026-06-30T00:00:00Z' },
-    },
-    {
-      id: 'p2', organisationId: 'o2', isHome: false, addedByUserId: 'u1', addedAt: '2026-06-15T00:00:00Z',
-      organisation: { id: 'o2', name: 'Doe & Co', domain: 'doeandco.co.uk', sector: null, location: null, lastScannedAt: null },
-    },
+    { id: 'p1', organisationId: 'ORG-5C5F9F99DBC8', isHome: true, addedByUserId: 'u1', addedAt: '2026-07-01T00:00:00Z', organisation: null },
+    { id: 'p2', organisationId: 'ORG-425AB63B3139', isHome: false, addedByUserId: 'u1', addedAt: '2026-06-15T00:00:00Z', organisation: null },
   ]);
   assert.deepStrictEqual(calls[2], ['eq', 'customer_id', 'c1']);
 });

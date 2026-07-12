@@ -1,0 +1,377 @@
+[
+  {
+    "organisation_id": "ORG-A502806E2143",
+    "organisation_name": "IME LAW LIMITED",
+    "stored_domain": "claim.ime-law.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "612907",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWNSRA:YES",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-9FD148E895C8",
+    "organisation_name": "Finalto Financial Services Limited",
+    "stored_domain": "cfhclearing.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "553137",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-C0A93E2B7B18",
+    "organisation_name": "CLEMENTS SOLICITORS LIMITED",
+    "stored_domain": "clementssolicitor.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "636121",
+      "companiesHouseNumber": "08668895"
+    },
+    "organisation_status": "CH:active | SRA:YES",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-3B4263317023",
+    "organisation_name": "CHRISTIAN. THE LAW FIRM. LIMITED",
+    "stored_domain": "christianlawfirm.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "565050",
+      "companiesHouseNumber": "07795154"
+    },
+    "organisation_status": "CH:active | SRA:YES",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-8A0AD63D153F",
+    "organisation_name": "Census Wealth Management Limited",
+    "stored_domain": "censuswm.co.uk",
+    "regulators": [
+      "FCA"
+    ],
+    "identifiers": {
+      "frn": "522337",
+      "sraIdentifier": null,
+      "companiesHouseNumber": "07168493"
+    },
+    "organisation_status": "CH:active | FCA:Authorised",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-5A2ED12D1559",
+    "organisation_name": "Constellation Generation Limited",
+    "stored_domain": "constellationenegy.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "620989",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-E139680B1B36",
+    "organisation_name": "CHORION LIMITED",
+    "stored_domain": "chorion.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "350941",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-8A484E9EB727",
+    "organisation_name": "Raymond James Wealth Management Limited",
+    "stored_domain": "charles-stanley.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "291140",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-73E7C4FDE60E",
+    "organisation_name": "Credit Expert Ltd",
+    "stored_domain": "creditexpert.direct",
+    "regulators": [
+      "FCA"
+    ],
+    "identifiers": {
+      "frn": "690310",
+      "sraIdentifier": null,
+      "companiesHouseNumber": "09506661"
+    },
+    "organisation_status": "CH:active | FCA:Authorised",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-8EE8F0469A15",
+    "organisation_name": "CROWNHOUSE IFAS LIMITED",
+    "stored_domain": "crownhouseifas.co.uk",
+    "regulators": [
+      "FCA"
+    ],
+    "identifiers": {
+      "frn": "424022",
+      "sraIdentifier": null,
+      "companiesHouseNumber": "04714105"
+    },
+    "organisation_status": "CH:active | FCA:Authorised",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-BD790049D5E8",
+    "organisation_name": "CULVER HOLDINGS PLC",
+    "stored_domain": "culver-tech.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "79495",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-AB2A4DB9BF7A",
+    "organisation_name": "DELUXE 142 LIMITED",
+    "stored_domain": "deluxe142.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "561412",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-D6C9D4CE580E",
+    "organisation_name": "DEVON LAW",
+    "stored_domain": "devon-law.leapwp.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "628305",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWNSRA:YES",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-F6A8B7F5FF91",
+    "organisation_name": "DINN SOLICITORS LTD",
+    "stored_domain": "dinnsolicitors.weebley.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "8002999",
+      "companiesHouseNumber": "14487637"
+    },
+    "organisation_status": "CH:active | SRA:YES",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-CA50DC1D20B6",
+    "organisation_name": "CME GROUP",
+    "stored_domain": "cmegroup.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "493023",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-4CC628D504BB",
+    "organisation_name": "THE DEPARTMENT FOR COMMUNITIES AND LOCAL GOVERNMENT",
+    "stored_domain": "dtlr.gov.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "64407",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-BD51AB2BA14C",
+    "organisation_name": "Clarion Housing Group Limited",
+    "stored_domain": "circle.org.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "566485",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-3F93551D4C56",
+    "organisation_name": "DUNCAN WALLACE SOLICITORS",
+    "stored_domain": "duncanwallacesolicitors.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "499674",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-F7A974196DE7",
+    "organisation_name": "DW Wealth Management Ltd",
+    "stored_domain": "dwwealthmangement.co.uk",
+    "regulators": [
+      "FCA"
+    ],
+    "identifiers": {
+      "frn": "803509",
+      "sraIdentifier": null,
+      "companiesHouseNumber": "09102617"
+    },
+    "organisation_status": "CH:active | FCA:Authorised",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-12A9B9C82B62",
+    "organisation_name": "CORPER SOLICITORS",
+    "stored_domain": "corpersolicitors.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "513115",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWNSRA:YES",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-F4CB2292B140",
+    "organisation_name": "CABLE AND WIRELESS WORLDWIDE PLC",
+    "stored_domain": "cw.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "269766",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-4F36EC7DE610",
+    "organisation_name": "Smiths News plc",
+    "stored_domain": "corporate.smithsnews.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "497166",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-816C10CCF925",
+    "organisation_name": "DUBAI GROUP",
+    "stored_domain": "dubaigroup.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "469005",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-009C45F6A6DA",
+    "organisation_name": "COUNTRYWIDE CONVEYANCING SERVICES",
+    "stored_domain": "cwpl.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "271504",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-F3AFCB3F099C",
+    "organisation_name": "DYFED-POWYS POLICE AUTHORITY",
+    "stored_domain": "dyfedpowyspoliceauthority.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "205733",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  }
+]

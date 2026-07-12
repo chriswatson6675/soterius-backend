@@ -1,0 +1,41 @@
+{
+  "model": "CAA-QM-v1.0",
+  "run_label": "NOB-CAA-001R",
+  "run_id": "d54c5295-201b-7e90-17d1-ba2bda0e6fc8",
+  "baseline_sha256": "1462754180ea4f521e25d3e919da6b221593dfa3e6a8273cefa3c6acc472b22b",
+  "window": {
+    "after": "2026-07-08T08:07:20Z",
+    "before": "2026-07-08T08:47:07Z"
+  },
+  "population": 17057,
+  "scored": 17031,
+  "not_scored": 26,
+  "prohibited_uncalibrated": 0,
+  "primary_states": {
+    "UNCONSTRAINED": 16514,
+    "RESTRICTED": 499,
+    "WILDCARD_ONLY": 18
+  },
+  "score_histogram": {
+    "0": 16514,
+    "50": 18,
+    "90": 9,
+    "95": 9,
+    "100": 480,
+    "85.5": 1
+  },
+  "mean": 2.974,
+  "sd": 16.885,
+  "min": 0,
+  "q1": 0,
+  "median": 0,
+  "q3": 0,
+  "max": 100,
+  "multipliers": {
+    "m1_wildcard_exceeds_base": 10,
+    "m2_inoperative_element": 11,
+    "m3_flagged_uncalibrated": 1
+  },
+  "inheritance_resolved": 3,
+  "scores_sha256": "16d93a03ffff1d0a7c78429aacb8eb2b0ec319816ac2f7eb46e4b6b0893d2232"
+}

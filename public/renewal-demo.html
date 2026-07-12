@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Renewal Experience v0.1</title>
+<style>
+  :root {
+    --bg: #F7F8FA; --surface: #FFFFFF; --surface-2: #F2F4F7;
+    --border: #E4E7EC; --border-strong: #D0D5DD;
+    --text: #101828; --text-2: #475467; --text-3: #98A2B3;
+    --accent: #0E9B8E; --accent-2: #2563EB;
+    --success: #17803D; --success-bg: #E7F6EC;
+    --warning: #B54708; --warning-bg: #FFF4E5;
+    --info: #175CD3; --info-bg: #EFF4FF;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--font); line-height: 1.5; }
+  .topbar { padding: 14px 28px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+  .topbar .name { font-weight: 650; font-size: 15px; }
+  .topbar .tag { font-size: 11px; padding: 3px 8px; border-radius: 999px; background: var(--surface-2); color: var(--text-3); border: 1px solid var(--border); }
+  main { max-width: 640px; margin: 0 auto; padding: 48px 24px 100px; }
+  .view { display: none; }
+  .view.active { display: block; animation: in .35s ease; }
+  @keyframes in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  h1 { font-size: 28px; margin: 0 0 8px; letter-spacing: -0.01em; }
+  p.sub { color: var(--text-2); margin: 0 0 24px; font-size: 15px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 4px; margin-bottom: 14px; box-shadow: 0 1px 2px rgba(16,24,40,.04); }
+  .row { display: flex; align-items: center; gap: 14px; padding: 14px 18px; border-bottom: 1px solid var(--border); }
+  .row:last-child { border-bottom: none; }
+  .row .label { width: 190px; color: var(--text-3); font-size: 13px; flex-shrink: 0; }
+  .row .value { font-weight: 600; font-size: 14.5px; flex: 1; }
+  .badge { font-size: 11px; font-weight: 650; padding: 3px 9px; border-radius: 999px; background: var(--info-bg); color: var(--info); white-space: nowrap; }
+  input, select { width: 100%; height: 42px; border-radius: 9px; border: 1.5px solid var(--border-strong); padding: 0 12px; font-size: 14.5px; font-family: inherit; outline: none; }
+  input:focus { border-color: var(--accent); }
+  .search-wrap { position: relative; }
+  #results { margin-top: 8px; }
+  .result { padding: 12px 16px; border-bottom: 1px solid var(--border); cursor: pointer; }
+  .result:last-child { border-bottom: none; }
+  .result:hover { background: var(--surface-2); }
+  .result .n { font-weight: 600; font-size: 14px; }
+  .result .m { font-size: 12px; color: var(--text-3); font-family: var(--mono); }
+  button { height: 44px; padding: 0 20px; border-radius: 10px; font-size: 14.5px; font-weight: 600; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text); cursor: pointer; }
+  button.primary { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #fff; border: none; }
+  button:disabled { opacity: .4; cursor: not-allowed; }
+  .actions { display: flex; justify-content: center; gap: 12px; margin-top: 20px; }
+  .grade { display: inline-flex; align-items: center; justify-content: center; width: 56px; height: 56px; border-radius: 999px; background: var(--surface-2); border: 4px solid var(--accent); font-size: 20px; font-weight: 700; }
+  .sig-hero { display: flex; align-items: center; gap: 18px; padding: 18px; }
+  .signal { display: flex; justify-content: space-between; padding: 8px 18px; font-size: 13.5px; border-bottom: 1px solid var(--border); }
+  .signal:last-child { border-bottom: none; }
+  .fee-row input { margin-top: 6px; }
+  .fee-label { font-size: 13px; font-weight: 600; margin: 14px 18px 0; }
+  .fee-row-wrap { padding: 0 18px 14px; }
+  .toast { position: fixed; bottom: 26px; left: 50%; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 12px 18px; border-radius: 10px; font-size: 13.5px; font-weight: 600; display: none; }
+  .toast.show { display: block; }
+  .loading { text-align: center; padding: 60px 0; color: var(--text-3); }
+  .provref { font-family: var(--mono); font-size: 11px; color: var(--text-3); }
+</style>
+</head>
+<body>
+  <div class="topbar"><span class="name">Soterius Renewal</span><span class="tag">Experience v0.1 — organisation-powered</span></div>
+  <main>
+
+    <section class="view active" id="v-search">
+      <h1>Find your practice</h1>
+      <p class="sub">Search by firm name or SRA number — resolved against the canonical Organisation.</p>
+      <div class="search-wrap">
+        <input id="q" placeholder="Try 'Charles Russell', 'Mishcon', or an SRA number" autocomplete="off" />
+        <div class="card" id="results" style="display:none;"></div>
+      </div>
+    </section>
+
+    <section class="view" id="v-loading"><div class="loading">Resolving organisation…</div></section>
+
+    <section class="view" id="v-profile">
+      <h1>Practice information</h1>
+      <p class="sub" id="profile-sub"></p>
+      <div class="card" id="profile-rows"></div>
+      <div class="actions"><button class="primary" id="to-trust">Continue to Digital Trust →</button></div>
+    </section>
+
+    <section class="view" id="v-trust">
+      <h1>Digital trust</h1>
+      <p class="sub" id="trust-sub"></p>
+      <div class="card sig-hero" id="trust-hero"></div>
+      <div class="card" id="trust-signals"></div>
+      <div class="actions"><button class="primary" id="to-fee">Continue →</button></div>
+    </section>
+
+    <section class="view" id="v-fee">
+      <h1>Annual fee income</h1>
+      <p class="sub">The one figure no register or scan can supply — only you can confirm it.</p>
+      <div class="card">
+        <div class="fee-label">Last completed financial year</div>
+        <div class="fee-row-wrap"><input id="fee-last" placeholder="e.g. 1,970,000" /></div>
+        <div class="fee-label">Estimate — current financial year</div>
+        <div class="fee-row-wrap"><input id="fee-estimate" placeholder="e.g. 2,080,000" /></div>
+      </div>
+      <div class="actions"><button class="primary" id="save-fee" disabled>Save submission</button></div>
+    </section>
+
+    <section class="view" id="v-done">
+      <h1>Saved</h1>
+      <p class="sub">This submission is stored against the Organisation, not inside it — Renewal owns its own answers.</p>
+      <div class="card" id="done-summary"></div>
+    </section>
+
+  </main>
+  <div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  "use strict";
+  // Dev-only token for this local demo. Not how the real product will authenticate —
+  // see the v0.1 implementation report's deviation note on requireAuth/attachTenant.
+  var ADMIN_TOKEN = "test-local-token";
+  var state = { org: null, submissionId: null };
+
+  function $(s) { return document.querySelector(s); }
+  function show(id) {
+    document.querySelectorAll(".view").forEach(function (v) { v.classList.remove("active"); });
+    $("#" + id).classList.add("active");
+  }
+  function toast(msg) {
+    var t = $("#toast"); t.textContent = msg; t.classList.add("show");
+    setTimeout(function () { t.classList.remove("show"); }, 2600);
+  }
+  async function api(path, opts) {
+    opts = opts || {};
+    opts.headers = Object.assign({ "X-Admin-Token": ADMIN_TOKEN }, opts.headers || {});
+    var res = await fetch("/api" + path, opts);
+    var body = await res.json();
+    if (!body.success) throw new Error(body.error || "request failed");
+    return body;
+  }
+
+  var q = $("#q"), results = $("#results");
+  var debounce;
+  q.addEventListener("input", function () {
+    clearTimeout(debounce);
+    var val = q.value.trim();
+    if (!val) { results.style.display = "none"; return; }
+    debounce = setTimeout(async function () {
+      try {
+        var r = await api("/organisation/search?q=" + encodeURIComponent(val));
+        renderResults(r.results);
+      } catch (e) { results.innerHTML = '<div class="result">' + e.message + "</div>"; results.style.display = "block"; }
+    }, 200);
+  });
+
+  function renderResults(list) {
+    if (!list.length) { results.style.display = "none"; return; }
+    results.innerHTML = list.map(function (r) {
+      return '<div class="result" data-id="' + r.id + '"><div class="n">' + r.name + '</div><div class="m">' + r.id + " · SRA " + r.sraNumber + (r.town ? " · " + r.town : "") + "</div></div>";
+    }).join("");
+    results.style.display = "block";
+    Array.prototype.forEach.call(results.querySelectorAll(".result"), function (row) {
+      row.addEventListener("click", function () { selectOrganisation(row.dataset.id); });
+    });
+  }
+
+  async function selectOrganisation(id) {
+    show("v-loading");
+    try {
+      var full = await api("/organisation/" + id);
+      state.org = full.organisation;
+      renderProfile(state.org);
+      renderTrust(state.org);
+      show("v-profile");
+    } catch (e) {
+      alert("Could not resolve organisation: " + e.message);
+      show("v-search");
+    }
+  }
+
+  function badge(source) {
+    return '<span class="badge">' + source + "</span>";
+  }
+
+  function renderProfile(org) {
+    $("#profile-sub").textContent = "Resolved as " + org.id + " — verified against public records.";
+    var le = org.legalEntities[0] || {};
+    var rows = [
+      ["Practice name", org.displayName, "companies-house/sra"],
+      ["SRA number", (org.regulators[0] || {}).identifier, "sra-snapshot"],
+      ["Practice status", le.entityType, "companies-house"],
+      ["Incorporated", le.incorporatedOn, "companies-house"],
+      ["Registered office", le.registeredOffice ? [le.registeredOffice.line1, le.registeredOffice.locality, le.registeredOffice.postalCode].filter(Boolean).join(", ") : null, "companies-house"],
+      ["Number of offices", le.numberOfOffices, "sra-snapshot"],
+    ];
+    $("#profile-rows").innerHTML = rows.map(function (r) {
+      return '<div class="row"><div class="label">' + r[0] + '</div><div class="value">' + (r[1] || "—") + "</div>" + badge(r[2]) + "</div>";
+    }).join("");
+  }
+
+  function renderTrust(org) {
+    var dt = org.digitalTrust;
+    $("#trust-sub").textContent = org.domains[0] ? "Independently observed from " + org.domains[0].domain : "No domain known for this organisation.";
+    if (!dt) {
+      $("#trust-hero").innerHTML = "<div>No digital trust signal observed yet for this organisation's domain.</div>";
+      $("#trust-signals").innerHTML = "";
+      return;
+    }
+    $("#trust-hero").innerHTML = '<div class="grade">' + dt.grade + '</div><div><div style="font-weight:650;font-size:16px;">' + dt.overallScore + "/100 overall</div><div style=\"color:var(--text-3);font-size:12.5px;\">" + dt.signalsObserved + " of " + dt.signalsTotal + " signals observed</div></div>";
+    var rows = [];
+    dt.categories.forEach(function (cat) {
+      cat.signals.forEach(function (s) {
+        rows.push('<div class="signal"><span>' + cat.category + " — " + s.key.toUpperCase() + '</span><span>' + s.score + " · " + s.label + "</span></div>");
+      });
+    });
+    $("#trust-signals").innerHTML = rows.join("");
+  }
+
+  $("#to-trust").addEventListener("click", function () { show("v-trust"); });
+  $("#to-fee").addEventListener("click", async function () {
+    try {
+      var r = await api("/renewal/submissions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ organisationId: state.org.id, cycleYear: 2026 }),
+      });
+      state.submissionId = r.submission.id;
+      show("v-fee");
+    } catch (e) { alert("Could not start a submission: " + e.message); }
+  });
+
+  function fmtOnInput(el) {
+    el.addEventListener("input", function () {
+      var digits = el.value.replace(/[^\d]/g, "");
+      el.value = digits ? Number(digits).toLocaleString("en-GB") : "";
+      checkFeeComplete();
+    });
+  }
+  fmtOnInput($("#fee-last"));
+  fmtOnInput($("#fee-estimate"));
+  function checkFeeComplete() {
+    $("#save-fee").disabled = $("#fee-last").value.replace(/[^\d]/g, "").length === 0;
+  }
+
+  $("#save-fee").addEventListener("click", async function () {
+    var last = Number($("#fee-last").value.replace(/[^\d]/g, "")) || null;
+    var est = Number($("#fee-estimate").value.replace(/[^\d]/g, "")) || null;
+    try {
+      var r = await api("/renewal/submissions/" + state.submissionId, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ feeIncomeLastCompleted: last, feeIncomeEstimate: est }),
+      });
+      $("#done-summary").innerHTML =
+        '<div class="row"><div class="label">Organisation</div><div class="value">' + state.org.displayName + "</div>" + badge(state.org.id) + "</div>" +
+        '<div class="row"><div class="label">Submission</div><div class="value">' + r.submission.id + '</div><span class="provref">renewal_submissions</span></div>' +
+        '<div class="row"><div class="label">Fee income (last completed)</div><div class="value">£' + Number(r.submission.answers.feeIncomeLastCompleted).toLocaleString("en-GB") + "</div></div>" +
+        (r.submission.answers.feeIncomeEstimate ? '<div class="row"><div class="label">Fee income (estimate)</div><div class="value">£' + Number(r.submission.answers.feeIncomeEstimate).toLocaleString("en-GB") + "</div></div>" : "");
+      toast("Saved — submission " + r.submission.id.slice(0, 8) + "…");
+      show("v-done");
+    } catch (e) { alert("Could not save: " + e.message); }
+  });
+})();
+</script>
+</body>
+</html>

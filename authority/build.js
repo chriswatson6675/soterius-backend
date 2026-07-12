@@ -19,17 +19,17 @@
 
 const fs = require('fs');
 const path = require('path');
-const crypto = require('crypto');
 const N = require('./lib/normalise');
 const { UnionFind } = require('./lib/unionfind');
 const L = require('./loaders');
+const Identity = require('../organisation/identity');
 
 const OUT_DATASET = path.join(__dirname, 'dataset');
 const OUT_REPORTS = path.join(__dirname, 'reports');
 fs.mkdirSync(OUT_DATASET, { recursive: true });
 fs.mkdirSync(OUT_REPORTS, { recursive: true });
 
-const sha = (s) => crypto.createHash('sha1').update(s).digest('hex');
+const sha = Identity.sha;
 const writeNdjson = (file, rows) => fs.writeFileSync(file, rows.map((r) => JSON.stringify(r)).join('\n') + (rows.length ? '\n' : ''));
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -113,15 +113,27 @@ function chooseName(recs) {
   return sorted.find((r) => r.name)?.name || null;
 }
 
+// Adapts the batch build's internal `org` shape into organisation/identity.js's
+// flat identifiers contract — resolves the same name/domain fallback chain
+// the original inline implementation did. Shape adaptation only; the
+// precedence itself lives exclusively in organisation/identity.js
+// (ADR-SYS-010 OC-6 — one implementation, not two).
+function identifiersOf(org) {
+  return {
+    companiesHouseNumber: org.identifiers.companiesHouseNumber,
+    frn: org.identifiers.frn,
+    sraNumber: org.identifiers.sraIdentifier,
+    ukprn: org.identifiers.ukprn,
+    ifUuid: org._ifUuids.length ? [...org._ifUuids].sort()[0] : null,
+    normalisedName: org.normalisedName || org.organisationName || null,
+    domain: org._candidates[0]?.domain || null,
+  };
+}
+
 // Deterministic immutable id: derived from the strongest identifier present,
 // so it is stable across rebuilds and independent of record order.
 function primaryKeyOf(org) {
-  if (org.identifiers.companiesHouseNumber) return `cn:${org.identifiers.companiesHouseNumber}`;
-  if (org.identifiers.frn) return `frn:${org.identifiers.frn}`;
-  if (org.identifiers.sraIdentifier) return `sra:${org.identifiers.sraIdentifier}`;
-  if (org.identifiers.ukprn) return `ukprn:${org.identifiers.ukprn}`;
-  if (org._ifUuids.length) return `uuid:${[...org._ifUuids].sort()[0]}`;
-  return `nd:${sha((org.normalisedName || org.organisationName || '') + '|' + (org._candidates[0]?.domain || ''))}`;
+  return Identity.primaryKeyOf(identifiersOf(org));
 }
 
 const orgs = [];
@@ -200,7 +212,7 @@ const idSeen = new Map();
 orgs.sort((a, b) => primaryKeyOf(a).localeCompare(primaryKeyOf(b)));
 for (const org of orgs) {
   const pk = primaryKeyOf(org);
-  let id = `ORG-${sha(pk).slice(0, 12).toUpperCase()}`;
+  let id = Identity.canonicalOrgId(identifiersOf(org));
   if (idSeen.has(id)) {
     let n = 2;
     while (idSeen.has(`${id}-${n}`)) n++;
@@ -434,3 +446,17 @@ fs.writeFileSync(path.join(OUT_DATASET, 'build-summary.json'), JSON.stringify(su
 console.error('\n════════════════ CANONICAL ORGANISATION DATASET ════════════════');
 for (const [k, v] of Object.entries(summary)) console.error(`  ${k.padEnd(38)} ${v}`);
 console.error('═════════════════════════════════════════════════════════════════');
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 10. Integrity Report — measurement only (Repository Authority Integrity Review).
+//     Reads the dataset just written and emits authority/reports/integrity-report.*.
+//     It observes; it changes nothing above. Isolated in try/catch so a reporting
+//     fault can never invalidate an otherwise-good build — the dataset is the
+//     product, the report is measurement of it.
+// ─────────────────────────────────────────────────────────────────────────────
+require('./integrity-report')
+  .generate()
+  .then((s) => {
+    console.error(`\nIntegrity report — health: ${s.health.overall} | reconstructable: ${s.metrics.reconstructability.reconstructablePercent}% | strong-id collisions: ${s.metrics.identityIntegrity.strongIdentifierCollisions} | review groups: ${s.metrics.transparency.identityReviewGroups}`);
+  })
+  .catch((e) => console.error(`\nIntegrity report generation failed (dataset unaffected): ${e.message}`));

@@ -5,8 +5,9 @@ const { validateDomain }        = require('../../infra/utils/validators');
 const { AppError, ValidationError } = require('../../infra/utils/errors');
 const logger                    = require('../../infra/utils/logger');
 const { sendConfirmationEmail } = require('../../infra/utils/emailService');
-const { saveScan, getScanHistory, saveSubmission, getSubmissionById } = require('../../infra/database');
-const { executeScan, getRiskLevel, MAX_POINTS } = require('../services/scanService');
+const { saveScan, getScanHistory, saveSubmission, getSubmissionById, getScanById } = require('../../infra/database');
+const { executeScan, MAX_POINTS } = require('../services/scanService');
+const derivation = require('../services/scan-derivation-service');
 const { generatePDF }           = require('../pdf-generator/generator');
 const { adaptScannersForPDF }   = require('../../infra/utils/pdfAdapter');
 
@@ -73,118 +74,144 @@ router.get('/history/:domain', async (req, res, next) => {
 // ── POST /api/scan/submit-gate ────────────────────────────────────────────────
 // Captures lead details, fires confirmation email, and links the submission
 // to the scan record that preceded it via scanId.
-router.post('/submit-gate', async (req, res, next) => {
-  try {
-    const {
-      domain,
-      name,
-      email,
-      firmName,
-      mainConcern,
-      dataIncidents,
-      itManagement,
-      confidence,
-      scanScore,    // optional — sent by frontend after scan completes
-      scanResults,  // optional — array of scanner objects from new format
-      scoreObject,  // optional — v1.0 score object for benchmarking
-      scanId,       // optional — id from the scans table for this scan
-    } = req.body;
+//
+// ENG-011 §3 / ENG-012 §1.2 / §2 item 1 (T3.2, ENG-013 WP3) remediation: this
+// endpoint previously accepted scanScore/scanResults/scoreObject directly
+// from the client as OPTIONAL fields and persisted them verbatim as the
+// submission's record of truth — the only server-side step was deriving a
+// risk label FROM the already-client-supplied score. scanId is now
+// mandatory, and every trust-bearing field is derived server-side from the
+// referenced scan's persisted scanner_results (the evidence of record) — the
+// client can no longer supply a score, results, or scoreObject at all. This
+// route makes no write to the `scans` table itself — only a read of an
+// existing, immutable row (append-only invariant, CLAUDE.md, untouched) plus
+// an insert into `submissions` (unchanged shape).
+function createSubmitGateHandler(deps = {}) {
+  const {
+    getScanByIdFn = getScanById,
+    saveSubmissionFn = saveSubmission,
+    sendConfirmationEmailFn = sendConfirmationEmail,
+  } = deps;
 
-    if (!domain)               throw new ValidationError('Domain is required');
-    if (!email)                throw new ValidationError('Email is required');
-    if (!EMAIL_RE.test(email)) throw new ValidationError('Invalid email format');
+  return async function postSubmitGate(req, res, next) {
+    try {
+      const {
+        domain,
+        name,
+        email,
+        firmName,
+        mainConcern,
+        dataIncidents,
+        itManagement,
+        confidence,
+        scanId,
+      } = req.body;
 
-    const trimmedDomain = String(domain).trim().toLowerCase();
-    if (!validateDomain(trimmedDomain)) throw new ValidationError(`Invalid domain: ${trimmedDomain}`);
+      if (!domain)               throw new ValidationError('Domain is required');
+      if (!email)                throw new ValidationError('Email is required');
+      if (!EMAIL_RE.test(email)) throw new ValidationError('Invalid email format');
+      if (!scanId)               throw new ValidationError('scanId is required');
 
-    const parsedConfidence = Number.isFinite(Number(confidence)) ? Number(confidence) : null;
-    if (parsedConfidence !== null && (parsedConfidence < 1 || parsedConfidence > 5)) {
-      throw new ValidationError('confidence must be between 1 and 5');
+      const trimmedDomain = String(domain).trim().toLowerCase();
+      if (!validateDomain(trimmedDomain)) throw new ValidationError(`Invalid domain: ${trimmedDomain}`);
+
+      const scan = await getScanByIdFn(scanId);
+      if (!scan) return res.status(404).json({ success: false, error: 'Scan not found' });
+      if (String(scan.domain).toLowerCase() !== trimmedDomain) {
+        throw new ValidationError('scanId does not correspond to the supplied domain');
+      }
+      if (!Array.isArray(scan.scanner_results)) {
+        throw new AppError('Scan record has no scanner results to derive from', 500);
+      }
+
+      const parsedConfidence = Number.isFinite(Number(confidence)) ? Number(confidence) : null;
+      if (parsedConfidence !== null && (parsedConfidence < 1 || parsedConfidence > 5)) {
+        throw new ValidationError('confidence must be between 1 and 5');
+      }
+
+      const gateId    = randomUUID();
+      const timestamp = new Date().toISOString();
+
+      const submission = {
+        gateId,
+        domain:        trimmedDomain,
+        name:          name         ? String(name).trim()         : '',
+        email:         String(email).trim().toLowerCase(),
+        firmName:      firmName     ? String(firmName).trim()     : '',
+        mainConcern:   mainConcern  ? String(mainConcern).trim()  : '',
+        dataIncidents: Boolean(dataIncidents),
+        itManagement:  itManagement ? String(itManagement).trim() : '',
+        confidence:    parsedConfidence,
+        submittedAt:   timestamp,
+      };
+
+      const maskedEmail = submission.email.replace(/(.{2})(.*)(@.*)/, '$1***$3');
+      logger.info(`Gate submission received: ${submission.domain} | ${maskedEmail} | id: ${gateId}`);
+
+      // ── Derive server-side from the persisted evidence of record — never
+      //    from client-supplied scanScore/scanResults/scoreObject. ─────────
+      const derived = derivation.deriveScanPresentation(scan.scanner_results, scan.scanned_at);
+
+      const scannerMap = {};
+      derived.scanners.forEach(s => { scannerMap[s.name] = s.score ?? null; });
+
+      const scanDetails = {
+        ssl:       scannerMap['SSL/TLS Encryption']       ?? null,
+        headers:   scannerMap['Security Headers']         ?? null,
+        email_sec: scannerMap['Email Security']           ?? null,
+        vulnComp:  scannerMap['Vulnerable Components']    ?? null,
+        gdpr:      scannerMap['GDPR / Cookie Compliance'] ?? null,
+      };
+
+      const gateFormData = {
+        name:          submission.name,
+        firmName:      submission.firmName,
+        mainConcern:   submission.mainConcern,
+        itManagement:  submission.itManagement,
+        dataIncidents: submission.dataIncidents,
+        confidence:    submission.confidence,
+      };
+
+      const dbResult = await saveSubmissionFn(
+        submission.email,
+        submission.domain,
+        derived.score,
+        derived.riskLevel,
+        scanDetails,
+        gateFormData,
+        derived.scanners,
+        derived.scoreObject,
+        scanId,
+      );
+      if (!dbResult.success) {
+        logger.error(`Gate submission DB write failed: ${dbResult.error}`);
+      } else {
+        logger.info(`Gate submission stored: ${dbResult.id}`);
+      }
+
+      // ── Fire-and-forget: confirmation email with PDF link ─────────────────────
+      const pdfLink = dbResult.success && process.env.BACKEND_URL
+        ? `${process.env.BACKEND_URL}/api/scan/download-pdf/${dbResult.id}`
+        : null;
+      if (dbResult.success && !process.env.BACKEND_URL) {
+        logger.warn('BACKEND_URL not set — PDF link will be omitted from confirmation email');
+      }
+      void sendConfirmationEmailFn(submission.email, submission.domain, derived.score, pdfLink)
+        .catch(err => logger.error('Confirmation email failed', err));
+
+      return res.status(200).json({
+        success:      true,
+        message:      'Check your email for confirmation',
+        submissionId: dbResult.success ? dbResult.id : gateId,
+      });
+    } catch (err) {
+      if (err instanceof AppError) return next(err);
+      next(new AppError('Submission failed', 500));
     }
+  };
+}
 
-    const gateId    = randomUUID();
-    const timestamp = new Date().toISOString();
-
-    const submission = {
-      gateId,
-      domain:        trimmedDomain,
-      name:          name         ? String(name).trim()         : '',
-      email:         String(email).trim().toLowerCase(),
-      firmName:      firmName     ? String(firmName).trim()     : '',
-      mainConcern:   mainConcern  ? String(mainConcern).trim()  : '',
-      dataIncidents: Boolean(dataIncidents),
-      itManagement:  itManagement ? String(itManagement).trim() : '',
-      confidence:    parsedConfidence,
-      submittedAt:   timestamp,
-    };
-
-    const maskedEmail = submission.email.replace(/(.{2})(.*)(@.*)/, '$1***$3');
-    logger.info(`Gate submission received: ${submission.domain} | ${maskedEmail} | id: ${gateId}`);
-
-    // ── Supabase persistence ──────────────────────────────────────────────────
-    const scannerMap = {};
-    if (Array.isArray(scanResults)) {
-      scanResults.forEach(s => { scannerMap[s.name] = s.score ?? null; });
-    }
-
-    const parsedScanScore = Number(scanScore);
-    const normalizedScanScore = Number.isFinite(parsedScanScore) ? parsedScanScore : null;
-    const riskLevel = normalizedScanScore !== null ? getRiskLevel(normalizedScanScore) : null;
-
-    const scanDetails = {
-      ssl:       scannerMap['SSL/TLS Encryption']       ?? null,
-      headers:   scannerMap['Security Headers']         ?? null,
-      email_sec: scannerMap['Email Security']           ?? null,
-      vulnComp:  scannerMap['Vulnerable Components']    ?? null,
-      gdpr:      scannerMap['GDPR / Cookie Compliance'] ?? null,
-    };
-
-    const gateFormData = {
-      name:          submission.name,
-      firmName:      submission.firmName,
-      mainConcern:   submission.mainConcern,
-      itManagement:  submission.itManagement,
-      dataIncidents: submission.dataIncidents,
-      confidence:    submission.confidence,
-    };
-
-    const dbResult = await saveSubmission(
-      submission.email,
-      submission.domain,
-      normalizedScanScore,
-      riskLevel,
-      scanDetails,
-      gateFormData,
-      Array.isArray(scanResults) ? scanResults : null,
-      scoreObject ?? null,
-      scanId      ?? null,
-    );
-    if (!dbResult.success) {
-      logger.error(`Gate submission DB write failed: ${dbResult.error}`);
-    } else {
-      logger.info(`Gate submission stored: ${dbResult.id}`);
-    }
-
-    // ── Fire-and-forget: confirmation email with PDF link ─────────────────────
-    const pdfLink = dbResult.success && process.env.BACKEND_URL
-      ? `${process.env.BACKEND_URL}/api/scan/download-pdf/${dbResult.id}`
-      : null;
-    if (dbResult.success && !process.env.BACKEND_URL) {
-      logger.warn('BACKEND_URL not set — PDF link will be omitted from confirmation email');
-    }
-    void sendConfirmationEmail(submission.email, submission.domain, normalizedScanScore, pdfLink)
-      .catch(err => logger.error('Confirmation email failed', err));
-
-    return res.status(200).json({
-      success:      true,
-      message:      'Check your email for confirmation',
-      submissionId: dbResult.success ? dbResult.id : gateId,
-    });
-  } catch (err) {
-    if (err instanceof AppError) return next(err);
-    next(new AppError('Submission failed', 500));
-  }
-});
+router.post('/submit-gate', createSubmitGateHandler());
 
 // ── GET /api/scan/download-pdf/:submissionId ──────────────────────────────────
 router.get('/download-pdf/:submissionId', async (req, res, next) => {
@@ -233,3 +260,4 @@ router.get('/download-pdf/:submissionId', async (req, res, next) => {
 });
 
 module.exports = router;
+module.exports.createSubmitGateHandler = createSubmitGateHandler;

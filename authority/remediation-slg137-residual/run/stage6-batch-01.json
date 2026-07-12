@@ -1,0 +1,377 @@
+[
+  {
+    "organisation_id": "ORG-08373C4BE44D",
+    "organisation_name": "BARRIE FINANCIAL SERVICES LIMITED",
+    "stored_domain": "barriereesifa.co.uk",
+    "regulators": [
+      "FCA"
+    ],
+    "identifiers": {
+      "frn": "431356",
+      "sraIdentifier": null,
+      "companiesHouseNumber": "04497594"
+    },
+    "organisation_status": "CH:active | FCA:Authorised",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-DBEC29315A11",
+    "organisation_name": "BUH Solicitors",
+    "stored_domain": "buhsolicitors.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "8000742",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWNSRA:YES",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-41F357D8143D",
+    "organisation_name": "BUCKINGHAM BRIDGEFINANCE CORP LTD",
+    "stored_domain": "buckinghambridge.net",
+    "regulators": [
+      "FCA"
+    ],
+    "identifiers": {
+      "frn": "702861",
+      "sraIdentifier": null,
+      "companiesHouseNumber": "07936780"
+    },
+    "organisation_status": "CH:active | FCA:Authorised",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-150448CB0EC5",
+    "organisation_name": "BHANDAL LAW LIMITED",
+    "stored_domain": "bhandallaw.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "622292",
+      "companiesHouseNumber": "09325064"
+    },
+    "organisation_status": "CH:active | SRA:YES",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-AB57781C1BDF",
+    "organisation_name": "BULFIN & CO",
+    "stored_domain": "bulfin.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "77242",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWNSRA:REVOKE",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-290B4248C613",
+    "organisation_name": "C & C Group PLC",
+    "stored_domain": "cancgroupplc.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "565094",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-DC79EACFC8BB",
+    "organisation_name": "Campbell Mackie Limited",
+    "stored_domain": "campbellmackie.co.uk",
+    "regulators": [
+      "FCA"
+    ],
+    "identifiers": {
+      "frn": "493873",
+      "sraIdentifier": null,
+      "companiesHouseNumber": "SC347813"
+    },
+    "organisation_status": "CH:active | FCA:Authorised",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-1F143EF50077",
+    "organisation_name": "Boeing & Wise Solicitors Limited",
+    "stored_domain": "boeingandwise.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "8004017",
+      "companiesHouseNumber": "14097620"
+    },
+    "organisation_status": "CH:active | SRA:YES",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-062BF28C47EF",
+    "organisation_name": "BRADLEYS",
+    "stored_domain": "bradleys-solicitors.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "47564",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWNSRA:REVOKE",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-7E312C1365E6",
+    "organisation_name": "CASTLEMERE PROPERTIES LTD",
+    "stored_domain": "castlemereproperties.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "65995",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-B3138DF136DE",
+    "organisation_name": "C E LEGAL LIMITED",
+    "stored_domain": "ceconstructionsolicitors.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "613765",
+      "companiesHouseNumber": "08877846"
+    },
+    "organisation_status": "CH:active | SRA:YES",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-76B211F21498",
+    "organisation_name": "CAMDEN COMMUNITY LAW CENTRE",
+    "stored_domain": "cclc.org.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "64943",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-9C24CF2E8BC6",
+    "organisation_name": "Chambers Legal",
+    "stored_domain": "chamberslegalconsultants.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "8015262",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-56D9A899F9CC",
+    "organisation_name": "His Majesty's Courts Service (Midlands)",
+    "stored_domain": "btinternet.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "264210",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-E9953E167007",
+    "organisation_name": "Cheap Financial Claims Limited",
+    "stored_domain": "cheapfinancialclaims.co.uk",
+    "regulators": [
+      "FCA"
+    ],
+    "identifiers": {
+      "frn": "830114",
+      "sraIdentifier": null,
+      "companiesHouseNumber": "09029968"
+    },
+    "organisation_status": "CH:active | FCA:Authorised",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-5884057E6973",
+    "organisation_name": "CHELMSFORD CITY COUNCIL",
+    "stored_domain": "chelmsfordbc.gov.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "64417",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-D5D31BCD9A36",
+    "organisation_name": "CHIPATISO ASSOCIATES LLP",
+    "stored_domain": "chipatisollp.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "533049",
+      "companiesHouseNumber": "OC351527"
+    },
+    "organisation_status": "CH:active | SRA:YES",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-7BC86B31889B",
+    "organisation_name": "CHIRTON MORTGAGE SERVICES LTD.",
+    "stored_domain": "chirtonmortgageservices.com",
+    "regulators": [
+      "FCA"
+    ],
+    "identifiers": {
+      "frn": "912330",
+      "sraIdentifier": null,
+      "companiesHouseNumber": "10638324"
+    },
+    "organisation_status": "CH:active | FCA:Authorised",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-4373BFAD1B85",
+    "organisation_name": "B G LEGAL SERVICES LIMITED",
+    "stored_domain": "burkillgovier.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "444034",
+      "companiesHouseNumber": "05823947"
+    },
+    "organisation_status": "CH:active | SRA:YES",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-EFB28B0C46E9",
+    "organisation_name": "Caterpillar (U.K.) LIMITED",
+    "stored_domain": "cat.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "447177",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-F0B477DA19D8",
+    "organisation_name": "CANDEY LAW LLP",
+    "stored_domain": "candeyllp.com",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "510688",
+      "companiesHouseNumber": "OC343975"
+    },
+    "organisation_status": "CH:active | SRA:YES",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-07190A6B6985",
+    "organisation_name": "Case Richardson Law",
+    "stored_domain": "caserichardson.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "8004015",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWNSRA:YES",
+    "companies_house_status": null
+  },
+  {
+    "organisation_id": "ORG-8A529EBD633C",
+    "organisation_name": "CCW LAW SOLICITORS LIMITED",
+    "stored_domain": "ccwlawsolicitors.co.uk",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "446175",
+      "companiesHouseNumber": "05854634"
+    },
+    "organisation_status": "CH:active | SRA:YES",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-CED9E7A7BF58",
+    "organisation_name": "Chris O'Neill Mortgages Limited",
+    "stored_domain": "chrisoneill.biz",
+    "regulators": [
+      "FCA"
+    ],
+    "identifiers": {
+      "frn": "788742",
+      "sraIdentifier": null,
+      "companiesHouseNumber": "10921877"
+    },
+    "organisation_status": "CH:active | FCA:Authorised",
+    "companies_house_status": "active"
+  },
+  {
+    "organisation_id": "ORG-DD7D24497892",
+    "organisation_name": "THE CHILDRENS INVESTMENT FUND FOUNDATION",
+    "stored_domain": "ciff.og",
+    "regulators": [
+      "SRA"
+    ],
+    "identifiers": {
+      "frn": null,
+      "sraIdentifier": "564700",
+      "companiesHouseNumber": null
+    },
+    "organisation_status": "UNKNOWN",
+    "companies_house_status": null
+  }
+]

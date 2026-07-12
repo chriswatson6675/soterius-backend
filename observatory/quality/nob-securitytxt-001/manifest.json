@@ -1,0 +1,34 @@
+{
+  "run_label": "NOB-SECURITYTXT-001",
+  "run_id": "86c7c9e3-aacf-c115-3056-1210dce49ec9",
+  "source_run_id": "cb92dc04-c632-4cc8-a118-64adcadee8fd",
+  "signal": "SOT-SECURITYTXT-001",
+  "model": "SECURITYTXT-QM-v1.0",
+  "baseline": "NOB-SECURITYTXT-001 national security.txt baseline",
+  "population": 17036,
+  "scored": 14751,
+  "not_scored_total": 2285,
+  "not_scored_by_reason": {
+    "NOT_DETERMINED": 2285
+  },
+  "calc_failures": 0,
+  "primary_histogram": {
+    "FLOOR": 14386,
+    "CEILING": 206,
+    "MIDDLE": 146,
+    "MINIMAL": 13
+  },
+  "sha256": {
+    "observations": "49ba4ff8d43801d3a2921f48f1fb01f0a8b5146b601e977f00e459e466d870a7",
+    "quality_scores": "81829c40f39bfd2eca272d34f989667136af187395b056676d1d9d4cf1cc5ce4"
+  },
+  "mean": 1.9002,
+  "median": 0,
+  "distinct_values": [
+    0,
+    10,
+    50,
+    100
+  ],
+  "provenance": "Scored from signal_securitytxt_v1 (NOB-SECURITYTXT-001, run_id cb92dc04-c632-4cc8-a118-64adcadee8fd) via securitytxt-quality.js (SECURITYTXT-QM-v1.0); SLG-128 calibration."
+}
