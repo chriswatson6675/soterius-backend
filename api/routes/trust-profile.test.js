@@ -11,6 +11,7 @@ const {
   createGetCurrentPublic,
   createGetHistory,
   createGetChange,
+  createGetReportPdf,
 } = require('./trust-profile');
 
 function fakeRes() {
@@ -162,6 +163,83 @@ describe('GET /:id/change', () => {
     const res = fakeRes();
     let caught;
     await handler({ params: { id: 'ORG-1' } }, res, (err) => { caught = err; });
+    assert.strictEqual(caught, boom);
+  });
+});
+
+// GET /:id/report.pdf — Compliance Advisor MVP (ENG-047/ENG-048).
+describe('GET /:id/report.pdf', () => {
+  function fakePdfRes() {
+    const res = { statusCode: 200, headers: {}, body: null };
+    res.status = (code) => { res.statusCode = code; return res; };
+    res.json = (body) => { res.body = body; return res; };
+    res.setHeader = (name, value) => { res.headers[name] = value; };
+    res.send = (buf) => { res.body = buf; return res; };
+    return res;
+  }
+
+  test('renders a PDF for an existing instance, never recomputing or calling generateTrustProfile', async () => {
+    let generateCalled = false;
+    let capturedInstance = null;
+    const handler = createGetReportPdf({
+      getCurrent: async () => ({ exists: true, instance: instance() }),
+      generateTrustProfile: async () => { generateCalled = true; },
+      reverse: () => ({ ok: true, row: { organisationName: 'Test Solicitors LLP' } }),
+      generateTrustProfilePdf: async (args) => { capturedInstance = args.instance; return Buffer.from('%PDF-fake'); },
+    });
+    const res = fakePdfRes();
+    await handler({ params: { id: 'ORG-1' }, query: {}, tenant: { customer: { name: 'Acme Compliance' } } }, res, () => assert.fail());
+
+    assert.strictEqual(generateCalled, false);
+    assert.strictEqual(capturedInstance.organisationId, 'ORG-1');
+    assert.strictEqual(res.headers['Content-Type'], 'application/pdf');
+    assert.match(res.headers['Content-Disposition'], /trust-profile-ORG-1\.pdf/);
+    assert.ok(Buffer.isBuffer(res.body));
+  });
+
+  test('404 when no instance exists and ?generate is not set', async () => {
+    const handler = createGetReportPdf({ getCurrent: async () => ({ exists: false }) });
+    const res = fakePdfRes();
+    await handler({ params: { id: 'ORG-1' }, query: {}, tenant: null }, res, () => assert.fail());
+    assert.strictEqual(res.statusCode, 404);
+  });
+
+  test('?generate=true synchronously generates, saves, then renders the PDF from that instance', async () => {
+    let saved = null;
+    const handler = createGetReportPdf({
+      getCurrent: async () => ({ exists: false }),
+      generateTrustProfile: async (id, opts) => instance({ organisationId: id, generatedAt: opts.generatedAt }),
+      save: async (inst) => { saved = inst; },
+      reverse: () => ({ ok: true, row: { organisationName: 'New Firm LLP' } }),
+      generateTrustProfilePdf: async (args) => Buffer.from(`%PDF-${args.organisationName}`),
+      now: () => '2026-07-13T00:00:00.000Z',
+    });
+    const res = fakePdfRes();
+    await handler({ params: { id: 'ORG-2' }, query: { generate: 'true' }, tenant: null }, res, () => assert.fail());
+
+    assert.ok(saved);
+    assert.strictEqual(saved.organisationId, 'ORG-2');
+    assert.strictEqual(res.body.toString(), '%PDF-New Firm LLP');
+  });
+
+  test('falls back to the organisationId as the display name when Repository Authority lookup fails', async () => {
+    let capturedName = null;
+    const handler = createGetReportPdf({
+      getCurrent: async () => ({ exists: true, instance: instance() }),
+      reverse: () => ({ ok: false, error: 'not found' }),
+      generateTrustProfilePdf: async (args) => { capturedName = args.organisationName; return Buffer.from('%PDF'); },
+    });
+    const res = fakePdfRes();
+    await handler({ params: { id: 'ORG-1' }, query: {}, tenant: null }, res, () => assert.fail());
+    assert.strictEqual(capturedName, 'ORG-1');
+  });
+
+  test('a DB failure surfaces via next(err), not a crash', async () => {
+    const boom = new Error('db unreachable');
+    const handler = createGetReportPdf({ getCurrent: async () => { throw boom; } });
+    const res = fakePdfRes();
+    let caught;
+    await handler({ params: { id: 'ORG-1' }, query: {}, tenant: null }, res, (err) => { caught = err; });
     assert.strictEqual(caught, boom);
   });
 });

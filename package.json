@@ -15,6 +15,7 @@
     "db:baseline": "node tooling/db/migrate.js baseline",
     "bootstrap:dev": "node tooling/bootstrap-dev.js",
     "create:ops-user": "node tooling/create-ops-user.js",
+    "create:consultancy": "node tooling/create-consultancy.js",
     "worker": "node acquisition/workers/sra-worker.js",
     "worker:fca": "node acquisition/workers/fca-observatory-worker.js",
     "sweep:trust-profiles": "node trust-intelligence/triggers/run-scheduled-sweep-cli.js",

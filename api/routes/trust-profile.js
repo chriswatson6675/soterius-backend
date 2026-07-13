@@ -29,6 +29,8 @@ const { generateTrustProfile } = require('../../trust-intelligence/generate-trus
 const { publicProjection, authenticatedProjection } = require('../../trust-intelligence/projections');
 const { getBenchmarkOverlay } = require('../../trust-intelligence/benchmark-overlay');
 const { computeChangeIndicator } = require('../../trust-intelligence/change-indicator');
+const { generateTrustProfilePdf } = require('../services/trust-profile-pdf');
+const resolve = require('../../organisation/resolve');
 
 // Factories accept dependency overrides for testing without a live DB or
 // Express server (mirrors createGetBenchmarks in benchmarks.js).
@@ -119,9 +121,54 @@ function createGetChange(deps = {}) {
   };
 }
 
+// GET /:id/report.pdf — Compliance Advisor MVP (ENG-047/ENG-048). Renders
+// the exact same instance GET /:id already serves, as a branded PDF. Never
+// recomputes a score — reads store.getCurrent() (or generates via the same
+// on-demand path GET /:id itself uses, behind the same ?generate=true
+// contract) and hands the raw instance to trust-profile-pdf.js verbatim.
+function createGetReportPdf(deps = {}) {
+  const getCurrent = deps.getCurrent || store.getCurrent;
+  const generate = deps.generateTrustProfile || generateTrustProfile;
+  const save = deps.save || store.save;
+  const now = deps.now || (() => new Date().toISOString());
+  const reverse = deps.reverse || resolve.reverse;
+  const renderPdf = deps.generateTrustProfilePdf || generateTrustProfilePdf;
+
+  return async function getReportPdf(req, res, next) {
+    try {
+      const organisationId = req.params.id;
+      let current = await getCurrent(organisationId);
+
+      if (!current.exists) {
+        if (req.query.generate !== 'true') {
+          return res.status(404).json({ success: false, error: 'not yet generated' });
+        }
+        const instance = await generate(organisationId, { trigger: 'on-demand', generatedAt: now() });
+        await save(instance);
+        current = { exists: true, instance };
+      }
+
+      const orgLookup = reverse(organisationId);
+      const organisationName = orgLookup.ok
+        ? (orgLookup.row.organisationName || orgLookup.row.canonicalName || organisationId)
+        : organisationId;
+      const consultancyName = req.tenant?.customer?.name || null;
+
+      const pdf = await renderPdf({ instance: current.instance, organisationName, consultancyName });
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="trust-profile-${organisationId}.pdf"`);
+      res.send(pdf);
+    } catch (err) {
+      next(err);
+    }
+  };
+}
+
 router.get('/:id/public', createGetCurrentPublic());
 router.get('/:id/history', requireAuth, attachTenant, createGetHistory());
 router.get('/:id/change', requireAuth, attachTenant, createGetChange());
+router.get('/:id/report.pdf', requireAuth, attachTenant, createGetReportPdf());
 router.get('/:id', requireAuth, attachTenant, createGetCurrentAuthenticated());
 
 module.exports = router;
@@ -129,3 +176,4 @@ module.exports.createGetCurrentAuthenticated = createGetCurrentAuthenticated;
 module.exports.createGetCurrentPublic = createGetCurrentPublic;
 module.exports.createGetHistory = createGetHistory;
 module.exports.createGetChange = createGetChange;
+module.exports.createGetReportPdf = createGetReportPdf;
