@@ -225,7 +225,7 @@ describe('resilient session — resume after restart (crash-safe)', () => {
       collection_programmes: [{ id: 'prog-1', programme_key: 'national-demo', kind: 'NATIONAL' }],
       collection_runs: [{ id: 'run-1', programme_id: 'prog-1', run_label: 'NOB-RESUME-3', status: 'RUNNING', started_at: '2026-07-12T00:00:00.000Z' }],
       collection_run_items: [{ id: 'it-1', collection_run_id: 'run-1', domain: 'orphan.com', status: 'PENDING', attempts: 1 }],
-      signal_facts_demo: [{ id: 'obs-orphan', collection_run_id: 'run-1', domain: 'orphan.com', val: 'orphan.com' }],
+      signal_facts_demo: [{ id: '33333333-3333-3333-3333-333333333333', collection_run_id: 'run-1', domain: 'orphan.com', val: 'orphan.com' }],
     });
     const { adapter, collectCalls } = makeAdapter();
     const r = await runResilientCollectionSession({
@@ -239,7 +239,7 @@ describe('resilient session — resume after restart (crash-safe)', () => {
     assert.equal(db._rows('signal_facts_demo').length, 1);       // NO duplicate observation
     const item = db._rows('collection_run_items').find((i) => i.domain === 'orphan.com');
     assert.equal(item.status, 'COMPLETED');
-    assert.equal(item.observation_id, 'obs-orphan');             // adopted the orphan
+    assert.equal(item.observation_id, '33333333-3333-3333-3333-333333333333'); // adopted the orphan
     // The adopt path deliberately does NOT emit a Constitutional Event — the
     // Observation was not freshly created by this call, so emitting here would
     // risk a duplicate Event for an Observation whose original Event may (or may

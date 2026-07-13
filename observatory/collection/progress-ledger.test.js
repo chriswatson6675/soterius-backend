@@ -19,14 +19,14 @@ describe('initItems — idempotent per-organisation ledger', () => {
   test('re-initialising a resumed run does not duplicate or reset items', async () => {
     const db = createFakeSupabase();
     await ledger.initItems(RUN, ['a.com', 'b.com'], db);
-    await ledger.markCompleted(RUN, 'a.com', { observationId: 'obs-1', attempts: 1 }, db);
+    await ledger.markCompleted(RUN, 'a.com', { observationId: '11111111-1111-1111-1111-111111111111', attempts: 1 }, db);
     // resume: init again with the same + one new domain
     await ledger.initItems(RUN, ['a.com', 'b.com', 'c.com'], db);
     const items = await ledger.listItems(RUN, db);
     assert.equal(items.length, 3);              // no duplicate a.com/b.com
     const a = items.find((i) => i.domain === 'a.com');
     assert.equal(a.status, 'COMPLETED');        // progress preserved, not reset
-    assert.equal(a.observation_id, 'obs-1');
+    assert.equal(a.observation_id, '11111111-1111-1111-1111-111111111111');
   });
 
   test('de-duplicates domains within a single init', async () => {
@@ -41,7 +41,7 @@ describe('outstandingDomains — the resume work-list', () => {
   test('excludes COMPLETED and PERMANENT, includes PENDING/RUNNING/FAILED', async () => {
     const db = createFakeSupabase();
     await ledger.initItems(RUN, ['done.com', 'pending.com', 'failed.com', 'dead.com', 'inflight.com'], db);
-    await ledger.markCompleted(RUN, 'done.com', { observationId: 'o1' }, db);
+    await ledger.markCompleted(RUN, 'done.com', { observationId: '11111111-1111-1111-1111-111111111111' }, db);
     await ledger.markFailed(RUN, 'failed.com', { failureClass: 'RETRYABLE', error: 'timeout' }, db);
     await ledger.markFailed(RUN, 'dead.com', { failureClass: 'PERMANENT', error: 'NXDOMAIN', permanent: true }, db);
     await ledger.markRunning(RUN, 'inflight.com', 1, db);
@@ -55,8 +55,8 @@ describe('counts — drives the completion summary', () => {
   test('tallies statuses and failure classes', async () => {
     const db = createFakeSupabase();
     await ledger.initItems(RUN, ['a', 'b', 'c', 'd', 'e'], db);
-    await ledger.markCompleted(RUN, 'a', { observationId: 'o1' }, db);
-    await ledger.markCompleted(RUN, 'b', { observationId: 'o2' }, db);
+    await ledger.markCompleted(RUN, 'a', { observationId: '11111111-1111-1111-1111-111111111111' }, db);
+    await ledger.markCompleted(RUN, 'b', { observationId: '22222222-2222-2222-2222-222222222222' }, db);
     await ledger.markFailed(RUN, 'c', { failureClass: 'PERMANENT', permanent: true }, db);
     await ledger.markFailed(RUN, 'd', { failureClass: 'PERMANENT', permanent: true }, db);
     await ledger.markFailed(RUN, 'e', { failureClass: 'RETRYABLE' }, db);
@@ -72,15 +72,47 @@ describe('counts — drives the completion summary', () => {
 });
 
 describe('markCompleted / markFailed persist retry metadata without evidence', () => {
-  test('records observation pointer + attempt count on completion', async () => {
+  test('records observation pointer + attempt count on completion (UUID-backed signal)', async () => {
     const db = createFakeSupabase();
     await ledger.initItems(RUN, ['a'], db);
     await ledger.markRunning(RUN, 'a', 1, db);
-    await ledger.markCompleted(RUN, 'a', { observationId: 'obs-xyz', attempts: 2 }, db);
+    await ledger.markCompleted(RUN, 'a', { observationId: 'c0ffee00-1234-4abc-8def-0123456789ab', attempts: 2 }, db);
     const [item] = db._rows('collection_run_items');
     assert.equal(item.status, 'COMPLETED');
-    assert.equal(item.observation_id, 'obs-xyz');
+    assert.equal(item.observation_id, 'c0ffee00-1234-4abc-8def-0123456789ab');
     assert.equal(item.attempts, 2);
+  });
+
+  test('completes without error and omits observation_id for a bigint-backed signal (securitytxt/securityheaders)', async () => {
+    const db = createFakeSupabase();
+    await ledger.initItems(RUN, ['a'], db);
+    await ledger.markRunning(RUN, 'a', 1, db);
+    const result = await ledger.markCompleted(RUN, 'a', { observationId: 41494, attempts: 2 }, db);
+    assert.equal(result.success, true);          // no "invalid input syntax for type uuid" failure
+    const [item] = db._rows('collection_run_items');
+    assert.equal(item.status, 'COMPLETED');      // still marked done — resume correctness unaffected
+    assert.equal(item.observation_id, undefined); // column left untouched, never written
+    assert.equal(item.attempts, 2);
+  });
+
+  test('also omits observation_id when passed as a numeric-looking string', async () => {
+    const db = createFakeSupabase();
+    await ledger.initItems(RUN, ['a'], db);
+    const result = await ledger.markCompleted(RUN, 'a', { observationId: '41494' }, db);
+    assert.equal(result.success, true);
+    const [item] = db._rows('collection_run_items');
+    assert.equal(item.status, 'COMPLETED');
+    assert.equal(item.observation_id, undefined);
+  });
+
+  test('omits observation_id when none is supplied (existing no-observation-id behaviour unchanged)', async () => {
+    const db = createFakeSupabase();
+    await ledger.initItems(RUN, ['a'], db);
+    const result = await ledger.markCompleted(RUN, 'a', {}, db);
+    assert.equal(result.success, true);
+    const [item] = db._rows('collection_run_items');
+    assert.equal(item.status, 'COMPLETED');
+    assert.equal(item.observation_id, undefined);
   });
 
   test('records failure class + truncated error on failure', async () => {

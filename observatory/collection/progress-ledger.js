@@ -129,11 +129,21 @@ async function markRunning(runId, domain, attempt, client = getClient()) {
   return { success: true };
 }
 
+// observation_id (collection_run_items) is a nullable UUID. Most adapters'
+// observation tables use a UUID primary key, but a couple (signal_securitytxt_v1,
+// signal_securityheaders_v1) predate that convention and use a bigint identity
+// column instead — writing that value here would fail with "invalid input syntax
+// for type uuid". observation_id is never read back anywhere (resume is driven
+// entirely by status; the only consumers of the field are round-trip unit tests),
+// so a non-UUID id is simply omitted rather than special-cased per signal.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 // markCompleted(runId, domain, { observationId, attempts }) — the organisation is
 // collected. Records the Observation id so resume can prove completeness without
 // re-reading the evidence table.
 async function markCompleted(runId, domain, { observationId = null, attempts = null } = {}, client = getClient()) {
-  const patch = { status: 'COMPLETED', observation_id: observationId, completed_at: nowIso(), updated_at: nowIso(), last_error: null };
+  const patch = { status: 'COMPLETED', completed_at: nowIso(), updated_at: nowIso(), last_error: null };
+  if (typeof observationId === 'string' && UUID_RE.test(observationId)) patch.observation_id = observationId;
   if (attempts != null) patch.attempts = attempts;
   const { error } = await client.from(TABLE).update(patch)
     .eq('collection_run_id', runId).eq('domain', domain);
