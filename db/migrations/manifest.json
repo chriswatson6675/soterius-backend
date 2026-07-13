@@ -67,6 +67,8 @@
     "042_collection_run_lifecycle.sql",
     "043_collection_run_items.sql",
     "044_storage_capacity.sql",
-    "045_security_function_hardening.sql"
+    "045_security_function_hardening.sql",
+    "046_trust_score_weight_sets.sql",
+    "047_trust_profile_instances.sql"
   ]
 }

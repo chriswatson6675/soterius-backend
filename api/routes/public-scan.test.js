@@ -230,6 +230,12 @@ test('trust read: RESOLVED — response is redacted (no history, no provenance, 
       signalsTotal: 10,
       categories: [
         { category: 'A', averageScore: 90, signals: [{ key: 'spf', score: 90, label: 'SPF', collectedAt: '2026-07-01T00:00:00Z' }] },
+        // averageScore 55 deliberately sits in the band that changed grade
+        // under ADR-SYS-011 §7's presentation convergence: letterGrade now
+        // derives from the same 90/75/60/40 cutoffs getRiskBand uses
+        // (previously an independent 90/75/55/35 ladder graded 55 as 'C';
+        // the canonical table grades it 'D', consistent with getRiskBand
+        // classifying 55 as "High Risk", not "Moderate Risk").
         { category: 'B', averageScore: 55, signals: [{ key: 'caa', score: 55, label: 'CAA', collectedAt: '2026-07-01T00:00:00Z' }] },
       ],
     },
@@ -250,7 +256,7 @@ test('trust read: RESOLVED — response is redacted (no history, no provenance, 
   assert.strictEqual(org.displayName, 'Real Firm Ltd');
   assert.strictEqual(org.digitalTrust.overallScore, 82);
   assert.strictEqual(org.digitalTrust.grade, 'B');
-  assert.deepStrictEqual(org.digitalTrust.categories, [{ category: 'A', grade: 'A' }, { category: 'B', grade: 'C' }]);
+  assert.deepStrictEqual(org.digitalTrust.categories, [{ category: 'A', grade: 'A' }, { category: 'B', grade: 'D' }]);
   // Redacted — never present in the public response at all.
   assert.strictEqual(org.history, undefined);
   assert.strictEqual(org.provenance, undefined);

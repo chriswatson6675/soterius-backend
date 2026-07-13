@@ -34,6 +34,25 @@ const { createClient } = require('@supabase/supabase-js');
 const { normaliseDomain } = require('../../authority/lib/normalise');
 const { scoreTrust } = require('./trust-score');
 
+// scoreTrust() is now async (ENG-026 — it reads signal_quality_* per domain
+// via the Aggregator, rather than re-scoring the raw facts loaded below).
+// Bulk-deriving thousands of organisations sequentially would serialise one
+// Trust Score's worth of DB round-trips behind the next; a small worker pool
+// keeps this bounded without an external dependency.
+const TS_CONCURRENCY = Number(process.env.DERIVE_TS_CONCURRENCY ?? 20);
+async function mapWithConcurrency(items, limit, fn) {
+  const results = new Array(items.length);
+  let next = 0;
+  async function worker() {
+    while (next < items.length) {
+      const i = next++;
+      results[i] = await fn(items[i], i);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.max(1, Math.min(limit, items.length)) }, worker));
+  return results;
+}
+
 const AUTHORITY_PATH = process.env.ORG_DATASET_PATH
   || path.join(__dirname, '..', '..', 'authority', 'dataset', 'organisations.ndjson');
 const PAGE = 1000;
@@ -199,9 +218,10 @@ async function derive({ sinceIso = null, outDir = path.join(__dirname, 'dataset'
   // Orphans: observed domains owned by no VERIFIED organisation.
   const orphanDomains = [...observedDomains].filter((d) => !byDomain.has(d)).sort();
 
-  const profiles = [];
-  let scoredCount = 0, insufficientCount = 0, coreCompleteCount = 0;
-
+  // Pass 1 (sync, from the single bulk-loaded read pass): resolve each
+  // VERIFIED org's raw facts, used only for `posture` (national/cohort
+  // adoption benchmarks) — this is NOT the Trust Score input any more.
+  const eligible = [];
   for (const org of verified) {
     const d = normaliseDomain(org.verifiedDomain);
     const dkimRow = obs.dkim.get(d) || null;
@@ -223,8 +243,20 @@ async function derive({ sinceIso = null, outDir = path.join(__dirname, 'dataset'
       // counted by the caller against the eligible population).
       continue;
     }
+    eligible.push({ org, d, facts });
+  }
 
-    const ts = scoreTrust(facts);
+  // Pass 2 (async, bounded concurrency): the canonical Trust Score, per
+  // ENG-026 — read from signal_quality_* via the Aggregator, not re-derived
+  // from the raw facts above.
+  const scores = await mapWithConcurrency(eligible, TS_CONCURRENCY, ({ d }) => scoreTrust(d));
+
+  const profiles = [];
+  let scoredCount = 0, insufficientCount = 0, coreCompleteCount = 0;
+
+  for (let i = 0; i < eligible.length; i++) {
+    const { org, facts } = eligible[i];
+    const ts = scores[i];
     scoredCount++;
     if (ts.label === 'INSUFFICIENT_OBSERVATION') insufficientCount++;
     if (ts.coreComplete) coreCompleteCount++;

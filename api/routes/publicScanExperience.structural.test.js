@@ -98,10 +98,10 @@ test('server.js never applies publicScanProtection or any of its three middlewar
 
 // ── Requirement 3: no new path reaches legacy execution ─────────────────────
 
-test('public-scan.js cannot reach scanService.js, legacy-scanner, scan.js/gate.js/report.js, score_object, or MAX_POINTS', () => {
+test('public-scan.js cannot reach scanService.js, legacy-scanner, legacy-compat, scan.js/gate.js/report.js, score_object, or MAX_POINTS', () => {
   const src = readSource('public-scan.js');
   const forbidden = [
-    /scanService/, /legacy-scanner/, /executeScan/, /deriveTrustScore/,
+    /scanService/, /legacy-scanner/, /legacy-compat/, /executeScan/, /deriveTrustScore/,
     /routes\/scan['"]/, /routes\/gate/, /routes\/report/,
     /score_object/, /scoreObject/, /MAX_POINTS/,
   ];

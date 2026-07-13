@@ -17,11 +17,13 @@ const SIGNAL_TABLES = [
   { key: 'spf', table: 'signal_quality_spf', category: 'Email Trust' },
   { key: 'dkim', table: 'signal_quality_dkim', category: 'Email Trust' },
   { key: 'dmarc', table: 'signal_quality_dmarc', category: 'Email Trust' },
-  { key: 'mtasts', table: 'signal_quality_mtasts', category: 'Email Trust' },
   { key: 'dnssec', table: 'signal_quality_dnssec', category: 'Domain Trust' },
   { key: 'caa', table: 'signal_quality_caa', category: 'Domain Trust' },
   { key: 'tls', table: 'signal_quality_tls', category: 'Certificate & TLS Trust' },
   { key: 'certificate', table: 'signal_quality_certificate', category: 'Certificate & TLS Trust' },
+  // mtasts reclassified Email Trust → Certificate & TLS Trust per ADR-COL-008
+  // (2026-07-08, Founder Accepted) / ENG-026 §3, §14.2 prerequisite fix.
+  { key: 'mtasts', table: 'signal_quality_mtasts', category: 'Certificate & TLS Trust' },
   { key: 'securitytxt', table: 'signal_quality_securitytxt', category: 'Disclosure' },
   { key: 'securityheaders', table: 'signal_quality_securityheaders', category: 'Disclosure' },
 ];
@@ -36,7 +38,7 @@ async function getSignalsForDomain(domain) {
   return Promise.all(SIGNAL_TABLES.map(async (def) => {
     const { data, error } = await sb
       .from(def.table)
-      .select('final_score, primary_label, collected_at')
+      .select('id, final_score, primary_label, collected_at, quality_version')
       .eq('domain', domain)
       .order('collected_at', { ascending: false })
       .limit(1);
@@ -51,6 +53,13 @@ async function getSignalsForDomain(domain) {
       score: data[0].final_score,
       label: data[0].primary_label ?? null,
       collectedAt: data[0].collected_at,
+      qualityVersion: data[0].quality_version ?? null,
+      // Stable, opaque row reference — required by ENG-025 §8's sourceRowRef
+      // (Provenance Manifest). Added here (additive, non-breaking: existing
+      // consumers destructure named fields and are unaffected) specifically
+      // to satisfy that already-frozen contract, which this adapter
+      // previously had no field to supply.
+      rowId: data[0].id ?? null,
     };
   }));
 }

@@ -11,7 +11,7 @@
 const { test, describe } = require('node:test');
 const assert = require('node:assert/strict');
 const dnsCheck = require('./dns-check');
-const { deriveTrustScore } = require('../services/scanService');
+const { deriveTrustScore } = require('../legacy-scan-engine');
 
 // A programmable resolver keyed by exact query name → either { records } or
 // { code } (a rejection). Missing keys reject as ENOTFOUND (clean absence).

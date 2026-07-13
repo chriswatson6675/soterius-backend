@@ -53,10 +53,11 @@ test('no WP1 module imports the on-demand orchestrator, any collector, or any ad
 
 // ── Guarantee 2: cannot reach scanService.js ─────────────────────────────────
 
-test('no WP1 module imports scanService.js, legacy-scanner/*, or executeScan', () => {
+test('no WP1 module imports scanService.js, legacy-scanner/*, legacy-compat/*, or executeScan', () => {
   const forbidden = [
     /scanService/,
     /legacy-scanner/,
+    /legacy-compat/,
     /executeScan/,
     /deriveTrustScore/,
     /getRiskLevel/,

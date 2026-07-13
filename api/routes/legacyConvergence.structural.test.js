@@ -45,9 +45,14 @@ test('report.js: req.body destructuring accepts only scanId — no score/riskLev
   }
 });
 
-test('report.js: the response is built entirely from deriveScanPresentation() output, never from req.body fields directly', () => {
+test('report.js: the response is built entirely from deriveScanPresentationForRow() output, never from req.body fields directly', () => {
   const src = readSource(ROUTES_DIR, 'report.js');
-  assert.match(src, /derivation\.deriveScanPresentation\(scan\.scanner_results/);
+  // ADR-SYS-011 (Legacy Scanner Retirement): report.js now dispatches on
+  // scan.scoring_version via deriveScanPresentationForRow() rather than
+  // calling the legacy-only deriveScanPresentation() directly, so it can
+  // correctly re-present both legacy-tier and trustprofile-v1 rows — the
+  // "never from req.body" guarantee this test protects is unchanged.
+  assert.match(src, /derivation\.deriveScanPresentationForRow\(scan\)/);
   // generatePDFFn must be called with derived.* values, not req.body values.
   const generatePdfCallMatch = src.match(/generatePDFFn\(\{([\s\S]*?)\}\)/);
   assert.ok(generatePdfCallMatch, 'expected a single generatePDFFn({...}) call');
@@ -123,6 +128,27 @@ test('prospects.js quick-scan and :id/scan both call the SAME canonical runOnDem
   // default parameter — proves there is one call site, not two competing ones.
   const importCount = (src.match(/require\(['"]\.\.\/\.\.\/observatory\/on-demand\/on-demand-observation['"]\)/g) || []).length;
   assert.strictEqual(importCount, 1, 'the orchestrator must be imported exactly once, not duplicated per handler');
+});
+
+// ── ADR-SYS-011: POST /api/scan no longer imports the legacy engine ────────
+
+test('scan.js does not import legacy-compat/legacy-scan-engine directly — only via scan-derivation-service', () => {
+  const src = readSource(ROUTES_DIR, 'scan.js');
+  assert.ok(
+    !/require\(['"]\.\.\/legacy-compat\/legacy-scan-engine['"]\)/.test(src),
+    'scan.js must not import the legacy engine directly — historical re-presentation must flow through scan-derivation-service.js only'
+  );
+  assert.ok(!/\bexecuteScan\b/.test(src), 'scan.js must not reference the legacy executeScan');
+});
+
+test('scan.js POST / imports and calls the canonical executeTrustProfileScan — the one live scoring path for new scans', () => {
+  const src = readSource(ROUTES_DIR, 'scan.js');
+  assert.match(
+    src,
+    /require\(['"]\.\.\/services\/trustprofile-scan-service['"]\)/,
+    'scan.js must import trustprofile-scan-service'
+  );
+  assert.match(src, /await executeTrustProfileScan\(domain\)/);
 });
 
 // ── Still-untouched invariants ───────────────────────────────────────────────

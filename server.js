@@ -17,6 +17,7 @@ const renewalRouter          = require('./api/routes/renewal');
 const observationSessionsRouter = require('./api/routes/observation-sessions');
 const publicScanRouter       = require('./api/routes/public-scan');
 const populationImportsRouter = require('./api/routes/population-imports');
+const trustProfileRouter     = require('./api/routes/trust-profile');
 const logger = require('./infra/utils/logger');
 const { AppError } = require('./infra/utils/errors');
 
@@ -95,6 +96,7 @@ app.use('/api/portfolio',         portfolioRouter);
 app.use('/api/organisation',      organisationRouter);
 app.use('/api/renewal',           renewalRouter);
 app.use('/api/observation-sessions', observationSessionsRouter);
+app.use('/api/trust-profile',     trustProfileRouter);
 app.use('/api/public-scan',       publicScanRouter);
 app.use('/api/ops/acquisition',   populationImportsRouter);
 app.use('/api',                   reportRouter);

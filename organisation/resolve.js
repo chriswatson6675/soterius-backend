@@ -363,8 +363,19 @@ function resolveOrganisationByDomain(rawDomain) {
   };
 }
 
+// listOrganisationIds() — read-only population enumeration, reusing the
+// already-loaded Repository Authority index. Added for ENG-014 WP-5's
+// Scheduled Generation Trigger (ENG-032 §2), which needs "the existing
+// Organisation population" and performs no enumeration logic of its own
+// beyond invoking whatever read-only listing capability this layer exposes
+// — this is that capability, not a new one WP-5 invents.
+function listOrganisationIds() {
+  return Array.from(loadAuthority().byId.keys());
+}
+
 module.exports = {
   search, reverse, firstOrganisationId, resolveIdentity, normaliseFacts, domainFromWebsite,
+  listOrganisationIds,
   // Canonical Organisation Resolution Service
   resolveOrganisationByDomain, reload, RESOLUTION_OUTCOME,
 };

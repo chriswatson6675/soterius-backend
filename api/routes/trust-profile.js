@@ -1,0 +1,105 @@
+'use strict';
+
+// trust-profile.js — the Trust Profile Read API, ENG-014 WP-7, directly
+// against ENG-023 §11/§13/§14/§15 and ENG-008 §8/§9/§11. Thin: delegates
+// entirely to generate-trust-profile.js/store.js/projections.js — this file
+// performs no computation of its own (ENG-023 §15's own requirement).
+//
+// Three-outcome contract on GET /:id (ENG-008 §11):
+//   (a) a current instance exists → its projection, 200
+//   (b) none exists and ?generate is not set → explicit "not yet generated", 404
+//   (c) none exists and ?generate=true → a synchronously-generated new
+//       instance's projection, 201 (permitted, not required — implemented
+//       here as the simpler of the two options)
+// No fourth, undefined outcome.
+//
+// AUTH: GET /:id requires auth (Authenticated Projection, full instance +
+// optional benchmark overlay). GET /:id/public is unauthenticated (Public
+// Projection only) — ENG-008 §9 scopes this route as authenticated-first
+// for Phase 2 (R-4); the public variant exists so a caller's role, not a
+// field on the instance, decides which projection is served (ENG-023 §15).
+
+const express = require('express');
+const router = express.Router();
+const { requireAuth } = require('../middleware/requireAuth');
+const { attachTenant } = require('../middleware/attachTenant');
+
+const store = require('../../trust-intelligence/store');
+const { generateTrustProfile } = require('../../trust-intelligence/generate-trust-profile');
+const { publicProjection, authenticatedProjection } = require('../../trust-intelligence/projections');
+const { getBenchmarkOverlay } = require('../../trust-intelligence/benchmark-overlay');
+
+// Factories accept dependency overrides for testing without a live DB or
+// Express server (mirrors createGetBenchmarks in benchmarks.js).
+function createGetCurrentAuthenticated(deps = {}) {
+  const getCurrent = deps.getCurrent || store.getCurrent;
+  const generate = deps.generateTrustProfile || generateTrustProfile;
+  const save = deps.save || store.save;
+  const overlay = deps.getBenchmarkOverlay || getBenchmarkOverlay;
+  const now = deps.now || (() => new Date().toISOString());
+
+  return async function getCurrentAuthenticated(req, res, next) {
+    try {
+      const organisationId = req.params.id;
+      const current = await getCurrent(organisationId);
+
+      if (current.exists) {
+        const benchmarkOverlay = await overlay(current.instance);
+        return res.status(200).json({ success: true, generated: false, trustProfile: authenticatedProjection(current.instance, benchmarkOverlay) });
+      }
+
+      if (req.query.generate !== 'true') {
+        return res.status(404).json({ success: false, generated: false, error: 'not yet generated' });
+      }
+
+      // Outcome (c) — synchronous generation, permitted not required (ENG-008 §11).
+      const instance = await generate(organisationId, { trigger: 'on-demand', generatedAt: now() });
+      await save(instance);
+      const benchmarkOverlay = await overlay(instance);
+      return res.status(201).json({ success: true, generated: true, trustProfile: authenticatedProjection(instance, benchmarkOverlay) });
+    } catch (err) {
+      next(err);
+    }
+  };
+}
+
+function createGetCurrentPublic(deps = {}) {
+  const getCurrent = deps.getCurrent || store.getCurrent;
+
+  return async function getCurrentPublic(req, res, next) {
+    try {
+      const current = await getCurrent(req.params.id);
+      if (!current.exists) {
+        return res.status(404).json({ success: false, generated: false, error: 'not yet generated' });
+      }
+      return res.status(200).json({ success: true, generated: false, trustProfile: publicProjection(current.instance) });
+    } catch (err) {
+      next(err);
+    }
+  };
+}
+
+function createGetHistory(deps = {}) {
+  const getHistory = deps.getHistory || store.getHistory;
+
+  return async function getHistoryHandler(req, res, next) {
+    try {
+      const history = await getHistory(req.params.id);
+      res.status(200).json({
+        success: true,
+        history: history.map(({ generatedAt, instance }) => ({ generatedAt, trustProfile: authenticatedProjection(instance) })),
+      });
+    } catch (err) {
+      next(err);
+    }
+  };
+}
+
+router.get('/:id/public', createGetCurrentPublic());
+router.get('/:id/history', requireAuth, attachTenant, createGetHistory());
+router.get('/:id', requireAuth, attachTenant, createGetCurrentAuthenticated());
+
+module.exports = router;
+module.exports.createGetCurrentAuthenticated = createGetCurrentAuthenticated;
+module.exports.createGetCurrentPublic = createGetCurrentPublic;
+module.exports.createGetHistory = createGetHistory;
