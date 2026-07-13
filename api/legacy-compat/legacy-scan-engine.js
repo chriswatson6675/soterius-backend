@@ -1,9 +1,31 @@
-const sslCheck       = require('../legacy-scanner/ssl-check');
-const headersCheck   = require('../legacy-scanner/headers-check');
-const emailSecurity  = require('../legacy-scanner/dns-check');
-const vulnComponents = require('../legacy-scanner/tech-detect');
-const gdprCheck      = require('../legacy-scanner/gdpr-check');
+const sslCheck       = require('./checks/ssl-check');
+const headersCheck   = require('./checks/headers-check');
+const emailSecurity  = require('./checks/dns-check');
+const vulnComponents = require('./checks/tech-detect');
+const gdprCheck      = require('./checks/gdpr-check');
 const logger         = require('../../infra/utils/logger');
+const bands          = require('../../infra/utils/trust-score-bands');
+
+// ─────────────────────────────────────────────────────────────────────────
+// HISTORICAL COMPATIBILITY ENGINE (scoring_version = 'v1.0' / 'legacy-scan-v1').
+//
+// No new scans use this engine. It is retained ONLY to interpret and
+// re-render pre-existing `scans` rows written before the Observatory
+// Quality Model became the canonical live scoring path (see
+// docs/signal-lab/decisions/ADR-SYS-011 — Retirement of Legacy Scanner as
+// Live Scoring Engine). Do not extend this module or add new checks to
+// backend/api/legacy-compat/checks/ — all new scoring belongs in
+// backend/observatory/quality/.
+//
+// Live callers today: backend/api/services/scan-derivation-service.js
+// (dispatches here only for scoring_version values that are NOT
+// 'trustprofile-v1'), and cohort/benchmark regeneration tooling
+// (backend/tooling/scripts/pipeline/scan.js,
+// backend/tooling/scripts/regenerate-benchmark.js) which intentionally
+// continues to produce v1.0-methodology data for historical benchmark
+// comparability. POST /api/scan (the public live-scan endpoint) no longer
+// calls this module — see backend/api/services/trustprofile-scan-service.js.
+// ─────────────────────────────────────────────────────────────────────────
 
 // v1.0 methodology — do not modify without incrementing scoringVersion and
 // updating SCORING.md + DECISIONS.md.
@@ -18,21 +40,18 @@ const SCANNERS = [
 // ssl(40) + email(56) + headers(50) + vulnComp(48) + gdpr(12) = 206
 const MAX_POINTS = SCANNERS.reduce((sum, def) => sum + def.maxPoints, 0);
 
-function getRiskLevel(score) {
-  if (score >= 90) return 'Excellent';
-  if (score >= 75) return 'Good';
-  if (score >= 60) return 'Moderate Risk';
-  if (score >= 40) return 'High Risk';
-  return 'Critical Risk';
-}
-
-function getRiskBand(pct) {
-  if (pct >= 90) return 'Excellent';
-  if (pct >= 75) return 'Good';
-  if (pct >= 60) return 'Moderate Risk';
-  if (pct >= 40) return 'High Risk';
-  return 'Critical Risk';
-}
+// Band/level classification is PRESENTATION, not the frozen v1.0 point-
+// summation methodology above — it delegates to the one canonical threshold
+// table (infra/utils/trust-score-bands.js, ADR-SYS-011 §"Canonical
+// Presentation Model") instead of declaring its own ladder. getRiskLevel and
+// getRiskBand were historically two byte-identical function bodies under
+// different names; both are now the exact same canonical function,
+// re-exported under both names for backward compatibility with existing
+// call sites. The 90/75/60/40 cutoffs and every label are unchanged from
+// before this convergence — this delegation changes no historical `scans`
+// row's derived risk band.
+const getRiskLevel = bands.getRiskLevel;
+const getRiskBand = bands.getRiskBand;
 
 // Runs the 5 legacy collectors and returns raw, unscored check results only —
 // one entry per SCANNERS def, in order. No scoring, no interpretation happens
@@ -109,7 +128,7 @@ function deriveTrustScore(scannerResults, scannedAt = new Date().toISOString()) 
 // deriveTrustScore below rather than duplicating it.
 async function executeScan(domain) {
   const scannerResults = await collect(domain);
-  const derived = require('./scan-derivation-service').deriveScanPresentation(scannerResults);
+  const derived = require('../services/scan-derivation-service').deriveScanPresentation(scannerResults);
 
   logger.info(`Scan complete for ${domain} — score: ${derived.score} (${derived.riskLevel})`);
 

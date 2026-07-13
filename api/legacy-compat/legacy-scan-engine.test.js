@@ -10,7 +10,7 @@ const { test, describe } = require('node:test');
 const assert = require('node:assert/strict');
 const {
   executeScan, collect, deriveTrustScore, getRiskLevel, getRiskBand, SCANNERS, MAX_POINTS,
-} = require('./scanService');
+} = require('./legacy-scan-engine');
 
 // Synthetic scannerResults fixture — deriveTrustScore only cares about
 // { key, checks }, so tests never need real network-derived check output.
