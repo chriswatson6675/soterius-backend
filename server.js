@@ -20,6 +20,13 @@ const populationImportsRouter = require('./api/routes/population-imports');
 const trustProfileRouter     = require('./api/routes/trust-profile');
 const logger = require('./infra/utils/logger');
 const { AppError } = require('./infra/utils/errors');
+const { registerCrashHandlers } = require('./infra/utils/crash-handlers');
+
+// Production Readiness Audit (2026-07-13, ENG-043): make an otherwise-fatal
+// uncaughtException/unhandledRejection diagnosable in the logs before the
+// process exits and Railway's own restartPolicy (railway.json: ON_FAILURE,
+// max 10 retries) recovers it — see infra/utils/crash-handlers.js.
+registerCrashHandlers({ logger });
 
 
 // ── CORS origin whitelist ─────────────────────────────────────────────────────
