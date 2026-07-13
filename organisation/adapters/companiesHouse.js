@@ -15,6 +15,29 @@ function getApiKey() {
   return process.env.COMPANIES_HOUSE_API_KEY || process.env.CH_API_KEY || null;
 }
 
+// BUG-2 (found during the Implementation Readiness Sprint, 2026-07-13): this
+// module called chClient.getJson() without a rateManager at all, unlike every
+// other real caller of ch-client.js (run-if001.js, the companieshouse-collector,
+// enrich-registry.js, etc. — see ESD-COMPHOUSE-001 §4.5's combined 600
+// requests/5 minutes budget). ch-client's rate limiting and 429 backoff are
+// both entirely opt-in via opts.rateManager; omitting it is silent, not an
+// error. A full Repository Authority sweep issues a live lookup for every
+// Organisation with a known Companies House number (~30,000+ of them) — at
+// that volume, unpaced requests exceed the budget within the first few
+// hundred calls, and with no rateManager to record the 429 and back off, every
+// subsequent call in the same run gets rate-limited too, degrading almost the
+// entire rest of a full sweep to `sourcesUnavailable` silently (assemble.js's
+// own failure handling treats a CH failure as non-fatal, so this never surfaces
+// as a generation failure — only as a mass, silent identity-completeness gap).
+// One shared instance for the process lifetime (matches every other real
+// caller's pattern: create once, reuse across every request), injectable for
+// tests via deps.rateManager.
+let sharedRateManager = null;
+function defaultRateManager() {
+  if (!sharedRateManager) sharedRateManager = chClient.createRateManager();
+  return sharedRateManager;
+}
+
 // Companies House numbers are canonically 8 characters: either 8 digits
 // (England & Wales) or a 2-letter prefix + 6 digits (e.g. OC, SC, NI, LP).
 // Upstream sources — the SRA snapshot's CompanyRegNo among them — often carry
@@ -31,12 +54,12 @@ function normalizeCompanyNumber(raw) {
  * @param {string} query
  * @returns {Promise<{ok: true, results: object[]} | {ok: false, error: string, httpStatus?: number}>}
  */
-async function searchCompanies(query, { itemsPerPage = 8 } = {}) {
+async function searchCompanies(query, { itemsPerPage = 8 } = {}, deps = {}) {
   const apiKey = getApiKey();
   if (!apiKey) return { ok: false, error: 'COMPANIES_HOUSE_API_KEY is not configured' };
 
   const url = `${PDA_BASE}/search/companies?q=${encodeURIComponent(query)}&items_per_page=${itemsPerPage}`;
-  const res = await chClient.getJson(url, { apiKey });
+  const res = await chClient.getJson(url, { apiKey, rateManager: deps.rateManager || defaultRateManager() });
 
   if (res.errorType !== 'NONE') {
     return { ok: false, error: `Companies House search failed: ${res.errorType}`, httpStatus: res.httpStatus || 502 };
@@ -62,13 +85,13 @@ function normalizeSearchResult(item) {
  * @param {string} companyNumber
  * @returns {Promise<{ok: true, company: object} | {ok: false, error: string, httpStatus?: number}>}
  */
-async function getCompanyProfile(companyNumber) {
+async function getCompanyProfile(companyNumber, deps = {}) {
   const apiKey = getApiKey();
   if (!apiKey) return { ok: false, error: 'COMPANIES_HOUSE_API_KEY is not configured' };
   if (!companyNumber) return { ok: false, error: 'companyNumber is required', httpStatus: 400 };
 
   const url = `${PDA_BASE}/company/${encodeURIComponent(normalizeCompanyNumber(companyNumber))}`;
-  const res = await chClient.getJson(url, { apiKey });
+  const res = await chClient.getJson(url, { apiKey, rateManager: deps.rateManager || defaultRateManager() });
 
   if (res.errorType === 'NOT_FOUND') return { ok: false, error: 'Company not found', httpStatus: 404 };
   if (res.errorType !== 'NONE') {
@@ -109,4 +132,9 @@ function normalizeProfile(c) {
   };
 }
 
-module.exports = { searchCompanies, getCompanyProfile, normalizeCompanyNumber };
+module.exports = {
+  searchCompanies, getCompanyProfile, normalizeCompanyNumber,
+  // Test-only seam: reset the shared rate manager singleton between tests so
+  // one test's simulated 429/suspension state can't leak into another's.
+  _resetRateManagerForTests: () => { sharedRateManager = null; },
+};

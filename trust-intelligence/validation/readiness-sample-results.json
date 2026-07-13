@@ -1,0 +1,120 @@
+{
+  "sampleSize": 300,
+  "repositoryAuthorityTotal": 35752,
+  "sampleComposition": {
+    "withChNumber": 141,
+    "withVerifiedDomain": 137,
+    "withObservatoryEvidence": 40
+  },
+  "successes": 300,
+  "failures": 0,
+  "failureDetail": [],
+  "insufficientObservation": 153,
+  "scored": 147,
+  "timing": {
+    "overallDurationMs": 109330,
+    "meanMs": 364,
+    "p50Ms": 402,
+    "p90Ms": 542,
+    "p99Ms": 882,
+    "maxMs": 1030,
+    "throughputPerSec": 2.744
+  },
+  "memory": {
+    "rssBeforeMB": 137.2,
+    "rssAfterMB": 309.2,
+    "heapUsedBeforeMB": 55.5,
+    "heapUsedAfterMB": 143.4,
+    "heapUsedDeltaMB": 87.9,
+    "snapshots": [
+      {
+        "at": 0,
+        "rssMB": 137.2,
+        "heapUsedMB": 55.5,
+        "externalMB": 5.3
+      },
+      {
+        "at": 25,
+        "rssMB": 194.3,
+        "heapUsedMB": 132.9,
+        "externalMB": 4.2
+      },
+      {
+        "at": 50,
+        "rssMB": 215.2,
+        "heapUsedMB": 139.5,
+        "externalMB": 5.7
+      },
+      {
+        "at": 75,
+        "rssMB": 228.2,
+        "heapUsedMB": 138,
+        "externalMB": 4.5
+      },
+      {
+        "at": 100,
+        "rssMB": 250.9,
+        "heapUsedMB": 153.1,
+        "externalMB": 8.9
+      },
+      {
+        "at": 125,
+        "rssMB": 256.9,
+        "heapUsedMB": 157.2,
+        "externalMB": 8.2
+      },
+      {
+        "at": 150,
+        "rssMB": 274.4,
+        "heapUsedMB": 151.1,
+        "externalMB": 5.5
+      },
+      {
+        "at": 175,
+        "rssMB": 302.3,
+        "heapUsedMB": 161.7,
+        "externalMB": 9.7
+      },
+      {
+        "at": 200,
+        "rssMB": 307.9,
+        "heapUsedMB": 155.8,
+        "externalMB": 6.1
+      },
+      {
+        "at": 225,
+        "rssMB": 309.2,
+        "heapUsedMB": 156.6,
+        "externalMB": 8.8
+      },
+      {
+        "at": 250,
+        "rssMB": 308.9,
+        "heapUsedMB": 152.1,
+        "externalMB": 5.9
+      },
+      {
+        "at": 275,
+        "rssMB": 310.7,
+        "heapUsedMB": 155.5,
+        "externalMB": 9.2
+      },
+      {
+        "at": 300,
+        "rssMB": 309.2,
+        "heapUsedMB": 143.4,
+        "externalMB": 4.8
+      },
+      {
+        "at": 300,
+        "rssMB": 309.2,
+        "heapUsedMB": 143.4,
+        "externalMB": 4.8
+      }
+    ]
+  },
+  "extrapolation": {
+    "estimatedFullSweepDurationHours": 3.62,
+    "estimatedFullSweepThroughputPerHour": 9878
+  }
+}

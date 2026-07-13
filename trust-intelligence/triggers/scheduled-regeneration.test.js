@@ -17,6 +17,8 @@ describe('CT-1 / TI-P-6 structural guardrail', () => {
   });
 });
 
+const SILENT_LOGGER = { info: () => {}, warn: () => {}, error: () => {}, debug: () => {} };
+
 function mockDeps(overrides = {}) {
   return {
     listOrganisationIds: async () => ['ORG-1', 'ORG-2'],
@@ -24,6 +26,7 @@ function mockDeps(overrides = {}) {
     generateTrustProfile: async (id, { trigger, generatedAt }) => ({ organisationId: id, trigger, generatedAt }),
     save: async () => {},
     now: () => '2026-07-13T00:00:00.000Z',
+    logger: SILENT_LOGGER,
     ...overrides,
   };
 }
@@ -129,5 +132,33 @@ describe('CT-11 determinism', () => {
     const a = await runScheduledSweep({ policyThresholdMs: 1, deps: mockDeps() });
     const b = await runScheduledSweep({ policyThresholdMs: 1, deps: mockDeps() });
     assert.deepStrictEqual(a.processed.map((p) => p.organisationId).sort(), b.processed.map((p) => p.organisationId).sort());
+  });
+});
+
+describe('operational observability (Implementation Readiness Sprint, 2026-07-13)', () => {
+  test('logs a start line (population size) and a completion summary (processed/skipped/failed counts)', async () => {
+    const logs = { info: [], warn: [] };
+    const logger = { info: (m) => logs.info.push(m), warn: (m) => logs.warn.push(m), error: () => {}, debug: () => {} };
+    await runScheduledSweep({ policyThresholdMs: 1, deps: mockDeps({ logger }) });
+
+    assert.ok(logs.info.some((m) => /starting/.test(m) && /2 Organisations/.test(m)), 'must log the population size at start');
+    assert.ok(logs.info.some((m) => /complete/.test(m) && /2 processed/.test(m)), 'must log a completion summary');
+  });
+
+  test('logs a warning for every per-Organisation failure, without halting the sweep', async () => {
+    const warnings = [];
+    const logger = { info: () => {}, warn: (m) => warnings.push(m), error: () => {}, debug: () => {} };
+    const deps = mockDeps({
+      logger,
+      generateTrustProfile: async (id) => { if (id === 'ORG-1') throw new Error('boom'); return { organisationId: id }; },
+    });
+    const result = await runScheduledSweep({ policyThresholdMs: 1, deps });
+    assert.strictEqual(result.failed.length, 1);
+    assert.ok(warnings.some((m) => m.includes('ORG-1') && m.includes('boom')));
+  });
+
+  test('logging is purely observational — omitting deps.logger does not change classification, only defaults to the real logger', async () => {
+    const result = await runScheduledSweep({ policyThresholdMs: 1, deps: mockDeps({ logger: undefined }) });
+    assert.strictEqual(result.processed.length, 2);
   });
 });
