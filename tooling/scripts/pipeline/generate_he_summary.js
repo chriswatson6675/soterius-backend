@@ -12,6 +12,7 @@
 
 require('dotenv').config({ path: require('path').join(__dirname, '../../../.env') });
 const { createClient } = require('@supabase/supabase-js');
+const { getRiskBand } = require('../../../infra/utils/trust-score-bands');
 
 const client = createClient(
   process.env.SUPABASE_URL,
@@ -95,13 +96,10 @@ function percentile(sorted, p) {
   return sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo);
 }
 
-function riskBand(pct) {
-  if (pct >= 90) return 'Excellent';
-  if (pct >= 75) return 'Good';
-  if (pct >= 60) return 'Moderate Risk';
-  if (pct >= 40) return 'High Risk';
-  return 'Critical Risk';
-}
+// Delegates to the one canonical threshold table (infra/utils/trust-score-
+// bands.js, ADR-SYS-011 §"Canonical Presentation Model") instead of a local
+// duplicate ladder — same 90/75/60/40 cutoffs, no report output changes.
+const riskBand = getRiskBand;
 
 function computeStats(rows) {
   const scores = rows

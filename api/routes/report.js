@@ -49,7 +49,11 @@ function createPostReport(getScanByIdFn = getScanById, generatePDFFn = generateP
 
       logger.info(`PDF report requested for scan ${scanId} (${scan.domain})`);
 
-      const derived = derivation.deriveScanPresentation(scan.scanner_results, scan.scanned_at);
+      // Dispatches on scan.scoring_version (ADR-SYS-011) — legacy-tier rows
+      // re-derive via the historical engine, trustprofile-v1 rows re-present
+      // their already-computed Observatory derivation. Never assumes which
+      // tier produced this row.
+      const derived = derivation.deriveScanPresentationForRow(scan);
       const adaptedResults = adaptScannersForPDF(derived.scanners);
 
       const raw = await generatePDFFn({

@@ -2,7 +2,7 @@
 
 const path = require('path');
 const fs   = require('fs');
-const dnsCheck = require('./api/legacy-scanner/dns-check');
+const dnsCheck = require('./api/legacy-compat/checks/dns-check');
 
 const DOMAINS = [
   'amphlettslegal.co.uk',

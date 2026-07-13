@@ -15,7 +15,13 @@ const path     = require('path');
 const fs       = require('fs');
 const readline = require('readline');
 const { createClient } = require('@supabase/supabase-js');
-const { executeScan }  = require('../../api/services/scanService');
+const { executeScan }  = require('../../api/legacy-compat/legacy-scan-engine');
+// NOTE (migration follow-up): benchmark regeneration intentionally stays on
+// the v1.0/legacy-scan-v1 historical engine so results remain comparable
+// with the existing BENCHMARK_REPORT_001 baseline — see ADR-SYS-011
+// §"Future development rules" for the open question on whether a future
+// cohort regeneration should instead target the canonical Trust Profile
+// methodology.
 
 // ── Config ────────────────────────────────────────────────────────────────────
 

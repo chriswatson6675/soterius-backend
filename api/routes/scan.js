@@ -6,7 +6,7 @@ const { AppError, ValidationError } = require('../../infra/utils/errors');
 const logger                    = require('../../infra/utils/logger');
 const { sendConfirmationEmail } = require('../../infra/utils/emailService');
 const { saveScan, getScanHistory, saveSubmission, getSubmissionById, getScanById } = require('../../infra/database');
-const { executeScan, MAX_POINTS } = require('../services/scanService');
+const { executeTrustProfileScan } = require('../services/trustprofile-scan-service');
 const derivation = require('../services/scan-derivation-service');
 const { generatePDF }           = require('../pdf-generator/generator');
 const { adaptScannersForPDF }   = require('../../infra/utils/pdfAdapter');
@@ -14,6 +14,13 @@ const { adaptScannersForPDF }   = require('../../infra/utils/pdfAdapter');
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // ── POST /api/scan ────────────────────────────────────────────────────────────
+//
+// ADR-SYS-011 (Legacy Scanner Retirement): this route no longer calls the
+// legacy-compat scoring engine. It now runs the SAME canonical Observatory
+// pipeline as POST /api/public-scan and GET /api/organisation/:id, via
+// trustprofile-scan-service.js — the one live scoring path for all new
+// scans. Every persisted `scans` row this route creates is tagged
+// scoring_version='trustprofile-v1'.
 
 router.post('/', async (req, res, next) => {
   try {
@@ -27,7 +34,7 @@ router.post('/', async (req, res, next) => {
     if (!validateDomain(domain)) throw new ValidationError(`Invalid domain: ${raw}`);
 
     const { score, riskLevel, scannedAt, totalPoints, maxPoints, scanners, scoreObject } =
-      await executeScan(domain);
+      await executeTrustProfileScan(domain);
 
     const scanRecord = await saveScan(domain, scoreObject, scanners);
     const scanId     = scanRecord.success ? scanRecord.id : null;
@@ -149,8 +156,12 @@ function createSubmitGateHandler(deps = {}) {
       logger.info(`Gate submission received: ${submission.domain} | ${maskedEmail} | id: ${gateId}`);
 
       // ── Derive server-side from the persisted evidence of record — never
-      //    from client-supplied scanScore/scanResults/scoreObject. ─────────
-      const derived = derivation.deriveScanPresentation(scan.scanner_results, scan.scanned_at);
+      //    from client-supplied scanScore/scanResults/scoreObject. Dispatches
+      //    on scan.scoring_version (ADR-SYS-011): legacy-tier rows go through
+      //    the historical engine, trustprofile-v1 rows through the canonical
+      //    Observatory-derived presentation — never assumed to be one or the
+      //    other. ─────────────────────────────────────────────────────────
+      const derived = derivation.deriveScanPresentationForRow(scan);
 
       const scannerMap = {};
       derived.scanners.forEach(s => { scannerMap[s.name] = s.score ?? null; });

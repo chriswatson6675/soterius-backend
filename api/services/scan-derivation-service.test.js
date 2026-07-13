@@ -10,7 +10,7 @@
 
 const { test, describe } = require('node:test');
 const assert = require('node:assert/strict');
-const scanService = require('./scanService');
+const scanService = require('../legacy-compat/legacy-scan-engine');
 const derivation = require('./scan-derivation-service');
 
 function fixture(overrides = {}) {
@@ -63,6 +63,48 @@ describe('resolveRiskLevel — consolidates the score-based fallback previously 
   test('falls back to Critical Risk when neither riskLevel nor score is present', () => {
     assert.equal(derivation.resolveRiskLevel({}), 'Critical Risk');
     assert.equal(derivation.resolveRiskLevel(), 'Critical Risk');
+  });
+});
+
+describe('deriveScanPresentationForRow — scoring_version dispatch (ADR-SYS-011)', () => {
+  test('a trustprofile-v1 row is re-presented from its stored score_object/scanner_results, not re-derived via the legacy engine', () => {
+    const row = {
+      scoring_version: 'trustprofile-v1',
+      scanned_at: '2026-07-12T00:00:00.000Z',
+      scanner_results: [{ name: 'Email Trust', score: 82, rating: 'Good', checks: [] }],
+      score_object: { overallScore: 82, riskBand: 'Good', grade: 'B', scoringVersion: 'trustprofile-v1' },
+    };
+    const result = derivation.deriveScanPresentationForRow(row);
+    assert.equal(result.score, 82);
+    assert.equal(result.riskLevel, 'Good');
+    assert.equal(result.totalPoints, null);
+    assert.equal(result.maxPoints, null);
+    assert.deepEqual(result.scanners, row.scanner_results);
+    assert.equal(result.scoreObject, row.score_object);
+  });
+
+  test('a row with scoring_version "v1.0" (the historical default) dispatches to the legacy engine, byte-identical to calling deriveScanPresentation directly', () => {
+    const scannerResults = fixture({ ssl: [{ status: 'PASS' }] });
+    const row = { scoring_version: 'v1.0', scanned_at: '2026-01-01T00:00:00.000Z', scanner_results: scannerResults };
+    const viaDispatch = derivation.deriveScanPresentationForRow(row);
+    const direct = derivation.deriveScanPresentation(scannerResults, row.scanned_at);
+    assert.deepEqual(viaDispatch, direct);
+  });
+
+  test('a row explicitly tagged "legacy-scan-v1" also dispatches to the legacy engine', () => {
+    const scannerResults = fixture({ ssl: [{ status: 'PASS' }] });
+    const row = { scoring_version: 'legacy-scan-v1', scanned_at: '2026-01-01T00:00:00.000Z', scanner_results: scannerResults };
+    const viaDispatch = derivation.deriveScanPresentationForRow(row);
+    const direct = derivation.deriveScanPresentation(scannerResults, row.scanned_at);
+    assert.deepEqual(viaDispatch, direct);
+  });
+
+  test('an unrecognised or missing scoring_version defaults to the legacy path — never assumed to be Observatory-shaped', () => {
+    const scannerResults = fixture({ ssl: [{ status: 'PASS' }] });
+    const row = { scanned_at: '2026-01-01T00:00:00.000Z', scanner_results: scannerResults };
+    const viaDispatch = derivation.deriveScanPresentationForRow(row);
+    const direct = derivation.deriveScanPresentation(scannerResults, row.scanned_at);
+    assert.deepEqual(viaDispatch, direct);
   });
 });
 

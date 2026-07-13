@@ -11,6 +11,7 @@
 // a separate (heavier, async) capability. This only reads what's already there.
 
 const { getClient } = require('../../infra/database');
+const { getGrade } = require('../../infra/utils/trust-score-bands');
 
 const SIGNAL_TABLES = [
   { key: 'spf', table: 'signal_quality_spf', category: 'Email Trust' },
@@ -54,13 +55,15 @@ async function getSignalsForDomain(domain) {
   }));
 }
 
-function letterGrade(avg) {
-  if (avg >= 90) return 'A';
-  if (avg >= 75) return 'B';
-  if (avg >= 55) return 'C';
-  if (avg >= 35) return 'D';
-  return 'E';
-}
+// Delegates to the one canonical threshold table (infra/utils/trust-score-
+// bands.js, ADR-SYS-011 §"Canonical Presentation Model") instead of
+// declaring a second, independently-cutoff ladder. Previously used its own
+// 90/75/55/35 boundaries, which could disagree with getRiskBand's 90/75/60/40
+// for the same score (regression audit finding C-5 — e.g. a score of 57 was
+// simultaneously "High Risk" via the risk band and "C" via this function).
+// Now aligned to the same 90/75/60/40 cutoffs, so a given score always
+// produces a semantically consistent band and grade together.
+const letterGrade = getGrade;
 
 function summarize(signals) {
   const observed = signals.filter((s) => s.observed);

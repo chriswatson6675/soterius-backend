@@ -19,7 +19,9 @@ function getClient() {
 // the preserved evidence of record for a scan. `overall_score` / `risk_band` /
 // `score_object` are a NON-AUTHORITATIVE DERIVED CACHE — a reproducible-on-demand
 // snapshot of what the canonical derivation service (scan-derivation-service.js,
-// wrapping scanService.deriveTrustScore) computed at write time, kept here only
+// dispatching on scoring_version to either trustprofile-scan-service.js's
+// Observatory pipeline or legacy-compat/legacy-scan-engine.js's historical
+// deriveTrustScore, per ADR-SYS-011) computed at write time, kept here only
 // to avoid recomputing on every read. No consumer should treat these three
 // columns as evidence; they are recomputable at any time from `scanner_results`
 // under the current (or a future, versioned) methodology. Narrowing this

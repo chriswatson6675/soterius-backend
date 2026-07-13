@@ -23,7 +23,13 @@ require('dotenv').config({ path: require('path').join(__dirname, '../../../.env'
 
 const { log, warn, error } = require('./lib/log');
 const { updatePipelineStatus, appendFlag, getLatestScan, getProspectsByStatus, getProspectsForRescan } = require('./lib/db');
-const { executeScan }  = require('../../../api/services/scanService');
+const { executeScan }  = require('../../../api/legacy-compat/legacy-scan-engine');
+// NOTE (migration follow-up): this pipeline stage intentionally still uses
+// the v1.0/legacy-scan-v1 historical engine to keep cohort/benchmark data
+// comparable over time — see ADR-SYS-011 §"Future development rules". If the
+// intent is instead to bulk-refresh prospects using the canonical Trust
+// Profile methodology, this call site should migrate to
+// runOnDemandObservation, matching prospects.js's on-demand routes.
 const { saveScan, updateProspectLastScanned } = require('../../../infra/database');
 
 const CONCURRENCY       = 5;
