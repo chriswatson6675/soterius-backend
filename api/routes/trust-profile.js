@@ -28,6 +28,7 @@ const store = require('../../trust-intelligence/store');
 const { generateTrustProfile } = require('../../trust-intelligence/generate-trust-profile');
 const { publicProjection, authenticatedProjection } = require('../../trust-intelligence/projections');
 const { getBenchmarkOverlay } = require('../../trust-intelligence/benchmark-overlay');
+const { computeChangeIndicator } = require('../../trust-intelligence/change-indicator');
 
 // Factories accept dependency overrides for testing without a live DB or
 // Express server (mirrors createGetBenchmarks in benchmarks.js).
@@ -95,11 +96,36 @@ function createGetHistory(deps = {}) {
   };
 }
 
+// GET /:id/change — ENG-014 Portfolio Management. Derives a simple
+// current-vs-previous score comparison from the Organisation's own Trust
+// Profile History (store.getHistory()) via computeChangeIndicator() — no
+// new scoring, no new persistence, same auth as GET /:id/history.
+function createGetChange(deps = {}) {
+  const getHistory = deps.getHistory || store.getHistory;
+  const computeChange = deps.computeChangeIndicator || computeChangeIndicator;
+
+  return async function getChangeHandler(req, res, next) {
+    try {
+      const organisationId = req.params.id;
+      const history = await getHistory(organisationId);
+      res.status(200).json({
+        success: true,
+        organisationId,
+        change: computeChange(history),
+      });
+    } catch (err) {
+      next(err);
+    }
+  };
+}
+
 router.get('/:id/public', createGetCurrentPublic());
 router.get('/:id/history', requireAuth, attachTenant, createGetHistory());
+router.get('/:id/change', requireAuth, attachTenant, createGetChange());
 router.get('/:id', requireAuth, attachTenant, createGetCurrentAuthenticated());
 
 module.exports = router;
 module.exports.createGetCurrentAuthenticated = createGetCurrentAuthenticated;
 module.exports.createGetCurrentPublic = createGetCurrentPublic;
 module.exports.createGetHistory = createGetHistory;
+module.exports.createGetChange = createGetChange;

@@ -11,6 +11,7 @@ const assert = require('node:assert');
 
 const {
   createGetPortfolio, createPostPortfolio, createDeletePortfolio,
+  createGetPortfolioScores, createGetPortfolioCompare,
 } = require('./portfolio');
 const { ValidationError, AppError } = require('../../infra/utils/errors');
 
@@ -204,4 +205,132 @@ test('deletePortfolio — a DB failure on removal surfaces as an AppError to nex
   await deletePortfolio(req, fakeRes(), next);
 
   assert.ok(calls[0][0] instanceof AppError);
+});
+
+// ── GET /api/portfolio/scores ────────────────────────────────────────────────
+
+test('getPortfolioScores — hydrates each item with organisation summary, currentTrustScore and change', async () => {
+  const items = [{ id: 'p1', organisationId: 'ORG-000000000001', isHome: true, organisation: null }];
+  const summarise = (id) => ({ id, name: 'Smith LLP', domain: 'smithllp.co.uk', sector: null, location: null, lastScannedAt: null });
+  const getCurrent = async (id) => (id === 'ORG-000000000001' ? { exists: true, instance: { trustScore: { value: 750, band: 'Good' } } } : { exists: false });
+  const getHistory = async (id) => (id === 'ORG-000000000001'
+    ? [
+      { generatedAt: '2026-06-01T00:00:00.000Z', instance: { trustScore: { value: 700 } } },
+      { generatedAt: '2026-07-01T00:00:00.000Z', instance: { trustScore: { value: 750 } } },
+    ]
+    : []);
+  const getPortfolioScores = createGetPortfolioScores(async () => items, summarise, getCurrent, getHistory);
+  const res = fakeRes();
+
+  await getPortfolioScores(tenantReq(), res, () => assert.fail('next() should not be called'));
+
+  assert.strictEqual(res.body.length, 1);
+  assert.strictEqual(res.body[0].organisationId, 'ORG-000000000001');
+  assert.strictEqual(res.body[0].currentTrustScore, 750);
+  assert.deepStrictEqual(res.body[0].change, { status: 'ok', current: 750, previous: 700, delta: 50, direction: 'up' });
+});
+
+test('getPortfolioScores — an organisation with no Trust Profile yet hydrates to null/no-data, not an error', async () => {
+  const items = [{ id: 'p1', organisationId: 'ORG-000000000002', isHome: false, organisation: null }];
+  const getPortfolioScores = createGetPortfolioScores(
+    async () => items,
+    (id) => ({ id, name: 'New Co', domain: 'newco.co.uk', sector: null, location: null, lastScannedAt: null }),
+    async () => ({ exists: false }),
+    async () => [],
+  );
+  const res = fakeRes();
+
+  await getPortfolioScores(tenantReq(), res, () => assert.fail('next() should not be called'));
+
+  assert.strictEqual(res.body[0].currentTrustScore, null);
+  assert.deepStrictEqual(res.body[0].change, { status: 'no-data' });
+});
+
+test('getPortfolioScores — DB errors go to next(err), not a crash', async () => {
+  const boom = new Error('db unreachable');
+  const getPortfolioScores = createGetPortfolioScores(async () => { throw boom; });
+  const { next, calls } = fakeNext();
+
+  await getPortfolioScores(tenantReq(), fakeRes(), next);
+
+  assert.strictEqual(calls[0][0], boom);
+});
+
+// ── GET /api/portfolio/compare ───────────────────────────────────────────────
+
+const inPortfolio = (ids) => async (customerId, organisationId) => (ids.includes(organisationId) ? { id: 'p1', organisation_id: organisationId } : null);
+
+test('getPortfolioCompare — 400 (via next) when ids is missing', async () => {
+  const getPortfolioCompare = createGetPortfolioCompare(async () => assert.fail('DB should not be called'));
+  const req = tenantReq({ query: {} });
+  const { next, calls } = fakeNext();
+
+  await getPortfolioCompare(req, fakeRes(), next);
+
+  assert.ok(calls[0][0] instanceof ValidationError);
+});
+
+test('getPortfolioCompare — 400 (via next) on a malformed id in the list', async () => {
+  const getPortfolioCompare = createGetPortfolioCompare(async () => assert.fail('DB should not be called'));
+  const req = tenantReq({ query: { ids: 'ORG-000000000001,not-a-real-id' } });
+  const { next, calls } = fakeNext();
+
+  await getPortfolioCompare(req, fakeRes(), next);
+
+  assert.ok(calls[0][0] instanceof ValidationError);
+});
+
+test('getPortfolioCompare — 400 (via next) when more than the max ids are requested', async () => {
+  const tooMany = Array.from({ length: 11 }, (_, i) => `ORG-${String(i).padStart(12, '0')}`).join(',');
+  const getPortfolioCompare = createGetPortfolioCompare(async () => assert.fail('DB should not be called'));
+  const req = tenantReq({ query: { ids: tooMany } });
+  const { next, calls } = fakeNext();
+
+  await getPortfolioCompare(req, fakeRes(), next);
+
+  assert.ok(calls[0][0] instanceof ValidationError);
+});
+
+test('getPortfolioCompare — 403 when a requested id is not in the caller\'s portfolio (no partial success)', async () => {
+  const getCurrent = async () => assert.fail('getCurrent should not be called once authorisation fails');
+  const getPortfolioCompare = createGetPortfolioCompare(inPortfolio(['ORG-000000000001']), getCurrent);
+  const req = tenantReq({ query: { ids: 'ORG-000000000001,ORG-000000000002' } });
+  const res = fakeRes();
+
+  await getPortfolioCompare(req, res, () => assert.fail('next() should not be called'));
+
+  assert.strictEqual(res.statusCode, 403);
+  assert.deepStrictEqual(res.body, { success: false, error: 'Forbidden' });
+});
+
+test('getPortfolioCompare — returns each requested organisation\'s current Trust Profile Instance', async () => {
+  const instanceA = { organisationId: 'ORG-000000000001', trustScore: { value: 750, band: 'Good' } };
+  const getCurrent = async (id) => (id === 'ORG-000000000001' ? { exists: true, instance: instanceA } : { exists: false });
+  const getPortfolioCompare = createGetPortfolioCompare(
+    inPortfolio(['ORG-000000000001', 'ORG-000000000002']),
+    getCurrent,
+  );
+  const req = tenantReq({ query: { ids: 'ORG-000000000001,ORG-000000000002' } });
+  const res = fakeRes();
+
+  await getPortfolioCompare(req, res, () => assert.fail('next() should not be called'));
+
+  assert.deepStrictEqual(res.body, {
+    success: true,
+    organisations: [
+      { organisationId: 'ORG-000000000001', trustProfile: instanceA },
+      { organisationId: 'ORG-000000000002', trustProfile: null },
+    ],
+  });
+});
+
+test('getPortfolioCompare — DB errors go to next(err), not a crash', async () => {
+  const boom = new Error('db unreachable');
+  const getPortfolioCompare = createGetPortfolioCompare(async () => { throw boom; });
+  const req = tenantReq({ query: { ids: 'ORG-000000000001' } });
+  const { next, calls } = fakeNext();
+
+  await getPortfolioCompare(req, fakeRes(), next);
+
+  assert.strictEqual(calls[0][0], boom);
 });

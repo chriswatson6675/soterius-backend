@@ -9,6 +9,13 @@ const { summariseById } = require('../../organisation/summarise');
 const { requireAuth }   = require('../middleware/requireAuth');
 const { attachTenant }  = require('../middleware/attachTenant');
 const { requireTenant } = require('../middleware/requireTenant');
+const store = require('../../trust-intelligence/store');
+const { computeChangeIndicator } = require('../../trust-intelligence/change-indicator');
+
+// Same non-oracle principle as requirePortfolio.js: /compare responds
+// identically (404) whether a requested id doesn't exist globally or simply
+// isn't in the caller's portfolio, so the response never discloses which.
+const MAX_COMPARE_IDS = 10; // small, deliberate cap — bounds fan-out of N getCurrent() calls per request
 
 // Canonical organisation id shape, per organisation/identity.js#canonicalOrgId:
 // "ORG-" + the first 12 hex chars of a SHA-1, upper-cased. This is the ONLY
@@ -72,6 +79,80 @@ function createPostPortfolio(addPortfolioItemFn = addPortfolioItem, reverseFn = 
   };
 }
 
+// GET /api/portfolio/scores
+// Same portfolio listing as GET /, plus each item's current Trust Score and
+// change indicator (composed from the existing Trust Intelligence store —
+// no new scoring). An item with no Trust Profile yet is not an error: it
+// hydrates to currentTrustScore: null and change: { status: 'no-data' }.
+// Registered before the /:organisationId param route (and before /compare's
+// query-string route, for clarity) so Express's path-based matching can
+// never treat "scores" as an :organisationId value.
+function createGetPortfolioScores(
+  getPortfolioItemsFn = getPortfolioItems,
+  summariseFn = summariseById,
+  getCurrentFn = store.getCurrent,
+  getHistoryFn = store.getHistory,
+) {
+  return async function getPortfolioScores(req, res, next) {
+    try {
+      const items = await getPortfolioItemsFn(req.tenant.customer.id);
+      const hydrated = await Promise.all(items.map(async (item) => {
+        const [current, history] = await Promise.all([
+          getCurrentFn(item.organisationId),
+          getHistoryFn(item.organisationId),
+        ]);
+        return {
+          ...item,
+          organisation: summariseFn(item.organisationId),
+          currentTrustScore: current.exists ? current.instance.trustScore.value : null,
+          change: computeChangeIndicator(history),
+        };
+      }));
+      res.json(hydrated);
+    } catch (err) {
+      next(err);
+    }
+  };
+}
+
+// GET /api/portfolio/compare?ids=ORG-AAA,ORG-BBB,...
+// Returns the full current Trust Profile Instance for each requested
+// organisation — but only for ids already in the caller's portfolio.
+// All-or-nothing: any malformed id is a 400, any id not in this tenant's
+// portfolio is the SAME 403 whether it doesn't exist globally or simply
+// isn't tracked here (requirePortfolio.js's non-oracle convention), and
+// either failure aborts the whole request rather than partially succeeding.
+function createGetPortfolioCompare(getPortfolioItemFn = getPortfolioItem, getCurrentFn = store.getCurrent) {
+  return async function getPortfolioCompare(req, res, next) {
+    try {
+      const raw = typeof req.query.ids === 'string' ? req.query.ids : '';
+      const ids = raw.split(',').map((id) => id.trim()).filter(Boolean);
+
+      if (ids.length === 0) throw new ValidationError('ids query parameter is required');
+      if (ids.length > MAX_COMPARE_IDS) {
+        throw new ValidationError(`ids accepts at most ${MAX_COMPARE_IDS} organisations`);
+      }
+      for (const id of ids) {
+        if (!ORG_ID_RE.test(id)) throw new ValidationError(`ids contains a malformed organisation id: ${id}`);
+      }
+
+      for (const id of ids) {
+        const item = await getPortfolioItemFn(req.tenant.customer.id, id);
+        if (!item) return res.status(403).json({ success: false, error: 'Forbidden' });
+      }
+
+      const organisations = await Promise.all(ids.map(async (organisationId) => {
+        const current = await getCurrentFn(organisationId);
+        return { organisationId, trustProfile: current.exists ? current.instance : null };
+      }));
+
+      res.json({ success: true, organisations });
+    } catch (err) {
+      next(err);
+    }
+  };
+}
+
 // DELETE /api/portfolio/:organisationId
 function createDeletePortfolio(getPortfolioItemFn = getPortfolioItem, removePortfolioItemFn = removePortfolioItem) {
   return async function deletePortfolio(req, res, next) {
@@ -95,11 +176,15 @@ function createDeletePortfolio(getPortfolioItemFn = getPortfolioItem, removePort
 // public behaviour to preserve, so there is nothing to roll back.
 router.use(requireAuth, attachTenant, requireTenant);
 
+router.get('/scores',             createGetPortfolioScores());
+router.get('/compare',            createGetPortfolioCompare());
 router.get('/',                   createGetPortfolio());
 router.post('/',                  createPostPortfolio());
 router.delete('/:organisationId', createDeletePortfolio());
 
 module.exports = router;
-module.exports.createGetPortfolio    = createGetPortfolio;
-module.exports.createPostPortfolio   = createPostPortfolio;
-module.exports.createDeletePortfolio = createDeletePortfolio;
+module.exports.createGetPortfolio        = createGetPortfolio;
+module.exports.createPostPortfolio       = createPostPortfolio;
+module.exports.createDeletePortfolio     = createDeletePortfolio;
+module.exports.createGetPortfolioScores  = createGetPortfolioScores;
+module.exports.createGetPortfolioCompare = createGetPortfolioCompare;

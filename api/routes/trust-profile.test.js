@@ -10,6 +10,7 @@ const {
   createGetCurrentAuthenticated,
   createGetCurrentPublic,
   createGetHistory,
+  createGetChange,
 } = require('./trust-profile');
 
 function fakeRes() {
@@ -122,5 +123,45 @@ describe('GET /:id/history', () => {
     assert.strictEqual(res.statusCode, 200);
     assert.strictEqual(res.body.history.length, 2);
     assert.strictEqual(res.body.history[0].generatedAt, '2026-07-01T00:00:00.000Z');
+  });
+});
+
+describe('GET /:id/change', () => {
+  test('delegates to getHistory + computeChangeIndicator, wraps in { success, organisationId, change }', async () => {
+    const calledWith = [];
+    const handler = createGetChange({
+      getHistory: async (id) => { calledWith.push(id); return ['fake-history']; },
+      computeChangeIndicator: (history) => {
+        assert.deepStrictEqual(history, ['fake-history']);
+        return { status: 'ok', current: 750, previous: 700, delta: 50, direction: 'up' };
+      },
+    });
+    const res = fakeRes();
+    await handler({ params: { id: 'ORG-1' } }, res, () => assert.fail());
+
+    assert.deepStrictEqual(calledWith, ['ORG-1']);
+    assert.strictEqual(res.statusCode, 200);
+    assert.deepStrictEqual(res.body, {
+      success: true,
+      organisationId: 'ORG-1',
+      change: { status: 'ok', current: 750, previous: 700, delta: 50, direction: 'up' },
+    });
+  });
+
+  test('no history → change status "no-data", still 200', async () => {
+    const handler = createGetChange({ getHistory: async () => [] });
+    const res = fakeRes();
+    await handler({ params: { id: 'ORG-1' } }, res, () => assert.fail());
+    assert.strictEqual(res.statusCode, 200);
+    assert.deepStrictEqual(res.body.change, { status: 'no-data' });
+  });
+
+  test('a DB failure surfaces via next(err), not a crash', async () => {
+    const boom = new Error('db unreachable');
+    const handler = createGetChange({ getHistory: async () => { throw boom; } });
+    const res = fakeRes();
+    let caught;
+    await handler({ params: { id: 'ORG-1' } }, res, (err) => { caught = err; });
+    assert.strictEqual(caught, boom);
   });
 });
