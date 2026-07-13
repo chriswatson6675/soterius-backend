@@ -213,13 +213,13 @@ test('getPortfolioScores — hydrates each item with organisation summary, curre
   const items = [{ id: 'p1', organisationId: 'ORG-000000000001', isHome: true, organisation: null }];
   const summarise = (id) => ({ id, name: 'Smith LLP', domain: 'smithllp.co.uk', sector: null, location: null, lastScannedAt: null });
   const getCurrent = async (id) => (id === 'ORG-000000000001' ? { exists: true, instance: { trustScore: { value: 750, band: 'Good' } } } : { exists: false });
-  const getHistory = async (id) => (id === 'ORG-000000000001'
+  const getRecentHistory = async (id) => (id === 'ORG-000000000001'
     ? [
       { generatedAt: '2026-06-01T00:00:00.000Z', instance: { trustScore: { value: 700 } } },
       { generatedAt: '2026-07-01T00:00:00.000Z', instance: { trustScore: { value: 750 } } },
     ]
     : []);
-  const getPortfolioScores = createGetPortfolioScores(async () => items, summarise, getCurrent, getHistory);
+  const getPortfolioScores = createGetPortfolioScores(async () => items, summarise, getCurrent, getRecentHistory);
   const res = fakeRes();
 
   await getPortfolioScores(tenantReq(), res, () => assert.fail('next() should not be called'));
@@ -244,6 +244,30 @@ test('getPortfolioScores — an organisation with no Trust Profile yet hydrates 
 
   assert.strictEqual(res.body[0].currentTrustScore, null);
   assert.deepStrictEqual(res.body[0].change, { status: 'no-data' });
+});
+
+test('getPortfolioScores — fetches only the bounded recent-history window (2 rows), never the full History', async () => {
+  // Production Readiness Audit finding: this endpoint used to call
+  // store.getHistory() (unbounded — every instance ever generated) per
+  // portfolio item purely to diff the last two rows. It must now call the
+  // bounded store.getRecentHistory(id, 2) instead.
+  const items = [{ id: 'p1', organisationId: 'ORG-000000000001', isHome: true, organisation: null }];
+  const calls = [];
+  const getRecentHistory = async (id, limit) => {
+    calls.push([id, limit]);
+    return [];
+  };
+  const getPortfolioScores = createGetPortfolioScores(
+    async () => items,
+    (id) => ({ id, name: 'Smith LLP', domain: 'smithllp.co.uk', sector: null, location: null, lastScannedAt: null }),
+    async () => ({ exists: false }),
+    getRecentHistory,
+  );
+  const res = fakeRes();
+
+  await getPortfolioScores(tenantReq(), res, () => assert.fail('next() should not be called'));
+
+  assert.deepStrictEqual(calls, [['ORG-000000000001', 2]]);
 });
 
 test('getPortfolioScores — DB errors go to next(err), not a crash', async () => {
@@ -322,6 +346,26 @@ test('getPortfolioCompare — returns each requested organisation\'s current Tru
       { organisationId: 'ORG-000000000002', trustProfile: null },
     ],
   });
+});
+
+test('getPortfolioCompare — routes each instance through authenticatedProjection(), the same projection GET /:id and /:id/history use', async () => {
+  // Production Readiness Audit finding: this endpoint used to return
+  // current.instance verbatim, bypassing the projection layer every other
+  // Trust Profile read route goes through. Asserting the result is a
+  // distinct object (not the same reference as the store's instance) proves
+  // it actually passed through authenticatedProjection()'s `{ ...instance }`
+  // rather than merely happening to look the same.
+  const instanceA = { organisationId: 'ORG-000000000001', trustScore: { value: 750, band: 'Good' } };
+  const getCurrent = async () => ({ exists: true, instance: instanceA });
+  const getPortfolioCompare = createGetPortfolioCompare(inPortfolio(['ORG-000000000001']), getCurrent);
+  const req = tenantReq({ query: { ids: 'ORG-000000000001' } });
+  const res = fakeRes();
+
+  await getPortfolioCompare(req, res, () => assert.fail('next() should not be called'));
+
+  const [result] = res.body.organisations;
+  assert.deepStrictEqual(result.trustProfile, instanceA);
+  assert.notStrictEqual(result.trustProfile, instanceA);
 });
 
 test('getPortfolioCompare — DB errors go to next(err), not a crash', async () => {

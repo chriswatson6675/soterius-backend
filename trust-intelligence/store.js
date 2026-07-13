@@ -70,4 +70,23 @@ async function getHistory(organisationId, deps = {}) {
   return (data || []).map((row) => ({ generatedAt: row.generated_at, instance: row.instance }));
 }
 
-module.exports = { save, getCurrent, getHistory };
+/**
+ * getRecentHistory(organisationId, limit, deps) → Array<{ generatedAt, instance }>,
+ * newest-first, at most `limit` rows. Same table and shape as getHistory(),
+ * but bounded at the query layer — for a caller (e.g. a change indicator)
+ * that only ever needs the most recent few instances, not the full History.
+ */
+async function getRecentHistory(organisationId, limit, deps = {}) {
+  const client = deps.client || getClient();
+  const { data, error } = await client
+    .from('trust_profile_instances')
+    .select('generated_at, instance')
+    .eq('organisation_id', organisationId)
+    .order('generated_at', { ascending: false })
+    .limit(limit);
+
+  if (error) throw new Error(`trust_profile_instances recent history read failed: ${error.message}`);
+  return (data || []).map((row) => ({ generatedAt: row.generated_at, instance: row.instance }));
+}
+
+module.exports = { save, getCurrent, getHistory, getRecentHistory };

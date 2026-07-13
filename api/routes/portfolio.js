@@ -11,6 +11,13 @@ const { attachTenant }  = require('../middleware/attachTenant');
 const { requireTenant } = require('../middleware/requireTenant');
 const store = require('../../trust-intelligence/store');
 const { computeChangeIndicator } = require('../../trust-intelligence/change-indicator');
+const { authenticatedProjection } = require('../../trust-intelligence/projections');
+
+// computeChangeIndicator only ever looks at the two most recent instances —
+// fetching that bounded window at the query layer (rather than the full
+// History via store.getHistory) keeps this endpoint's cost independent of
+// how much History an Organisation has accumulated.
+const CHANGE_INDICATOR_HISTORY_WINDOW = 2;
 
 // Same non-oracle principle as requirePortfolio.js: /compare responds
 // identically (404) whether a requested id doesn't exist globally or simply
@@ -91,21 +98,21 @@ function createGetPortfolioScores(
   getPortfolioItemsFn = getPortfolioItems,
   summariseFn = summariseById,
   getCurrentFn = store.getCurrent,
-  getHistoryFn = store.getHistory,
+  getRecentHistoryFn = store.getRecentHistory,
 ) {
   return async function getPortfolioScores(req, res, next) {
     try {
       const items = await getPortfolioItemsFn(req.tenant.customer.id);
       const hydrated = await Promise.all(items.map(async (item) => {
-        const [current, history] = await Promise.all([
+        const [current, recentHistory] = await Promise.all([
           getCurrentFn(item.organisationId),
-          getHistoryFn(item.organisationId),
+          getRecentHistoryFn(item.organisationId, CHANGE_INDICATOR_HISTORY_WINDOW),
         ]);
         return {
           ...item,
           organisation: summariseFn(item.organisationId),
           currentTrustScore: current.exists ? current.instance.trustScore.value : null,
-          change: computeChangeIndicator(history),
+          change: computeChangeIndicator(recentHistory),
         };
       }));
       res.json(hydrated);
@@ -143,7 +150,11 @@ function createGetPortfolioCompare(getPortfolioItemFn = getPortfolioItem, getCur
 
       const organisations = await Promise.all(ids.map(async (organisationId) => {
         const current = await getCurrentFn(organisationId);
-        return { organisationId, trustProfile: current.exists ? current.instance : null };
+        // Same projection every other Trust Profile read route uses
+        // (trust-profile.js's GET /:id and /:id/history) — never the raw
+        // stored instance — so a future change to what the Authenticated
+        // Projection redacts applies here too, not just there.
+        return { organisationId, trustProfile: current.exists ? authenticatedProjection(current.instance) : null };
       }));
 
       res.json({ success: true, organisations });
