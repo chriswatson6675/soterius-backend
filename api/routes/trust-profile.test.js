@@ -12,6 +12,7 @@ const {
   createGetHistory,
   createGetChange,
   createGetReportPdf,
+  createGetRecommendations,
 } = require('./trust-profile');
 
 function fakeRes() {
@@ -240,6 +241,50 @@ describe('GET /:id/report.pdf', () => {
     const res = fakePdfRes();
     let caught;
     await handler({ params: { id: 'ORG-1' }, query: {}, tenant: null }, res, (err) => { caught = err; });
+    assert.strictEqual(caught, boom);
+  });
+});
+
+// GET /:id/recommendations — Recommendation Derivation (ADR-SYS-012, draft
+// ENG-044). Mirrors GET /:id/change's shape: the route performs no
+// computation of its own, it delegates entirely to
+// recommendation-derivation.js's pure deriveRecommendations().
+describe('GET /:id/recommendations', () => {
+  test('delegates to getCurrent + deriveRecommendations, wraps the derivation result in { success }', async () => {
+    const inst = instance({ componentBreakdown: [{ id: 'spf', category: 'A', weight: 100, observed: true, earned: 20 }] });
+    let derivedFrom = null;
+    const handler = createGetRecommendations({
+      getCurrent: async () => ({ exists: true, instance: inst }),
+      deriveRecommendations: (passedInstance) => {
+        derivedFrom = passedInstance;
+        return { organisationId: 'ORG-1', trustProfileGeneratedAt: inst.generatedAt, derivationVersion: 'REC-DERIVE-v1.0', recommendations: [{ componentId: 'spf' }] };
+      },
+    });
+    const res = fakeRes();
+
+    await handler({ params: { id: 'ORG-1' } }, res, () => assert.fail());
+
+    assert.strictEqual(derivedFrom, inst);
+    assert.strictEqual(res.statusCode, 200);
+    assert.strictEqual(res.body.success, true);
+    assert.strictEqual(res.body.derivationVersion, 'REC-DERIVE-v1.0');
+    assert.strictEqual(res.body.recommendations.length, 1);
+  });
+
+  test('not yet generated → 404, never a silent empty array standing in for "no instance"', async () => {
+    const handler = createGetRecommendations({ getCurrent: async () => ({ exists: false }) });
+    const res = fakeRes();
+    await handler({ params: { id: 'ORG-1' } }, res, () => assert.fail());
+    assert.strictEqual(res.statusCode, 404);
+    assert.strictEqual(res.body.success, false);
+  });
+
+  test('a DB failure surfaces via next(err), not a crash', async () => {
+    const boom = new Error('db unreachable');
+    const handler = createGetRecommendations({ getCurrent: async () => { throw boom; } });
+    const res = fakeRes();
+    let caught;
+    await handler({ params: { id: 'ORG-1' } }, res, (err) => { caught = err; });
     assert.strictEqual(caught, boom);
   });
 });

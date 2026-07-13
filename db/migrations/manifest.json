@@ -70,6 +70,7 @@
     "045_security_function_hardening.sql",
     "046_trust_score_weight_sets.sql",
     "047_trust_profile_instances.sql",
-    "048_trust_intelligence_sweep_runs.sql"
+    "048_trust_intelligence_sweep_runs.sql",
+    "049_compliance_evidence_events.sql"
   ]
 }

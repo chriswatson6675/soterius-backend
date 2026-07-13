@@ -29,6 +29,7 @@ const { generateTrustProfile } = require('../../trust-intelligence/generate-trus
 const { publicProjection, authenticatedProjection } = require('../../trust-intelligence/projections');
 const { getBenchmarkOverlay } = require('../../trust-intelligence/benchmark-overlay');
 const { computeChangeIndicator } = require('../../trust-intelligence/change-indicator');
+const { deriveRecommendations } = require('../../trust-intelligence/recommendation-derivation');
 const { generateTrustProfilePdf } = require('../services/trust-profile-pdf');
 const resolve = require('../../organisation/resolve');
 
@@ -165,10 +166,35 @@ function createGetReportPdf(deps = {}) {
   };
 }
 
+// GET /:id/recommendations — Recommendation Derivation (ADR-SYS-012,
+// draft ENG-044). Same shape as GET /:id/change: this route performs no
+// computation of its own, it delegates entirely to
+// recommendation-derivation.js's pure function over the current instance.
+// Never persisted (RD-6) — computed fresh on every request. 404s under the
+// same honest "not yet generated" contract as every other /:id route
+// (never a silent empty array standing in for "no instance exists").
+function createGetRecommendations(deps = {}) {
+  const getCurrent = deps.getCurrent || store.getCurrent;
+  const derive = deps.deriveRecommendations || deriveRecommendations;
+
+  return async function getRecommendationsHandler(req, res, next) {
+    try {
+      const current = await getCurrent(req.params.id);
+      if (!current.exists) {
+        return res.status(404).json({ success: false, error: 'not yet generated' });
+      }
+      res.status(200).json({ success: true, ...derive(current.instance) });
+    } catch (err) {
+      next(err);
+    }
+  };
+}
+
 router.get('/:id/public', createGetCurrentPublic());
 router.get('/:id/history', requireAuth, attachTenant, createGetHistory());
 router.get('/:id/change', requireAuth, attachTenant, createGetChange());
 router.get('/:id/report.pdf', requireAuth, attachTenant, createGetReportPdf());
+router.get('/:id/recommendations', requireAuth, attachTenant, createGetRecommendations());
 router.get('/:id', requireAuth, attachTenant, createGetCurrentAuthenticated());
 
 module.exports = router;
@@ -177,3 +203,4 @@ module.exports.createGetCurrentPublic = createGetCurrentPublic;
 module.exports.createGetHistory = createGetHistory;
 module.exports.createGetChange = createGetChange;
 module.exports.createGetReportPdf = createGetReportPdf;
+module.exports.createGetRecommendations = createGetRecommendations;

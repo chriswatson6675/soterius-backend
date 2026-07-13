@@ -209,7 +209,7 @@ test('deletePortfolio — a DB failure on removal surfaces as an AppError to nex
 
 // ── GET /api/portfolio/scores ────────────────────────────────────────────────
 
-test('getPortfolioScores — hydrates each item with organisation summary, currentTrustScore and change', async () => {
+test('getPortfolioScores — hydrates each item with organisation summary, currentTrustScore, change, and lastReviewedAt', async () => {
   const items = [{ id: 'p1', organisationId: 'ORG-000000000001', isHome: true, organisation: null }];
   const summarise = (id) => ({ id, name: 'Smith LLP', domain: 'smithllp.co.uk', sector: null, location: null, lastScannedAt: null });
   const getCurrent = async (id) => (id === 'ORG-000000000001' ? { exists: true, instance: { trustScore: { value: 750, band: 'Good' } } } : { exists: false });
@@ -219,7 +219,8 @@ test('getPortfolioScores — hydrates each item with organisation summary, curre
       { generatedAt: '2026-07-01T00:00:00.000Z', instance: { trustScore: { value: 750 } } },
     ]
     : []);
-  const getPortfolioScores = createGetPortfolioScores(async () => items, summarise, getCurrent, getRecentHistory);
+  const getLastReviewedAt = async (id) => (id === 'ORG-000000000001' ? '2026-07-05T00:00:00.000Z' : null);
+  const getPortfolioScores = createGetPortfolioScores(async () => items, summarise, getCurrent, getRecentHistory, getLastReviewedAt);
   const res = fakeRes();
 
   await getPortfolioScores(tenantReq(), res, () => assert.fail('next() should not be called'));
@@ -228,6 +229,7 @@ test('getPortfolioScores — hydrates each item with organisation summary, curre
   assert.strictEqual(res.body[0].organisationId, 'ORG-000000000001');
   assert.strictEqual(res.body[0].currentTrustScore, 750);
   assert.deepStrictEqual(res.body[0].change, { status: 'ok', current: 750, previous: 700, delta: 50, direction: 'up' });
+  assert.strictEqual(res.body[0].lastReviewedAt, '2026-07-05T00:00:00.000Z');
 });
 
 test('getPortfolioScores — an organisation with no Trust Profile yet hydrates to null/no-data, not an error', async () => {
@@ -237,6 +239,7 @@ test('getPortfolioScores — an organisation with no Trust Profile yet hydrates 
     (id) => ({ id, name: 'New Co', domain: 'newco.co.uk', sector: null, location: null, lastScannedAt: null }),
     async () => ({ exists: false }),
     async () => [],
+    async () => null,
   );
   const res = fakeRes();
 
@@ -244,6 +247,22 @@ test('getPortfolioScores — an organisation with no Trust Profile yet hydrates 
 
   assert.strictEqual(res.body[0].currentTrustScore, null);
   assert.deepStrictEqual(res.body[0].change, { status: 'no-data' });
+});
+
+test('getPortfolioScores — an organisation never reviewed hydrates lastReviewedAt to null, not an error', async () => {
+  const items = [{ id: 'p1', organisationId: 'ORG-000000000002', isHome: false, organisation: null }];
+  const getPortfolioScores = createGetPortfolioScores(
+    async () => items,
+    (id) => ({ id, name: 'New Co', domain: 'newco.co.uk', sector: null, location: null, lastScannedAt: null }),
+    async () => ({ exists: false }),
+    async () => [],
+    async () => null,
+  );
+  const res = fakeRes();
+
+  await getPortfolioScores(tenantReq(), res, () => assert.fail('next() should not be called'));
+
+  assert.strictEqual(res.body[0].lastReviewedAt, null);
 });
 
 test('getPortfolioScores — fetches only the bounded recent-history window (2 rows), never the full History', async () => {
@@ -262,6 +281,7 @@ test('getPortfolioScores — fetches only the bounded recent-history window (2 r
     (id) => ({ id, name: 'Smith LLP', domain: 'smithllp.co.uk', sector: null, location: null, lastScannedAt: null }),
     async () => ({ exists: false }),
     getRecentHistory,
+    async () => null,
   );
   const res = fakeRes();
 

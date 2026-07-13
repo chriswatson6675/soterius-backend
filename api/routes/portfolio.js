@@ -12,6 +12,7 @@ const { requireTenant } = require('../middleware/requireTenant');
 const store = require('../../trust-intelligence/store');
 const { computeChangeIndicator } = require('../../trust-intelligence/change-indicator');
 const { authenticatedProjection } = require('../../trust-intelligence/projections');
+const complianceEvidenceStore = require('../../compliance-evidence/store');
 
 // computeChangeIndicator only ever looks at the two most recent instances —
 // fetching that bounded window at the query layer (rather than the full
@@ -87,32 +88,39 @@ function createPostPortfolio(addPortfolioItemFn = addPortfolioItem, reverseFn = 
 }
 
 // GET /api/portfolio/scores
-// Same portfolio listing as GET /, plus each item's current Trust Score and
+// Same portfolio listing as GET /, plus each item's current Trust Score,
 // change indicator (composed from the existing Trust Intelligence store —
-// no new scoring). An item with no Trust Profile yet is not an error: it
-// hydrates to currentTrustScore: null and change: { status: 'no-data' }.
-// Registered before the /:organisationId param route (and before /compare's
-// query-string route, for clarity) so Express's path-based matching can
-// never treat "scores" as an :organisationId value.
+// no new scoring), and lastReviewedAt (Compliance Advisor MVP — Compliance
+// Evidence architecture review, composed from compliance-evidence/store.js,
+// itself a derived read of the append-only event log — no new scoring, no
+// stored cadence state). An item with no Trust Profile yet is not an
+// error: it hydrates to currentTrustScore: null and change: { status:
+// 'no-data' }; an item never reviewed hydrates to lastReviewedAt: null,
+// equally not an error. Registered before the /:organisationId param route
+// (and before /compare's query-string route, for clarity) so Express's
+// path-based matching can never treat "scores" as an :organisationId value.
 function createGetPortfolioScores(
   getPortfolioItemsFn = getPortfolioItems,
   summariseFn = summariseById,
   getCurrentFn = store.getCurrent,
   getRecentHistoryFn = store.getRecentHistory,
+  getLastReviewedAtFn = complianceEvidenceStore.getLastReviewedAt,
 ) {
   return async function getPortfolioScores(req, res, next) {
     try {
       const items = await getPortfolioItemsFn(req.tenant.customer.id);
       const hydrated = await Promise.all(items.map(async (item) => {
-        const [current, recentHistory] = await Promise.all([
+        const [current, recentHistory, lastReviewedAt] = await Promise.all([
           getCurrentFn(item.organisationId),
           getRecentHistoryFn(item.organisationId, CHANGE_INDICATOR_HISTORY_WINDOW),
+          getLastReviewedAtFn(item.organisationId),
         ]);
         return {
           ...item,
           organisation: summariseFn(item.organisationId),
           currentTrustScore: current.exists ? current.instance.trustScore.value : null,
           change: computeChangeIndicator(recentHistory),
+          lastReviewedAt,
         };
       }));
       res.json(hydrated);
