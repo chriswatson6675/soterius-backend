@@ -29,14 +29,51 @@ describe('buildHtml — never recomputes a score, only presents what it is given
     assert.match(html, /Good/);
     assert.match(html, /Test Solicitors LLP/);
     assert.match(html, /Acme Compliance/);
-    assert.match(html, /ORG-1/);
+    assert.match(html, /example\.com/);
   });
 
-  test('renders each componentBreakdown entry, observed and not-observed alike', () => {
+  test('does not print the raw internal organisation id — the domain is the customer-facing identifier', () => {
     const html = buildHtml({ instance: instance(), organisationName: 'Test Solicitors LLP' });
-    assert.match(html, /SPF/i);
-    assert.match(html, /DMARC/i);
+    assert.doesNotMatch(html, /ORG-1\b/);
+  });
+
+  test('renders each componentBreakdown entry, observed and not-observed alike, as plain-English labels', () => {
+    const html = buildHtml({ instance: instance(), organisationName: 'Test Solicitors LLP' });
+    assert.match(html, /SPF \(email sender policy\)/);
+    assert.match(html, /DMARC \(email authentication\)/);
     assert.match(html, /Not observed/);
+  });
+
+  test('falls back to the raw id for an unmapped signal rather than dropping it', () => {
+    const html = buildHtml({
+      instance: instance({ componentBreakdown: [{ id: 'some-future-signal', category: 'A', weight: 100, observed: true, earned: 50 }] }),
+      organisationName: 'Test Solicitors LLP',
+    });
+    assert.match(html, /some-future-signal/);
+  });
+
+  test('every category A-I has a name matching the live app — never a bare letter code', () => {
+    const codes = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'];
+    const html = buildHtml({
+      instance: instance({
+        componentBreakdown: codes.map((code) => ({ id: `signal-${code}`, category: code, weight: 100, observed: true, earned: 50 })),
+      }),
+      organisationName: 'Test Solicitors LLP',
+    });
+    assert.match(html, /Email Trust/);
+    assert.match(html, /Domain Trust/);
+    assert.match(html, /Control Transparency Trust/);
+    assert.match(html, /TLS &amp; Certificate Trust/);
+    assert.match(html, /Ownership Trust/);
+    assert.match(html, /Infrastructure Trust/);
+    assert.match(html, /Brand &amp; Ecosystem Trust/);
+    assert.match(html, /Governance &amp; Accountability Trust/);
+    assert.match(html, /Trust Stability Analytics/);
+    // None of the 9 codes should ever appear on its own as a category label
+    // (a lone letter with no name attached, the pre-fix defect for E-I).
+    for (const code of codes) {
+      assert.doesNotMatch(html, new RegExp(`min-width:120px;">${code}<`));
+    }
   });
 
   test('renders INSUFFICIENT_OBSERVATION honestly, without fabricating a score', () => {
