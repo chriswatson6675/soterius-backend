@@ -21,6 +21,7 @@ const trustProfileRouter     = require('./api/routes/trust-profile');
 const logger = require('./infra/utils/logger');
 const { AppError } = require('./infra/utils/errors');
 const { registerCrashHandlers } = require('./infra/utils/crash-handlers');
+const { createHealthReadyHandler } = require('./infra/utils/health-ready-handler');
 
 // Production Readiness Audit (2026-07-13, ENG-043): make an otherwise-fatal
 // uncaughtException/unhandledRejection diagnosable in the logs before the
@@ -90,6 +91,16 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
+
+// Operational Deployment Sprint (ENG-044, 2026-07-13): /health is process-
+// alive-only (ENG-043's own finding) and stays that way — it's what
+// railway.json's healthcheckPath/restartPolicy depend on, and a slow or
+// down database must never cause Railway to restart an otherwise-healthy
+// process in a crash-restart loop. /health/ready is a SEPARATE, additive
+// endpoint (liveness vs. readiness — standard practice, not a redesign of
+// the existing healthcheck) for monitoring tools that specifically want to
+// know whether the database is reachable. See infra/utils/health-ready-handler.js.
+app.get('/health/ready', createHealthReadyHandler());
 
 
 app.use('/api/scan',              scanRouter);

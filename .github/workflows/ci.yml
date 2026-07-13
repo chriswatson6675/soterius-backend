@@ -1,0 +1,43 @@
+name: CI
+
+# Operational Deployment Sprint (ENG-044, 2026-07-13) — closes ENG-043's C-2
+# finding: no CI pipeline gated deploys, so a broken commit could reach
+# production unimpeded. This workflow runs the full test suite on every push
+# and PR; nothing here changes Trust Profile generation or Trust Intelligence
+# logic — it only runs the tests that already exist against it.
+#
+# Deliberately does not touch the live Supabase project: every one of the
+# 2,392 tests uses injected/mocked dependencies (verified by running the full
+# suite with a completely empty environment before adding this workflow), so
+# no secrets are needed here and none are configured. db:verify is a static
+# check (manifest vs. disk migration files) with no DB connection either.
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: ['**']
+
+jobs:
+  test:
+    name: Backend test suite
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Migration manifest verification (static, no DB connection)
+        run: npm run db:verify
+
+      - name: Run test suite
+        run: npm test

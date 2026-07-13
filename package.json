@@ -17,6 +17,7 @@
     "create:ops-user": "node tooling/create-ops-user.js",
     "worker": "node acquisition/workers/sra-worker.js",
     "worker:fca": "node acquisition/workers/fca-observatory-worker.js",
+    "sweep:trust-profiles": "node trust-intelligence/triggers/run-scheduled-sweep-cli.js",
     "acquire:fca": "node acquisition/acquire-fca.js",
     "resolve:ambiguous": "node acquisition/resolve-ambiguous.js",
     "enrich:registry": "node acquisition/enrich-registry.js"
