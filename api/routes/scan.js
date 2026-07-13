@@ -10,8 +10,25 @@ const { executeTrustProfileScan } = require('../services/trustprofile-scan-servi
 const derivation = require('../services/scan-derivation-service');
 const { generatePDF }           = require('../pdf-generator/generator');
 const { adaptScannersForPDF }   = require('../../infra/utils/pdfAdapter');
+const { createPublicScanRateLimit } = require('../middleware/publicScanRateLimit');
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// ── Per-IP rate limiting (ENG-028 C-1) ──────────────────────────────────────
+//
+// This router had no abuse protection at all — unlike POST /api/public-scan,
+// which ENG-010/ENG-013 already gated behind its own composed protection
+// layer (see public-scan.js). The domain-cooldown and concurrency-guard
+// axes of that layer are keyed on the observation_sessions ledger, which
+// this router's pipeline (trustprofile-scan-service.js -> saveScan()) never
+// writes to, so they would be inert here and are deliberately not reused.
+// Only the transport-level, pipeline-agnostic per-IP limiter applies
+// cleanly; it is instantiated separately from public-scan's own limiter, so
+// the two routes have independent budgets. Applied router-wide (router.use,
+// before any route) so every sub-route — including the email-sending
+// /submit-gate and the PDF-generating /download-pdf/:submissionId — is
+// covered.
+router.use(...createPublicScanRateLimit());
 
 // ── POST /api/scan ────────────────────────────────────────────────────────────
 //
