@@ -48,6 +48,11 @@ let records = [].concat(
   L.loadHe(),
   L.loadPra(),
   L.loadGc1(),
+  // ENG-024 WP-3 — a source added as a row, per ARCHITECTURE.md §6 ("new
+  // evidence sources extend the platform without changing the constitutional
+  // architecture"). Empty until the first admin upload via
+  // backend/api/routes/population-imports.js.
+  L.loadHmrcAmlImport(),
 );
 
 // Assign a stable record id and normalise identifiers in one pass.
@@ -64,6 +69,14 @@ records.forEach((r, i) => {
     ukprn: N.normaliseNumericId(r.ukprn),
     cn: N.normaliseCompanyNumber(r.companyNumber),
     uuid: r.ifUuid || null,
+    // GCN-004 register-identifier namespace members (ENG-030 §2 items 1-2).
+    // No loader populates frcAudit/hmrcAml/pbsFirm yet (no FRC/HMRC-AML/PBS
+    // source is wired into the source list above) — these are additive,
+    // present-but-unpopulated fields until a future WP wires one in.
+    frcAudit: N.normaliseRegisterId(r.frcAudit),
+    hmrcAml: N.normaliseRegisterId(r.hmrcAml),
+    pbsFirm: N.normaliseRegisterId(r.pbsFirm),
+    lei: N.normaliseLei(r.lei),
   };
   r.domain = N.normaliseDomain(r.domainRaw);
   r.normName = N.normaliseName(r.name);
@@ -77,19 +90,27 @@ for (const r of records) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 2. Merge — union-find over STRONG identifiers only (never by domain alone).
-//    Shared identity: company number, FRN, SRA number, UKPRN, IF uuid.
+//    Shared identity: company number, FRN, SRA number, FRC audit-firm
+//    registration number, HMRC AML registration number, permissioned-PBS
+//    firm id, UKPRN, IF uuid, LEI (GCN-004 §F — the last four added per the
+//    Repository Authority integration package, ENG-030; ENG-031 verified
+//    zero impact on the existing dataset before this was wired in).
 // ─────────────────────────────────────────────────────────────────────────────
 console.error(`Merging ${records.length} source records…`);
 const uf = new UnionFind();
-const mergeStats = { cn: 0, frn: 0, sra: 0, ukprn: 0, uuid: 0 };
+const mergeStats = { cn: 0, frn: 0, sra: 0, frcAudit: 0, hmrcAml: 0, pbsFirm: 0, ukprn: 0, uuid: 0, lei: 0 };
 for (const r of records) {
   uf.add(r.recId);
   const keys = [];
   if (r.k.cn) keys.push(['cn', `cn:${r.k.cn}`]);
   if (r.k.frn) keys.push(['frn', `frn:${r.k.frn}`]);
   if (r.k.sra) keys.push(['sra', `sra:${r.k.sra}`]);
+  if (r.k.frcAudit) keys.push(['frcAudit', `frcAudit:${r.k.frcAudit}`]);
+  if (r.k.hmrcAml) keys.push(['hmrcAml', `hmrcAml:${r.k.hmrcAml}`]);
+  if (r.k.pbsFirm) keys.push(['pbsFirm', `pbsFirm:${r.k.pbsFirm}`]);
   if (r.k.ukprn) keys.push(['ukprn', `ukprn:${r.k.ukprn}`]);
   if (r.k.uuid) keys.push(['uuid', `uuid:${r.k.uuid}`]);
+  if (r.k.lei) keys.push(['lei', `lei:${r.k.lei}`]);
   for (const [, key] of keys) uf.union(r.recId, key);
 }
 
@@ -123,8 +144,16 @@ function identifiersOf(org) {
     companiesHouseNumber: org.identifiers.companiesHouseNumber,
     frn: org.identifiers.frn,
     sraNumber: org.identifiers.sraIdentifier,
+    // GCN-004 register-identifier namespace members (ENG-030 §2 item 5) —
+    // reach organisation/identity.js's already-implemented precedence
+    // branches for the first time via this adapter. identity.js itself is
+    // unchanged; this only feeds it fields it already knows how to rank.
+    frcAudit: org.identifiers.frcAudit,
+    hmrcAml: org.identifiers.hmrcAml,
+    pbsFirm: org.identifiers.pbsFirm,
     ukprn: org.identifiers.ukprn,
     ifUuid: org._ifUuids.length ? [...org._ifUuids].sort()[0] : null,
+    lei: org.identifiers.lei,
     normalisedName: org.normalisedName || org.organisationName || null,
     domain: org._candidates[0]?.domain || null,
   };
@@ -143,7 +172,14 @@ for (const [root, recs] of groups) {
   const sras = [...new Set(recs.map((r) => r.k.sra).filter(Boolean))].sort();
   const ukprns = [...new Set(recs.map((r) => r.k.ukprn).filter(Boolean))].sort();
   const cns = [...new Set(recs.map((r) => r.k.cn).filter(Boolean))].sort();
-  const leis = [...new Set(recs.map((r) => r.lei).filter(Boolean))].sort();
+  // GCN-004 additions (ENG-030 §2 item 4). `leis` now dedupes on the
+  // normalised value (r.k.lei), matching every other identifier's pattern —
+  // previously this deduped on the raw r.lei string (harmless while lei was
+  // storage-only, but inconsistent now that it's a merge/precedence input).
+  const leis = [...new Set(recs.map((r) => r.k.lei).filter(Boolean))].sort();
+  const frcAudits = [...new Set(recs.map((r) => r.k.frcAudit).filter(Boolean))].sort();
+  const hmrcAmls = [...new Set(recs.map((r) => r.k.hmrcAml).filter(Boolean))].sort();
+  const pbsFirms = [...new Set(recs.map((r) => r.k.pbsFirm).filter(Boolean))].sort();
   const ifUuids = [...new Set(recs.map((r) => r.ifUuid).filter(Boolean))].sort();
   const sources = [...new Set(recs.map((r) => r.source))].sort();
 
@@ -197,6 +233,12 @@ for (const [root, recs] of groups) {
       ukprn: ukprns[0] || null,
       companiesHouseNumber: companyNumber,
       lei: leis[0] || null,
+      // GCN-004 register identifiers (ENG-030 §2 item 4) — no loader
+      // populates these yet, so these are always null until a future WP
+      // wires in a source for one of them.
+      frcAudit: frcAudits[0] || null,
+      hmrcAml: hmrcAmls[0] || null,
+      pbsFirm: pbsFirms[0] || null,
     },
     companiesHouse: chProfile,
     sicCodes,
@@ -312,7 +354,15 @@ for (const org of orgs) {
     if (org._candidates.length > 0 && !verified) reasons.push('unverified-or-contested-candidate');
     if (org.candidateDomains.some((c) => !c.owner)) reasons.push('domain-owned-by-other-organisation');
     if (org._candidates.length > 1) reasons.push('multiple-candidate-domains');
-    if (!org.identifiers.frn && !org.identifiers.sraIdentifier && !org.identifiers.ukprn && !org.identifiers.companiesHouseNumber) reasons.push('no-strong-identifier');
+    // GCN-004 additions (ENG-030 §2 item 4): frcAudit/hmrcAml/pbsFirm/lei are
+    // now strong-identifier members too (GCN-004 §F) — included here so an
+    // org anchored only on one of them is not misreported as having no
+    // strong identifier at all.
+    if (!org.identifiers.frn && !org.identifiers.sraIdentifier && !org.identifiers.ukprn
+      && !org.identifiers.companiesHouseNumber && !org.identifiers.frcAudit
+      && !org.identifiers.hmrcAml && !org.identifiers.pbsFirm && !org.identifiers.lei) {
+      reasons.push('no-strong-identifier');
+    }
     if (org._frnConflict || org._cnConflict) reasons.push('conflicting-identifiers');
     org.pendingReasons = [...new Set(reasons)];
   }

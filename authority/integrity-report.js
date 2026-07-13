@@ -45,8 +45,15 @@ const IDENTITY_PROBE = [
   { companiesHouseNumber: 'OC399969' },
   { frn: '302912' },
   { sraNumber: '624547' },
+  // GCN-004 tiers (ENG-030 §2 item 8) — added so the fingerprint genuinely
+  // covers every tier organisation/identity.js's precedence implements, not
+  // just the tiers that predate GCN-004.
+  { frcAudit: 'C001234' },
+  { hmrcAml: '12137104' },
+  { pbsFirm: 'PBS-1' },
   { ukprn: '10007843' },
   { ifUuid: '073e446d-fd36-4464-b3ef-8e0e989d6f69' },
+  { lei: 'BFXS5XCH7N0Y05NIXW11' },
   { normalisedName: 'PROBE FIRM', domain: 'probe.example' },
   { normalisedName: 'PROBE FIRM', domain: null },
   {},
@@ -83,7 +90,16 @@ const STRONG_SCHEMES = [
   ['companiesHouseNumber', 'companies-house'],
   ['frn', 'fca'],
   ['sraIdentifier', 'sra'],
+  // GCN-004 additions (ENG-030 §2 item 8): frcAudit/hmrcAml/pbsFirm/lei are
+  // now strong-identifier members too (GCN-004 §F) — folded into collision
+  // detection on the same footing as the pre-existing schemes. `lei` moves
+  // from "counted only" (idCounts, below) to "counted and a collision-
+  // detection basis", closing the exact inconsistency GCN-004 §E.5 named.
+  ['frcAudit', 'frc-audit'],
+  ['hmrcAml', 'hmrc-aml'],
+  ['pbsFirm', 'pbs-firm'],
   ['ukprn', 'ukprn'],
+  ['lei', 'lei'],
 ];
 
 function apparentTier(ids, domain) {
@@ -93,7 +109,11 @@ function apparentTier(ids, domain) {
   if (ids.companiesHouseNumber) return 'cn';
   if (ids.frn) return 'frn';
   if (ids.sraIdentifier) return 'sra';
+  if (ids.frcAudit) return 'frcAudit';
+  if (ids.hmrcAml) return 'hmrcAml';
+  if (ids.pbsFirm) return 'pbsFirm';
   if (ids.ukprn) return 'ukprn';
+  if (ids.lei) return 'lei';
   if (domain) return 'nd-domain';
   return 'nd-nodomain';
 }
@@ -109,12 +129,21 @@ function computeMetrics(rows) {
   const byId = new Map(rows.map((o) => [o.organisationId, o]));
 
   // 1. Summary — strong identifiers by provider.
-  const idCounts = { companiesHouseNumber: 0, frn: 0, sraIdentifier: 0, ukprn: 0, lei: 0 };
+  const idCounts = {
+    companiesHouseNumber: 0, frn: 0, sraIdentifier: 0,
+    frcAudit: 0, hmrcAml: 0, pbsFirm: 0, // GCN-004 additions (ENG-030 §2 item 8)
+    ukprn: 0, lei: 0,
+  };
   let verifiedDomains = 0;
 
   // 2. Identity integrity — collisions per scheme (must be zero).
   const byStrongId = new Map(); // "scheme:value" -> Set<orgId>
-  const basisDistribution = { cn: 0, frn: 0, sra: 0, ukprn: 0, 'nd-domain': 0, 'nd-nodomain': 0 };
+  const basisDistribution = {
+    cn: 0, frn: 0, sra: 0,
+    frcAudit: 0, hmrcAml: 0, pbsFirm: 0, // GCN-004 additions (ENG-030 §2 item 8)
+    ukprn: 0, lei: 0,
+    'nd-domain': 0, 'nd-nodomain': 0,
+  };
 
   // 3. Reconstructability.
   let reconstructable = 0;
@@ -144,8 +173,15 @@ function computeMetrics(rows) {
       companiesHouseNumber: ids.companiesHouseNumber || null,
       frn: ids.frn || null,
       sraNumber: ids.sraIdentifier || null,
+      // GCN-004 additions (ENG-030 §2 item 8) — these ARE published (unlike
+      // ifUuid), so must be included here or every org anchored on one would
+      // be misreported as non-reconstructable.
+      frcAudit: ids.frcAudit || null,
+      hmrcAml: ids.hmrcAml || null,
+      pbsFirm: ids.pbsFirm || null,
       ukprn: ids.ukprn || null,
       ifUuid: null,
+      lei: ids.lei || null,
       normalisedName: o.normalisedName || o.organisationName || null,
       domain,
     });
@@ -153,7 +189,8 @@ function computeMetrics(rows) {
     if (reconstructed === o.organisationId || reconstructed === publishedBase) {
       reconstructable++;
     } else {
-      const hasStrong = ids.companiesHouseNumber || ids.frn || ids.sraIdentifier || ids.ukprn;
+      const hasStrong = ids.companiesHouseNumber || ids.frn || ids.sraIdentifier
+        || ids.frcAudit || ids.hmrcAml || ids.pbsFirm || ids.ukprn || ids.lei;
       nonReconstructable.push({
         organisationId: o.organisationId,
         name: o.organisationName,
@@ -181,7 +218,8 @@ function computeMetrics(rows) {
     if (orgIds.length < 2) continue;
     const strongHeld = orgIds.filter((id) => {
       const x = byId.get(id).identifiers || {};
-      return x.companiesHouseNumber || x.frn || x.sraIdentifier || x.ukprn;
+      return x.companiesHouseNumber || x.frn || x.sraIdentifier
+        || x.frcAudit || x.hmrcAml || x.pbsFirm || x.ukprn || x.lei;
     }).length;
     reviewGroups.push({
       key,
@@ -202,6 +240,10 @@ function computeMetrics(rows) {
         companiesHouse: idCounts.companiesHouseNumber,
         fca: idCounts.frn,
         sra: idCounts.sraIdentifier,
+        // GCN-004 additions (ENG-030 §2 item 8).
+        frcAudit: idCounts.frcAudit,
+        hmrcAml: idCounts.hmrcAml,
+        pbsFirm: idCounts.pbsFirm,
         ukprn: idCounts.ukprn,
         lei: idCounts.lei,
       },
@@ -316,6 +358,9 @@ function renderMarkdown(snapshot) {
   L(`| Strong id — Companies House | ${m.summary.strongIdentifiersByProvider.companiesHouse} |`);
   L(`| Strong id — FCA (FRN) | ${m.summary.strongIdentifiersByProvider.fca} |`);
   L(`| Strong id — SRA | ${m.summary.strongIdentifiersByProvider.sra} |`);
+  L(`| Strong id — FRC audit-firm registration number | ${m.summary.strongIdentifiersByProvider.frcAudit} |`);
+  L(`| Strong id — HMRC AML registration number | ${m.summary.strongIdentifiersByProvider.hmrcAml} |`);
+  L(`| Strong id — permissioned-PBS firm id | ${m.summary.strongIdentifiersByProvider.pbsFirm} |`);
   L(`| Strong id — UKPRN | ${m.summary.strongIdentifiersByProvider.ukprn} |`);
   L(`| LEI (cross-jurisdiction anchor) | ${m.summary.strongIdentifiersByProvider.lei} |`);
   L('');

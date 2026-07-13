@@ -71,9 +71,37 @@ test('primaryKeyOf falls to SRA number when no CH number or FRN', () => {
   assert.strictEqual(pk, 'sra:587234');
 });
 
-test('primaryKeyOf falls to UKPRN when no CH/FRN/SRA', () => {
+test('primaryKeyOf falls to FRC audit-firm registration number when no CH/FRN/SRA (GCN-004)', () => {
   const pk = primaryKeyOf({
-    companiesHouseNumber: null, frn: null, sraNumber: null,
+    companiesHouseNumber: null, frn: null, sraNumber: null, frcAudit: 'C001234',
+    hmrcAml: '99999999', pbsFirm: 'PBS-1', ukprn: '10001234', ifUuid: 'abc-uuid',
+    lei: '213800ABCDEFGHIJ123', normalisedName: 'x', domain: 'x.com',
+  });
+  assert.strictEqual(pk, 'frcAudit:C001234');
+});
+
+test('primaryKeyOf falls to HMRC AML registration number when no CH/FRN/SRA/FRC-audit (GCN-004)', () => {
+  const pk = primaryKeyOf({
+    companiesHouseNumber: null, frn: null, sraNumber: null, frcAudit: null,
+    hmrcAml: '99999999', pbsFirm: 'PBS-1', ukprn: '10001234', ifUuid: 'abc-uuid',
+    lei: '213800ABCDEFGHIJ123', normalisedName: 'x', domain: 'x.com',
+  });
+  assert.strictEqual(pk, 'hmrcAml:99999999');
+});
+
+test('primaryKeyOf falls to the permissioned-PBS firm id when no CH/FRN/SRA/FRC-audit/HMRC-AML (GCN-004)', () => {
+  const pk = primaryKeyOf({
+    companiesHouseNumber: null, frn: null, sraNumber: null, frcAudit: null,
+    hmrcAml: null, pbsFirm: 'PBS-1', ukprn: '10001234', ifUuid: 'abc-uuid',
+    lei: '213800ABCDEFGHIJ123', normalisedName: 'x', domain: 'x.com',
+  });
+  assert.strictEqual(pk, 'pbsFirm:PBS-1');
+});
+
+test('primaryKeyOf falls to UKPRN when no CH/FRN/SRA/FRC-audit/HMRC-AML/PBS-firm', () => {
+  const pk = primaryKeyOf({
+    companiesHouseNumber: null, frn: null, sraNumber: null, frcAudit: null,
+    hmrcAml: null, pbsFirm: null,
     ukprn: '10001234', ifUuid: 'abc-uuid', normalisedName: 'x', domain: 'x.com',
   });
   assert.strictEqual(pk, 'ukprn:10001234');
@@ -87,12 +115,84 @@ test('primaryKeyOf falls to IF-UUID when no CH/FRN/SRA/UKPRN', () => {
   assert.strictEqual(pk, 'uuid:abc-uuid');
 });
 
+test('primaryKeyOf falls to LEI when no CH/FRN/SRA/FRC-audit/HMRC-AML/PBS-firm/UKPRN/IF-UUID (GCN-004 §E.5)', () => {
+  const pk = primaryKeyOf({
+    companiesHouseNumber: null, frn: null, sraNumber: null, frcAudit: null,
+    hmrcAml: null, pbsFirm: null, ukprn: null, ifUuid: null,
+    lei: '213800ABCDEFGHIJ123', normalisedName: 'x', domain: 'x.com',
+  });
+  assert.strictEqual(pk, 'lei:213800ABCDEFGHIJ123');
+});
+
 test('primaryKeyOf falls to name+domain hash when no identifier at all', () => {
   const pk = primaryKeyOf({
     companiesHouseNumber: null, frn: null, sraNumber: null,
-    ukprn: null, ifUuid: null, normalisedName: 'acme legal', domain: 'acme.co.uk',
+    ukprn: null, ifUuid: null, lei: null, normalisedName: 'acme legal', domain: 'acme.co.uk',
   });
   assert.strictEqual(pk, `nd:${sha('acme legal|acme.co.uk')}`);
+});
+
+test('GCN-004 §F: full precedence order end to end, strongest present always wins', () => {
+  const all = {
+    companiesHouseNumber: 'OC399969', frn: '123456', sraNumber: '587234',
+    frcAudit: 'C001234', hmrcAml: '99999999', pbsFirm: 'PBS-1',
+    ukprn: '10001234', ifUuid: 'abc-uuid', lei: '213800ABCDEFGHIJ123',
+    normalisedName: 'x', domain: 'x.com',
+  };
+  assert.strictEqual(primaryKeyOf(all), 'cn:OC399969');
+  assert.strictEqual(primaryKeyOf({ ...all, companiesHouseNumber: null }), 'frn:123456');
+  assert.strictEqual(primaryKeyOf({ ...all, companiesHouseNumber: null, frn: null }), 'sra:587234');
+  assert.strictEqual(
+    primaryKeyOf({ ...all, companiesHouseNumber: null, frn: null, sraNumber: null }),
+    'frcAudit:C001234'
+  );
+  assert.strictEqual(
+    primaryKeyOf({ ...all, companiesHouseNumber: null, frn: null, sraNumber: null, frcAudit: null }),
+    'hmrcAml:99999999'
+  );
+  assert.strictEqual(
+    primaryKeyOf({
+      ...all, companiesHouseNumber: null, frn: null, sraNumber: null, frcAudit: null, hmrcAml: null,
+    }),
+    'pbsFirm:PBS-1'
+  );
+  assert.strictEqual(
+    primaryKeyOf({
+      ...all, companiesHouseNumber: null, frn: null, sraNumber: null, frcAudit: null, hmrcAml: null, pbsFirm: null,
+    }),
+    'ukprn:10001234'
+  );
+  assert.strictEqual(
+    primaryKeyOf({
+      ...all,
+      companiesHouseNumber: null, frn: null, sraNumber: null, frcAudit: null, hmrcAml: null, pbsFirm: null, ukprn: null,
+    }),
+    'uuid:abc-uuid'
+  );
+  assert.strictEqual(
+    primaryKeyOf({
+      ...all,
+      companiesHouseNumber: null, frn: null, sraNumber: null, frcAudit: null, hmrcAml: null,
+      pbsFirm: null, ukprn: null, ifUuid: null,
+    }),
+    'lei:213800ABCDEFGHIJ123'
+  );
+});
+
+test('GCN-004 §H: no existing identifier is removed, renamed, or reordered — the pre-GCN-004 tiers are unaffected by callers that never populate the new fields', () => {
+  // Every caller in the repository today (build.js's identifiersOf, resolve.js's
+  // normaliseFacts) never populates frcAudit/hmrcAml/pbsFirm/lei — this proves
+  // that omitting them entirely reproduces the exact pre-GCN-004 precedence,
+  // so no existing ORG-<sha1> id is affected by this change.
+  assert.strictEqual(primaryKeyOf({ companiesHouseNumber: 'OC399969', sraNumber: '587234' }), 'cn:OC399969');
+  assert.strictEqual(primaryKeyOf({ frn: '123456', sraNumber: '587234' }), 'frn:123456');
+  assert.strictEqual(primaryKeyOf({ sraNumber: '587234', ukprn: '10001234' }), 'sra:587234');
+  assert.strictEqual(primaryKeyOf({ ukprn: '10001234', ifUuid: 'abc-uuid' }), 'ukprn:10001234');
+  assert.strictEqual(primaryKeyOf({ ifUuid: 'abc-uuid' }), 'uuid:abc-uuid');
+  assert.strictEqual(
+    primaryKeyOf({ normalisedName: 'acme legal', domain: 'acme.co.uk' }),
+    `nd:${sha('acme legal|acme.co.uk')}`
+  );
 });
 
 test('name+domain fallback tolerates missing name and missing domain independently', () => {
@@ -113,6 +213,23 @@ test('canonicalOrgId is deterministic for identical identifiers', () => {
   const a = canonicalOrgId({ sraNumber: '587234' });
   const b = canonicalOrgId({ sraNumber: '587234' });
   assert.strictEqual(a, b);
+});
+
+test('canonicalOrgId gives a keyless (non-incorporated) firm a synthetic id anchored on its regulator identifier, per GCN-004 §E.3', () => {
+  // A sole-practitioner/partnership-style firm with no company number takes
+  // its strongest available register identifier as primary — here, an HMRC
+  // AML registration number — rather than falling all the way to the
+  // fragile name+domain hash. This is the "keyless firm" case §E.3 fixes.
+  const a = canonicalOrgId({ hmrcAml: '12137104', normalisedName: 'post office limited' });
+  const b = canonicalOrgId({ hmrcAml: '12137104', normalisedName: 'a different name entirely' });
+  assert.match(a, /^ORG-[0-9A-F]{12}$/);
+  assert.strictEqual(a, b, 'the same HMRC AML registration number must always resolve to the same id regardless of a differing/varying name');
+});
+
+test('canonicalOrgId distinguishes two keyless firms by their HMRC AML registration number', () => {
+  const a = canonicalOrgId({ hmrcAml: '12137104' });
+  const b = canonicalOrgId({ hmrcAml: '99999999' });
+  assert.notStrictEqual(a, b);
 });
 
 test('canonicalOrgId differs for different identifiers', () => {

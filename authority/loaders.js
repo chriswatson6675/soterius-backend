@@ -10,6 +10,12 @@
 //     name,              // raw organisation name
 //     namePriority,      // lower = more authoritative display name
 //     frn, sraNumber, ukprn, companyNumber, lei, ifUuid,  // identifiers (raw)
+//     frcAudit, hmrcAml, pbsFirm,  // GCN-004 register identifiers (raw; not
+//                        //   yet populated by any loader below — no source
+//                        //   here is FRC/HMRC-AML/PBS-scoped. Documented so
+//                        //   the shape here mirrors organisation/identity.js's
+//                        //   GCN-004 precedence chain and batch-adapter-
+//                        //   contract.js's CANONICAL_RECORD_FIELDS exactly)
 //     domainRaw,         // raw website string as found (or null)
 //     domainSource,      // 'fca-website' | 'sra-website' | 'he-website' |
 //                        //   'observatory-if001' | 'manual-gc1' | null
@@ -285,6 +291,17 @@ function loadPra() {
     const frnKey = header.find((h) => /^frn$/i.test(h.trim()));
     const leiKey = header.find((h) => /^lei$/i.test(h.trim()));
     for (const row of rows) {
+      // Some PRA files are multi-section (e.g. "Banks incorporated outside
+      // the UK" / "UK banks" / ...), each preceded by its own repeated
+      // column-header line. parseCsvWithHeader locks onto the FIRST such
+      // line as the canonical header; every later repeat then parses as an
+      // ordinary data row unless explicitly recognised and skipped here —
+      // reusing the exact same predicate that found the real header in the
+      // first place (matchHeader), so a section repeat is caught regardless
+      // of a later section's header using slightly different wording for a
+      // column matchHeader doesn't itself check (e.g. "LEI" vs "Head Office
+      // LEI" — confirmed present in pra-banks-2606.csv; ENG-031).
+      if (matchHeader(Object.values(row))) continue;
       const frn = (row[frnKey] || '').trim();
       const name = (row[nameKey] || '').trim();
       if (!name) continue;
@@ -394,6 +411,26 @@ function loadCompaniesHouse() {
   };
 }
 
+// ── HMRC AML import (ENG-024 WP-3 — Population Onboarding, admin upload) ─────
+// Reads back the canonical records the WP-2 HMRC AML Batch Adapter
+// (backend/pae/adapters/hmrc-aml, via runBatchAdapter) already emitted for
+// the most recent admin-uploaded register — the upload route
+// (backend/api/routes/population-imports.js) writes them here. This loader
+// performs no parsing/validation/normalisation of its own: that already
+// happened once, in the adapter, per the WP-1 contract (ENG-018 §3 — never
+// duplicated). Mirrors loadObservedDomains()'s exact pattern immediately
+// below: a synchronous read of a pre-materialised ndjson snapshot, so
+// build.js's fully-synchronous load step needs no change to accommodate a
+// source whose own parsing (ODS/jszip) is unavoidably async — the
+// asynchronous adapter run happens once, upstream, in the upload route; this
+// loader only ever does a synchronous file read, exactly like every other
+// loader in this file.
+function loadHmrcAmlImport() {
+  const file = path.join(__dirname, 'inputs', 'hmrc-aml-import.ndjson');
+  if (!fs.existsSync(file)) return [];
+  return readLines(file).map((line) => JSON.parse(line));
+}
+
 // ── Frozen Observatory observation set ───────────────────────────────────────
 function loadObservedDomains() {
   const file = path.join(__dirname, 'inputs', 'observed-domains.ndjson');
@@ -414,6 +451,7 @@ module.exports = {
   loadHe,
   loadPra,
   loadGc1,
+  loadHmrcAmlImport,
   loadCompaniesHouse,
   loadObservedDomains,
 };

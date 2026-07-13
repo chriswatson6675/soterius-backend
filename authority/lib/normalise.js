@@ -71,9 +71,51 @@ function normaliseName(raw) {
   return s.length > 0 ? s : null;
 }
 
+// LEI (Legal Entity Identifier, ISO 17442): a fixed 20-character alphanumeric
+// code whose final two characters are an ISO 7064 MOD 97-10 check-digit pair
+// over the whole 20-character string (letters expanded to two-digit numbers,
+// A=10 ... Z=35, per the same algorithm IBAN uses). Rejects anything that
+// isn't exactly 20 alphanumeric characters or fails the checksum — in
+// particular, non-LEI text that would otherwise survive a naive uppercase/
+// strip pass (e.g. an embedded CSV header artifact read as if it were a data
+// value; see ENG-031, which found exactly this happening for the literal
+// text "Head Office LEI"). Deliberately does NOT enforce the "characters 5-6
+// are reserved and always '00'" convention some LEI documentation states —
+// verified against real GLEIF-issued LEIs (ENG-031's own worked examples,
+// "BFXS5XCH7N0Y05NIXW11" and "724500973ODKK3IFQ447") that this does not hold
+// in practice; enforcing it would reject valid real-world LEIs.
+function normaliseLei(raw) {
+  if (raw === null || raw === undefined) return null;
+  const s = String(raw).toUpperCase().replace(/\s+/g, '').trim();
+  if (!/^[0-9A-Z]{20}$/.test(s)) return null;
+  const expanded = s.replace(/[A-Z]/g, (ch) => String(ch.charCodeAt(0) - 55));
+  if (BigInt(expanded) % 97n !== 1n) return null;
+  return s;
+}
+
+// GCN-004 register identifiers (frcAudit, hmrcAml, pbsFirm): a generic,
+// light-touch normaliser — uppercase, strip whitespace, matching
+// normaliseCompanyNumber's non-checksum-validating style. GCN-004 §E.1
+// explicitly defers each register's exact normalisation convention to the
+// engineering task that wires in its first real source (ENG-030 §4 open
+// decision #1) — this is a deliberate placeholder, not a considered
+// per-register rule. It exists so the merge/precedence machinery has
+// something to call for these three fields today; refine per-register once
+// FRC/PBS sources are onboarded and HMRC AML's real registration-number
+// format is validated against production data (mirroring how the HMRC AML
+// adapter's own field handling was validated against the real register
+// export in WP-2, not invented up front).
+function normaliseRegisterId(raw) {
+  if (raw === null || raw === undefined) return null;
+  const s = String(raw).toUpperCase().replace(/\s+/g, '').trim();
+  return s.length > 0 ? s : null;
+}
+
 module.exports = {
   normaliseDomain,
   normaliseCompanyNumber,
   normaliseNumericId,
   normaliseName,
+  normaliseLei,
+  normaliseRegisterId,
 };

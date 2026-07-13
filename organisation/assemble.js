@@ -38,6 +38,11 @@ async function assembleById(orgId) {
     sraNumber: ids.sraIdentifier || null,
     companiesHouseNumber: ids.companiesHouseNumber || null,
     frn: ids.frn || null,
+    // GCN-004 register identifiers (ENG-030 §2 item 9) — no live adapter
+    // exists for any of these (same position `frn` is already in, below).
+    frcAudit: ids.frcAudit || null,
+    hmrcAml: ids.hmrcAml || null,
+    pbsFirm: ids.pbsFirm || null,
     name: row.organisationName || row.canonicalName || null,
     domain: row.verifiedDomain || null,
     regulators: row.regulators || [],
@@ -59,6 +64,9 @@ async function assembleFromDiscovery(input, organisationId) {
     sraNumber: input.sraNumber || null,
     companiesHouseNumber: input.companiesHouseNumber || null,
     frn: input.frn || null,
+    frcAudit: input.frcAudit || null,
+    hmrcAml: input.hmrcAml || null,
+    pbsFirm: input.pbsFirm || null,
     name: input.name || null,
     domain: input.domain || null,
     regulators: [],
@@ -116,6 +124,38 @@ async function assembleFromFacts(facts, id) {
   if (facts.frn) {
     org.identifiers.push({ scheme: 'uk.fca.frn', value: facts.frn, primary: !facts.companiesHouseNumber && !facts.sraNumber });
     org.regulators.push({ regulator: 'FCA', identifier: facts.frn, status: null });
+    org.provenance.push({
+      section: `regulators[${org.regulators.length - 1}]`, source: 'authority-dataset',
+      observedAt: null, retrievedAt: now, confidence: 'corroborated',
+    });
+  }
+
+  // GCN-004 register identifiers (ENG-030 §2 item 9) — same position as `frn`
+  // above: known from Repository Authority's batch merge, no live adapter
+  // exists for any of these yet, so the fact is recorded as corroborated
+  // rather than independently verified, exactly as `frn` already is.
+  if (facts.frcAudit) {
+    org.identifiers.push({ scheme: 'uk.frc.auditfirm', value: facts.frcAudit, primary: !facts.companiesHouseNumber && !facts.sraNumber && !facts.frn });
+    org.regulators.push({ regulator: 'FRC', identifier: facts.frcAudit, status: null });
+    org.provenance.push({
+      section: `regulators[${org.regulators.length - 1}]`, source: 'authority-dataset',
+      observedAt: null, retrievedAt: now, confidence: 'corroborated',
+    });
+  }
+  if (facts.hmrcAml) {
+    org.identifiers.push({ scheme: 'uk.hmrc.amlregistration', value: facts.hmrcAml, primary: !facts.companiesHouseNumber && !facts.sraNumber && !facts.frn && !facts.frcAudit });
+    org.regulators.push({ regulator: 'HMRC', identifier: facts.hmrcAml, status: null });
+    org.provenance.push({
+      section: `regulators[${org.regulators.length - 1}]`, source: 'authority-dataset',
+      observedAt: null, retrievedAt: now, confidence: 'corroborated',
+    });
+  }
+  if (facts.pbsFirm) {
+    org.identifiers.push({
+      scheme: 'uk.pbs.firmid', value: facts.pbsFirm,
+      primary: !facts.companiesHouseNumber && !facts.sraNumber && !facts.frn && !facts.frcAudit && !facts.hmrcAml,
+    });
+    org.regulators.push({ regulator: 'PBS', identifier: facts.pbsFirm, status: null });
     org.provenance.push({
       section: `regulators[${org.regulators.length - 1}]`, source: 'authority-dataset',
       observedAt: null, retrievedAt: now, confidence: 'corroborated',
