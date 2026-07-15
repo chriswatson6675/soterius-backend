@@ -6,17 +6,20 @@
 // fetch -> extract -> score -> persistence for all sampled candidates,
 // sequential, with a simple fixed-delay throttle. Enforces hard caps on
 // Brave calls (200), verification fetches (300), and freshness fetches
-// (100). Reads the Brave key via dotenv from the repo root .env, exactly as
-// commercial-observatory/run/check-search-provider.js does.
+// (100).
 //
-// Usage:
-//   node backend/domain-discovery-pilot/run/run-pilot.js
+// Usage (from backend/, with whichever env file holds real credentials):
+//   node --env-file=.env backend/domain-discovery-pilot/run/run-pilot.js
+//
+// Environment selection is intentionally external (Node's --env-file), not
+// hardcoded here — this file does not load any .env file itself, so it
+// never assumes a specific filename or a fixed relative path to one.
+// Required variables are checked explicitly below and fail loudly if unset,
+// rather than failing deep into a run once Brave/persistence calls start.
 //
 // Never applies the migration itself, never writes to Repository Authority,
 // never touches server.js. Persistence is best-effort per-record — a single
 // record's persistence failure is logged and does not abort the run.
-
-require('dotenv').config({ path: require('path').join(__dirname, '../../../.env') });
 
 const fs = require('fs');
 const path = require('path');
@@ -125,7 +128,20 @@ async function runPilot({
   return { sampleMeta: sampleResult, bundle, usage: { braveCallsMade, verificationFetchesMade, freshnessFetchesMade } };
 }
 
+function assertRequiredEnv() {
+  const required = ['BRAVE_SEARCH_API_KEY', 'SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'];
+  const missing = required.filter((name) => !process.env[name]);
+  if (missing.length > 0) {
+    process.stderr.write(
+      `Domain Discovery Pilot: missing required environment variable(s): ${missing.join(', ')}\n` +
+      `Run with an explicit env file, e.g.: node --env-file=.env domain-discovery-pilot/run/run-pilot.js\n`
+    );
+    process.exit(1);
+  }
+}
+
 if (require.main === module) {
+  assertRequiredEnv();
   runPilot()
     .then((result) => {
       process.stdout.write(`Domain Discovery Pilot run complete.\n`);
