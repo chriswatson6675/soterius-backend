@@ -56,6 +56,13 @@ test('decide: boundary — score 35 (postcode+telephone) is REVIEW_REQUIRED, 34 
   const result34 = decide(candidate, [entry(at34)]);
   assert.equal(result34.scoreTotal, 20);
   assert.equal(result34.decisionState, 'REJECTED_CONFLICT');
+  // Note (not a behaviour change — see score-and-decide.js's comment above
+  // its decisionState assignment): this is exactly the shape of case the
+  // five-record live smoke test surfaced — no disqualifier fired, no
+  // conflicting evidence, just insufficient corroboration — yet it lands
+  // in REJECTED_CONFLICT alongside genuine disqualifier hits. Whether this
+  // should instead route to UNRESOLVED is an open question for separate
+  // review, intentionally left undecided here.
 });
 
 test('decide: REJECTED_CONFLICT — disqualifier (conflicting company number) overrides even a high score', () => {

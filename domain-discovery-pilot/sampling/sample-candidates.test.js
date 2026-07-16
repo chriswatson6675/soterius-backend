@@ -3,7 +3,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 
-const { apportionCategoryTargets, sampleCandidates, TARGET_SAMPLE_SIZE } = require('./sample-candidates');
+const { apportionCategoryTargets, sampleCandidates, deduplicateByRegistrationNumber, DEDUP_RULE_VERSION, TARGET_SAMPLE_SIZE } = require('./sample-candidates');
 const { DERIVED_CATEGORIES } = require('./classify-candidate');
 
 // ── apportionCategoryTargets ──────────────────────────────────────────────
@@ -149,4 +149,118 @@ test('sampleCandidates: category targets never exceed each derived category popu
   for (const cat of DERIVED_CATEGORIES) {
     assert.ok(countsSelected[cat] <= (result.categoryTargets[cat] || 0) + 0); // selected == target achieved (or less if pool exhausted)
   }
+});
+
+// ── deduplicateByRegistrationNumber ───────────────────────────────────────
+// Real-world motivation (from the five-record live smoke test, verified
+// against the actual HMRC AML dataset): "POST OFFICE LIMITED" has 6,733
+// branch rows sharing one registrationNumber. Pre-fix, stratified sampling
+// operated at the row level and could select several branches of the same
+// business into one 100-record sample.
+
+function row(overrides) {
+  return { registrationNumber: '900001', businessName: 'BASE LTD', tradingName: null, postcode: null, __poolIndex: 0, ...overrides };
+}
+
+test('deduplicateByRegistrationNumber: distinct registration numbers all survive untouched', () => {
+  const rows = [
+    row({ registrationNumber: '1', __poolIndex: 0 }),
+    row({ registrationNumber: '2', __poolIndex: 1 }),
+    row({ registrationNumber: '3', __poolIndex: 2 }),
+  ];
+  const out = deduplicateByRegistrationNumber(rows);
+  assert.equal(out.length, 3);
+  for (const r of out) {
+    assert.equal(r.sourceRowCount, 1);
+    assert.equal(r.representsMultipleBranches, false);
+    assert.equal(r.representativeSelectionRuleVersion, DEDUP_RULE_VERSION);
+  }
+});
+
+test('deduplicateByRegistrationNumber: rule 1 — most complete postcode wins', () => {
+  const rows = [
+    row({ __poolIndex: 0, postcode: null }),                 // MISSING
+    row({ __poolIndex: 1, postcode: 'SW1A 1AA' }),            // COMPLETE
+    row({ __poolIndex: 2, postcode: 'GARBLEDNOTAPOSTCODE' }), // PARTIAL
+  ];
+  const out = deduplicateByRegistrationNumber(rows);
+  assert.equal(out.length, 1);
+  assert.equal(out[0].postcode, 'SW1A 1AA');
+  assert.equal(out[0].sourceRowCount, 3);
+  assert.equal(out[0].representsMultipleBranches, true);
+});
+
+test('deduplicateByRegistrationNumber: rule 2 — among equal postcode completeness, non-empty tradingName wins', () => {
+  const rows = [
+    row({ __poolIndex: 0, postcode: 'SW1A 1AA', tradingName: null }),
+    row({ __poolIndex: 1, postcode: 'EH1 1BB', tradingName: 'BRANCH B' }),
+  ];
+  const out = deduplicateByRegistrationNumber(rows);
+  assert.equal(out.length, 1);
+  assert.equal(out[0].tradingName, 'BRANCH B');
+});
+
+test('deduplicateByRegistrationNumber: rule 3 — among equal postcode completeness and trading-name presence, earliest source-row order wins', () => {
+  const rows = [
+    row({ __poolIndex: 5, postcode: 'SW1A 1AA', tradingName: 'LATER' }),
+    row({ __poolIndex: 2, postcode: 'EH1 1BB', tradingName: 'EARLIER' }),
+  ];
+  const out = deduplicateByRegistrationNumber(rows);
+  assert.equal(out.length, 1);
+  assert.equal(out[0].tradingName, 'EARLIER');
+  assert.equal(out[0].__poolIndex, 2);
+});
+
+test('deduplicateByRegistrationNumber: rule 4 — final tie-break is lexical postcode when source-row order is equal', () => {
+  // __poolIndex ties are contrived here only to exercise rule 4 directly;
+  // in real data __poolIndex is always unique, so rule 3 normally resolves first.
+  const rows = [
+    row({ __poolIndex: 0, postcode: 'ZZ1 1AA', tradingName: 'X' }),
+    row({ __poolIndex: 0, postcode: 'AA1 1AA', tradingName: 'Y' }),
+  ];
+  const out = deduplicateByRegistrationNumber(rows);
+  assert.equal(out.length, 1);
+  assert.equal(out[0].postcode, 'AA1 1AA');
+});
+
+test('deduplicateByRegistrationNumber: does not mutate or drop the underlying source rows, only selects a representative', () => {
+  const rows = [
+    row({ __poolIndex: 0, postcode: 'SW1A 1AA' }),
+    row({ __poolIndex: 1, postcode: 'EH1 1BB' }),
+  ];
+  const before = JSON.parse(JSON.stringify(rows));
+  deduplicateByRegistrationNumber(rows);
+  assert.deepEqual(rows, before);
+});
+
+test('sampleCandidates: thousands of synthetic branch rows for one registration cannot dominate the sample', async () => {
+  const rows = [];
+  let n = 1;
+  // 6,000 branches of ONE business, mirroring the real Post Office scale.
+  for (let i = 0; i < 6000; i++) {
+    rows.push({
+      rowIndex: n, registrationNumber: '12137104', businessName: 'POST OFFICE LIMITED',
+      tradingName: `BRANCH ${i}`, postcode: `SW1${i % 9}A 1AA`, status: 'Active',
+    });
+    n += 1;
+  }
+  // Plus 250 genuinely distinct businesses spanning every category, so the
+  // sample has somewhere else to go.
+  const categories = ['TRUST SERVICES', 'CURRENCY EXCHANGE', 'FINE JEWELLERS', 'PRIME ESTATE AGENTS', 'ACCURATE ACCOUNTANTS', 'SWIFT CONVEYANCING', 'GENERIC WIDGETS'];
+  for (let i = 0; i < 250; i++) {
+    rows.push({
+      rowIndex: n, registrationNumber: String(500000 + i), businessName: `${categories[i % categories.length]} ${i} LTD`,
+      tradingName: null, postcode: 'M1 1AE', status: 'Active',
+    });
+    n += 1;
+  }
+
+  const result = await sampleCandidates({ rawOdsBuffer: Buffer.from(''), hmrcAdapter: fakeAdapter(rows) });
+  const postOfficeCandidates = result.candidates.filter((c) => c.hmrcRegistrationNumber === '12137104');
+  assert.equal(postOfficeCandidates.length, 1, 'one registration must occupy at most one sample slot, however many branch rows it has');
+  if (postOfficeCandidates.length === 1) {
+    assert.equal(postOfficeCandidates[0].sourceRowCount, 6000);
+    assert.equal(postOfficeCandidates[0].representsMultipleBranches, true);
+  }
+  assert.equal(result.sampleSize, 100);
 });

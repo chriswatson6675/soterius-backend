@@ -88,6 +88,19 @@ function decide(candidate, evidenceList) {
   const best = scored.reduce((top, s) => (s.score.total > top.score.total ? s : top), scored[0]);
   const { total, breakdown, postcodeOrAddressCorroborated } = best.score;
 
+  // Open semantic question, recorded but NOT acted on here (per the
+  // approved spec's decision states, unchanged in this task): the
+  // five-record live smoke test surfaced several low-scoring-but-plausible
+  // candidates (e.g. a genuine directory listing with no corroborating
+  // evidence at all) landing in REJECTED_CONFLICT via the total < 35
+  // branch below, alongside candidates that hit an actual disqualifier
+  // (conflicting company number). Both currently share one decision state
+  // and a shared disqualifierReason value ('SCORE_BELOW_THRESHOLD') that
+  // reads like an active rejection rather than "no evidence was found to
+  // resolve this one way or the other" (arguably closer to UNRESOLVED's
+  // intent). Worth a separate, deliberate review of whether score < 35
+  // with zero corroborating evidence should route to UNRESOLVED instead —
+  // not decided or changed here.
   let decisionState;
   if (total < 35) decisionState = 'REJECTED_CONFLICT';
   else if (total >= 65 && postcodeOrAddressCorroborated) decisionState = 'ACCEPTED_HIGH_CONFIDENCE';

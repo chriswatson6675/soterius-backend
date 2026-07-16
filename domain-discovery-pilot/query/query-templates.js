@@ -29,8 +29,20 @@ function buildQueries({ businessName, postcode } = {}) {
   return queries;
 }
 
-// Fixed, bounded domain-exclusion list — aggregators/directories/social
-// platforms that can never themselves be the business's own domain.
+// Fixed, bounded, versioned domain-exclusion list — aggregators,
+// directories, business-data resellers, and regulators that can never
+// themselves be the business's own domain. Every entry is a host PATTERN:
+// isExcludedDomain matches it exactly OR as a parent of any subdomain, so
+// adding one entry (e.g. 'cylex-uk.co.uk') covers every one of its local
+// subdomains (e.g. 'shrewsbury.cylex-uk.co.uk') without listing each city.
+//
+// v1.1 (bumped from v1.0 by the five-record live smoke test, which
+// surfaced dnb.com/ico.org.uk/privco.com/cylex-uk.co.uk passing the v1.0
+// list unfiltered — none of them are a business's own domain, but the
+// pipeline's downstream scoring correctly rejected all of them anyway, so
+// this is a fetch-budget/noise fix, not a correctness fix).
+const EXCLUSION_LIST_VERSION = 'DDP-EXCL-v1.1';
+
 const EXCLUDED_DOMAINS = Object.freeze([
   'companieshouse.gov.uk',
   'gov.uk',
@@ -49,12 +61,20 @@ const EXCLUDED_DOMAINS = Object.freeze([
   'crunchbase.com',
   'bloomberg.com',
   'opencorporates.com',
+  'dnb.com',
+  'ico.org.uk',
+  'privco.com',
+  'cylex-uk.co.uk',
 ]);
 
 /**
  * isExcludedDomain(domain) — true if `domain` equals or is a subdomain of
- * any entry in EXCLUDED_DOMAINS. `domain` is expected already normalised
- * (lowercase, no scheme/www/path) via authority/lib/normalise#normaliseDomain.
+ * any entry in EXCLUDED_DOMAINS (exact host-pattern matching — a lookalike
+ * like 'notdnb.com' or 'dnb.com.evil.com' never matches, since neither
+ * equals 'dnb.com' nor ends with '.dnb.com'). `domain` is expected already
+ * normalised (lowercase, no scheme/www/path) via
+ * authority/lib/normalise#normaliseDomain, and this function is
+ * additionally case-insensitive itself as defense-in-depth.
  */
 function isExcludedDomain(domain) {
   if (!domain) return false;
@@ -62,4 +82,4 @@ function isExcludedDomain(domain) {
   return EXCLUDED_DOMAINS.some((excluded) => d === excluded || d.endsWith(`.${excluded}`));
 }
 
-module.exports = { QUERY_TEMPLATE_VERSION, buildQueries, EXCLUDED_DOMAINS, isExcludedDomain };
+module.exports = { QUERY_TEMPLATE_VERSION, EXCLUSION_LIST_VERSION, buildQueries, EXCLUDED_DOMAINS, isExcludedDomain };

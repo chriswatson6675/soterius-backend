@@ -42,6 +42,26 @@ test('insertPrefilterResult, insertQuery, insertSearchResult, insertPageFetch, i
   assert.equal(decisionResult.success, true);
 });
 
+test('insertSearchResult: passes through the provider\'s own retrievedAt when present', async () => {
+  const client = createFakeClient();
+  const result = await db.insertSearchResult('fake-query-id', {
+    rank: 1, title: 't', url: 'https://acme.com', source: 'brave', retrievedAt: '2026-07-15T12:00:00.000Z',
+  }, { client });
+  assert.equal(result.success, true);
+  assert.equal(result.data.retrieved_at, '2026-07-15T12:00:00.000Z');
+});
+
+test('insertSearchResult: omits retrieved_at entirely (letting the DB default apply) when the result has none', async () => {
+  const client = createFakeClient();
+  const result = await db.insertSearchResult('fake-query-id', {
+    rank: 1, title: 't', url: 'https://acme.com', source: 'brave',
+  }, { client });
+  assert.equal(result.success, true);
+  // fake-client stamps its own created_at, not retrieved_at — absence here
+  // confirms we didn't force a null/undefined value into a NOT NULL column.
+  assert.equal('retrieved_at' in result.data, false);
+});
+
 test('insertCandidate: error path returns {success:false, error} without throwing', async () => {
   const brokenClient = {
     from() {

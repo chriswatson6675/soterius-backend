@@ -74,7 +74,7 @@ function insertQuery(candidateId, query, deps = {}) {
 }
 
 function insertSearchResult(queryId, result, deps = {}) {
-  return insertOne('domain_discovery_pilot_search_results', {
+  const row = {
     query_id: queryId,
     rank: result.rank ?? null,
     title: result.title ?? null,
@@ -82,7 +82,12 @@ function insertSearchResult(queryId, result, deps = {}) {
     url: result.url,
     source: result.source ?? null,
     provider_metadata: result.providerMetadata ?? null,
-  }, deps);
+  };
+  // retrieved_at has a DB-side DEFAULT now() — only set it explicitly when
+  // the provider result actually carries its own retrievedAt, so a result
+  // without one still gets a sensible value instead of a NOT NULL failure.
+  if (result.retrievedAt) row.retrieved_at = result.retrievedAt;
+  return insertOne('domain_discovery_pilot_search_results', row, deps);
 }
 
 function insertPageFetch(candidateId, searchResultId, page, deps = {}) {

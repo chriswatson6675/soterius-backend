@@ -94,6 +94,95 @@ test('runPilot: respects the Brave call budget cap (never exceeds CAPS.maxBraveC
   assert.ok(result.usage.braveCallsMade <= CAPS.maxBraveCalls);
 });
 
+test('runPilot: persists the complete provenance chain candidate -> prefilter -> query -> search_result -> page_fetch -> evidence -> decision', async () => {
+  const client = createFakeClient();
+  const rows = buildRows(1);
+  const httpGet = fakeHttpGet('example.com');
+  const fetchUrlFake = fakeFetchUrl();
+
+  const result = await runPilot({
+    odsPath: __filename,
+    hmrcAdapter: fakeAdapter(rows),
+    client,
+    throttleMs: 0,
+    braveDeps: { httpGet, apiKey: 'test-key' },
+    fetchDeps: { fetchUrl: fetchUrlFake },
+  });
+
+  assert.equal(result.bundle.candidates.length, 1);
+  const candidateId = client._tables.domain_discovery_pilot_candidates[0].id;
+
+  const prefilterRows = client._tables.domain_discovery_pilot_prefilter.filter((r) => r.candidate_id === candidateId);
+  assert.equal(prefilterRows.length, 1);
+
+  const queryRows = client._tables.domain_discovery_pilot_queries.filter((r) => r.candidate_id === candidateId);
+  assert.ok(queryRows.length >= 1, 'at least one query must be persisted');
+
+  const searchResultRows = client._tables.domain_discovery_pilot_search_results.filter((r) =>
+    queryRows.some((q) => q.id === r.query_id));
+  assert.ok(searchResultRows.length >= 1, 'search_results must not be empty — this is the fix under test');
+  for (const sr of searchResultRows) {
+    assert.ok(sr.url, 'each search_result must retain its url');
+    assert.ok(sr.retrieved_at, 'each search_result must retain a retrieval time');
+  }
+
+  const pageFetchRows = client._tables.domain_discovery_pilot_page_fetches.filter((r) => r.candidate_id === candidateId);
+  assert.ok(pageFetchRows.length >= 1, 'at least one page_fetch must be persisted');
+  assert.ok(
+    pageFetchRows.some((pf) => searchResultRows.some((sr) => sr.id === pf.search_result_id)),
+    'the candidate homepage fetch must be traceable back to a real search_result id, not null',
+  );
+
+  const evidenceRows = client._tables.domain_discovery_pilot_evidence.filter((r) => r.candidate_id === candidateId);
+  assert.ok(evidenceRows.length >= 1, 'at least one evidence row must be persisted');
+  assert.ok(
+    pageFetchRows.some((pf) => evidenceRows.some((e) => e.page_fetch_id === pf.id)),
+    'evidence must link back to the page_fetch it was extracted from',
+  );
+
+  const decisionRows = client._tables.domain_discovery_pilot_decisions.filter((r) => r.candidate_id === candidateId);
+  assert.equal(decisionRows.length, 1, 'exactly one decision per candidate');
+});
+
+test('runPilot: a second result for an already-memoised domain still gets its own search_result row, without a second page_fetch', async () => {
+  const client = createFakeClient();
+  const rows = buildRows(1);
+  // Two Brave results pointing at the SAME domain (e.g. two different
+  // queries both surfacing firm1.example.com) — both must be persisted as
+  // distinct search_results, but fetchCandidatePages must only run once.
+  let fetchCallCount = 0;
+  const httpGet = async () => ({
+    status: 200,
+    headers: {},
+    data: { web: { results: [{ url: 'https://firm1.example.com/', title: 'Firm', description: 'd' }] } },
+  });
+  const fetchUrlFake = async (url) => {
+    fetchCallCount += 1;
+    return {
+      success: true, requestedUrl: url, finalUrl: url, status: 200, contentType: 'text/html',
+      body: '<html><head><title>Test Firm Limited</title></head><body>Test Firm Limited</body></html>',
+      retrievedAt: '2026-07-15T00:00:00.000Z',
+    };
+  };
+
+  await runPilot({
+    odsPath: __filename,
+    hmrcAdapter: fakeAdapter(rows),
+    client,
+    throttleMs: 0,
+    braveDeps: { httpGet, apiKey: 'test-key' },
+    fetchDeps: { fetchUrl: fetchUrlFake },
+  });
+
+  const searchResultRows = client._tables.domain_discovery_pilot_search_results;
+  // Two query templates both return the same URL -> two distinct search_result rows.
+  assert.equal(searchResultRows.length, 2);
+  const pageFetchRows = client._tables.domain_discovery_pilot_page_fetches;
+  // Only the FIRST occurrence triggers a page fetch; the memoised repeat does not.
+  assert.equal(pageFetchRows.length, 1);
+  assert.equal(pageFetchRows[0].search_result_id, searchResultRows[0].id);
+});
+
 test('runPilot: never persists to any Repository Authority table (safety) — fake client only ever sees domain_discovery_pilot_* tables', async () => {
   const client = createFakeClient();
   const rows = buildRows(2);

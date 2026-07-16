@@ -50,6 +50,8 @@ async function runPilot({
   hmrcAdapter = require('../../pae/adapters/hmrc-aml'),
   client = null,
   throttleMs = THROTTLE_MS,
+  braveDeps = {},
+  fetchDeps = {},
 } = {}) {
   const rawOdsBuffer = fs.readFileSync(odsPath);
   const sampleResult = await sampleCandidates({ rawOdsBuffer, hmrcAdapter, context: { sourceDate: new Date().toISOString() } });
@@ -86,18 +88,36 @@ async function runPilot({
     const queries = buildQueries({ businessName: candidate.businessName, postcode: candidate.postcode });
 
     if (braveCallsMade + queries.length <= CAPS.maxBraveCalls) {
-      const braveResults = await runBraveQueries(queries, {});
+      const braveResults = await runBraveQueries(queries, braveDeps);
       braveCallsMade += queries.length;
       for (const q of braveResults) {
         bundle.braveQueries.push({ candidateId, ...q });
-        if (candidateId) await db.insertQuery(candidateId, q, { client });
+        let queryId = null;
+        if (candidateId) {
+          const queryInsert = await db.insertQuery(candidateId, q, { client });
+          if (queryInsert.success) queryId = queryInsert.data.id;
+        }
 
+        // Every retained (usable) result is persisted exactly once here,
+        // regardless of whether its domain turns out to be a memoised
+        // repeat below — the search_result row records what Brave actually
+        // returned; the page_fetch it may or may not trigger is a separate
+        // concern. This is the fix for the previously-broken provenance
+        // chain: search_results was never populated because this insert
+        // didn't exist, and page_fetches always recorded search_result_id
+        // as null instead of the originating result's own id.
         for (const result of q.usableResults) {
+          let searchResultId = null;
+          if (queryId) {
+            const searchResultInsert = await db.insertSearchResult(queryId, result, { client });
+            if (searchResultInsert.success) searchResultId = searchResultInsert.data.id;
+          }
+
           const domainKey = result.normalisedDomain;
           if (domainMemo.has(domainKey)) { evidenceList.push(domainMemo.get(domainKey)); continue; }
           if (verificationFetchesMade >= CAPS.maxVerificationFetches) continue;
 
-          const pages = await fetchCandidatePages(domainKey, {});
+          const pages = await fetchCandidatePages(domainKey, fetchDeps);
           verificationFetchesMade += pages.length;
           const bestPage = pages.find((p) => p.extracted) || null;
           if (!bestPage) continue;
@@ -111,7 +131,13 @@ async function runPilot({
           evidenceList.push(entry);
 
           if (candidateId) {
-            const pageFetchInsert = await db.insertPageFetch(candidateId, null, bestPage, { client });
+            // The homepage fetch that first discovered this domain is
+            // traceable back to the Brave result that surfaced it. A later
+            // duplicate-domain result (handled by the domainMemo branch
+            // above) still gets its own search_result row but never a
+            // second page_fetch, so no page_fetch is left orphaned or
+            // double-linked.
+            const pageFetchInsert = await db.insertPageFetch(candidateId, searchResultId, bestPage, { client });
             if (pageFetchInsert.success) await db.insertEvidence(candidateId, pageFetchInsert.data.id, evidence, { client });
           }
         }

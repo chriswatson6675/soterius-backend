@@ -18,10 +18,78 @@
 // input array, so this join is safe and introduces no guessing.
 
 const { normaliseRegisterId } = require('../../authority/lib/normalise');
-const { classifyCandidate, DERIVED_CATEGORIES } = require('./classify-candidate');
+const { classifyCandidate, DERIVED_CATEGORIES, postcodeCompletenessClass } = require('./classify-candidate');
 
 const TARGET_SAMPLE_SIZE = 100;
 const CATEGORY_FLOOR = 4;
+
+// Fixed version tag for the representative-selection rule below — bump this
+// (never silently change behaviour under the same tag) if the rule changes.
+const DEDUP_RULE_VERSION = 'DDP-DEDUP-v1.0';
+
+// Lower rank = more complete = preferred. Matches classify-candidate.js's
+// own POSTCODE_COMPLETE > POSTCODE_PARTIAL > POSTCODE_MISSING ordering.
+const POSTCODE_COMPLETENESS_RANK = { POSTCODE_COMPLETE: 0, POSTCODE_PARTIAL: 1, POSTCODE_MISSING: 2 };
+
+/**
+ * deduplicateByRegistrationNumber(rawPool) -> [{ ...oneRecordPerGroup,
+ *   sourceRowCount, representsMultipleBranches, representativeSelectionRuleVersion }]
+ *
+ * The real HMRC AML register represents a multi-branch business (e.g. a
+ * nationwide retail chain) as one row PER BRANCH, all sharing the same
+ * registrationNumber — confirmed against the live dataset, where a single
+ * registration accounted for 6,733 rows. Sampling before this fix operated
+ * at the row level, so such a chain could dominate a sample slot for slot.
+ * This groups the raw pool by normalised registrationNumber and picks
+ * exactly one deterministic representative per group, BEFORE any
+ * stratified classification runs — stratification and selection then see
+ * one candidate per real-world registration, never per branch row.
+ *
+ * Representative-selection rule (fixed, deterministic, no randomness/clock):
+ *   1. Most complete postcode wins (POSTCODE_COMPLETE > PARTIAL > MISSING).
+ *   2. Among ties, a non-empty tradingName is preferred over an empty one.
+ *   3. Among ties, the earliest original source-row order wins (stable).
+ *   4. Final tie-break: lexical postcode string comparison.
+ * This does not merge or rewrite the underlying HMRC source rows — it only
+ * selects which single row represents the registration in the pilot's own
+ * sample; every row the adapter emitted remains exactly as emitted.
+ */
+function deduplicateByRegistrationNumber(rawPool) {
+  const groups = new Map(); // normalised registrationNumber (or a unique fallback key) -> rows[]
+  for (const row of rawPool) {
+    const key = normaliseRegisterId(row.registrationNumber) || `__NO_REG_NUM__${row.__poolIndex}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(row);
+  }
+
+  const representatives = [];
+  for (const rows of groups.values()) {
+    const sourceRowCount = rows.length;
+    const best = [...rows].sort((a, b) => {
+      const rankA = POSTCODE_COMPLETENESS_RANK[postcodeCompletenessClass(a.postcode)];
+      const rankB = POSTCODE_COMPLETENESS_RANK[postcodeCompletenessClass(b.postcode)];
+      if (rankA !== rankB) return rankA - rankB;
+
+      const hasTradingA = String(a.tradingName || '').trim().length > 0 ? 0 : 1;
+      const hasTradingB = String(b.tradingName || '').trim().length > 0 ? 0 : 1;
+      if (hasTradingA !== hasTradingB) return hasTradingA - hasTradingB;
+
+      if (a.__poolIndex !== b.__poolIndex) return a.__poolIndex - b.__poolIndex;
+
+      const pcA = String(a.postcode || '');
+      const pcB = String(b.postcode || '');
+      return pcA < pcB ? -1 : pcA > pcB ? 1 : 0;
+    })[0];
+
+    representatives.push({
+      ...best,
+      sourceRowCount,
+      representsMultipleBranches: sourceRowCount > 1,
+      representativeSelectionRuleVersion: DEDUP_RULE_VERSION,
+    });
+  }
+  return representatives;
+}
 
 // Pass-1 floor targets, in fixed priority order. Each entry names either a
 // single classification value or a set of values ("states") that jointly
@@ -216,15 +284,21 @@ async function sampleCandidates({ rawOdsBuffer, hmrcAdapter, context = {} } = {}
   const { valid } = adapter.validateStructure(parsedRows);
   const normalised = adapter.normalise(valid, context);
 
-  const pool = valid.map((rawRow, i) => {
+  const rawPool = valid.map((rawRow, i) => {
     const canonical = normalised[i] || {};
-    const record = {
+    return {
       registrationNumber: rawRow.registrationNumber,
       businessName: canonical.name || rawRow.businessName,
       tradingName: canonical.tradingName ?? rawRow.tradingName,
       postcode: rawRow.postcode,
       __poolIndex: i,
     };
+  });
+
+  // Deduplicate BEFORE classification/stratification — one candidate per
+  // real-world HMRC registration, never one per branch row (see
+  // deduplicateByRegistrationNumber's own header comment).
+  const pool = deduplicateByRegistrationNumber(rawPool).map((record) => {
     record.classification = classifyCandidate(record);
     return record;
   });
@@ -255,12 +329,19 @@ async function sampleCandidates({ rawOdsBuffer, hmrcAdapter, context = {} } = {}
     urbanRuralClass: r.classification.urbanRuralClass,
     floorPassSelected: r.floorPassSelected,
     samplingRuleVersion: r.classification.samplingRuleVersion,
+    sourceRowCount: r.sourceRowCount,
+    representsMultipleBranches: r.representsMultipleBranches,
+    representativeSelectionRuleVersion: r.representativeSelectionRuleVersion,
   }));
 
   return {
     candidates,
     sampleSize: candidates.length,
+    // totalValidRecords now counts DISTINCT registrations post-dedup (what
+    // stratification actually sees) — totalValidSourceRows preserves the
+    // original raw HMRC row count so neither figure is silently lost.
     totalValidRecords,
+    totalValidSourceRows: valid.length,
     categoryTargets: targets,
     unreachableFloors,
     exceptionApplied,
@@ -271,7 +352,9 @@ module.exports = {
   TARGET_SAMPLE_SIZE,
   CATEGORY_FLOOR,
   FLOOR_SPECS,
+  DEDUP_RULE_VERSION,
   apportionCategoryTargets,
+  deduplicateByRegistrationNumber,
   selectSample,
   sampleCandidates,
 };
