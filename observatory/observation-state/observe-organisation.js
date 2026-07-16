@@ -113,7 +113,11 @@ async function observeOneSignal(organisationId, domain, signal, deps = {}) {
     };
 
     const updated = await store.update(organisationId, signal, patch, { client });
-    return { signal, ok: true, observationState: updated };
+    // childError is surfaced here, not persisted to Observation State (no
+    // schema change) — a caller/CLI should still be told when supplementary
+    // evidence (e.g. DKIM key child rows) did not persist, even though the
+    // primary Evidence and quality score are genuinely complete.
+    return { signal, ok: true, observationState: updated, childError: result.childError || null };
   }
 
   // Failure — Unknown != Absent: never replace the last successful evidence

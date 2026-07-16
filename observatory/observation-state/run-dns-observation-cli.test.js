@@ -90,4 +90,34 @@ describe('run — real bounded execution', () => {
     assert.equal(result.ok, true);
     assert.deepStrictEqual(observed, ['ORG-1', 'ORG-2']);
   });
+
+  test('logs a visible warning when a signal succeeds but its childError is set (supplementary evidence did not persist)', async () => {
+    const lines = [];
+    await run(
+      { orgIds: ['ORG-1'], dryRun: false },
+      {
+        log: (msg) => lines.push(msg),
+        observeOrganisationDnsSignals: async (organisationId) => ({
+          organisationId, ok: true, domain: 'example.com',
+          results: [{ signal: 'dkim', ok: true, childError: 'insert failed: null value in column "selector"' }],
+        }),
+      },
+    );
+    assert.ok(lines.some((l) => l.includes('WARNING') && l.includes('supplementary evidence did not persist')));
+  });
+
+  test('does not log a warning when childError is absent', async () => {
+    const lines = [];
+    await run(
+      { orgIds: ['ORG-1'], dryRun: false },
+      {
+        log: (msg) => lines.push(msg),
+        observeOrganisationDnsSignals: async (organisationId) => ({
+          organisationId, ok: true, domain: 'example.com',
+          results: [{ signal: 'spf', ok: true, childError: null }],
+        }),
+      },
+    );
+    assert.ok(!lines.some((l) => l.includes('WARNING')));
+  });
 });

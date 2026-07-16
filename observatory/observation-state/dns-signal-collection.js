@@ -95,6 +95,19 @@ async function collectDnsSignal(domain, signal, deps = {}) {
     };
   }
 
+  // childError: the Collection Session engine persists a child table (e.g.
+  // signal_facts_dkim_keys) as a best-effort step AFTER the parent Evidence
+  // row is durably inserted — a child failure is recorded on the observation
+  // record (rec.childError, resilient-collection-session.js) but deliberately
+  // never fails the run, since the parent Evidence is already evidence of
+  // record. OBS-102 must not silently discard that signal (found during the
+  // 2026-07-16 supervised trial: two of five DKIM collections found real
+  // selectors with zero corresponding signal_facts_dkim_keys rows) — surface
+  // it so a caller can tell "fully observed" from "observed, but some
+  // supplementary evidence did not persist," rather than reporting them
+  // identically as `observed: true` with no further detail.
+  const childError = obs.childError || null;
+
   // Read back the just-persisted Evidence row — never score from an
   // in-memory pre-persistence value (evidence-first, same discipline the
   // on-demand pipeline and every national batch loader already follow).
@@ -105,6 +118,7 @@ async function collectDnsSignal(domain, signal, deps = {}) {
     return {
       observed: true, scored: false, factsRow: null, qualityRow: null,
       error: readErr ? readErr.message : 'observation row not found on read-back',
+      childError,
     };
   }
 
@@ -122,12 +136,12 @@ async function collectDnsSignal(domain, signal, deps = {}) {
   }, { client });
 
   if (!qualityRes.ok) {
-    return { observed: true, scored: false, factsRow, qualityRow: null, error: qualityRes.error };
+    return { observed: true, scored: false, factsRow, qualityRow: null, error: qualityRes.error, childError };
   }
   if (!qualityRes.persisted) {
-    return { observed: true, scored: false, factsRow, qualityRow: null, error: null, reason: qualityRes.result.reason };
+    return { observed: true, scored: false, factsRow, qualityRow: null, error: null, reason: qualityRes.result.reason, childError };
   }
-  return { observed: true, scored: true, factsRow, qualityRow: qualityRes.row, error: null };
+  return { observed: true, scored: true, factsRow, qualityRow: qualityRes.row, error: null, childError };
 }
 
 module.exports = { DNS_OBSERVATION_TYPES, collectDnsSignal };

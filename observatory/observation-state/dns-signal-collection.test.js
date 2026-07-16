@@ -40,6 +40,23 @@ describe('collectDnsSignal — success path', () => {
     assert.equal(result.factsRow.id, 'facts-1');
     assert.equal(result.qualityRow.id, 'quality-1');
     assert.equal(result.error, null);
+    assert.equal(result.childError, null);
+  });
+
+  test('a childError on the observation record (e.g. DKIM keys child-table write failure) is surfaced, not silently discarded (found in the 2026-07-16 supervised trial)', async () => {
+    const deps = baseDeps({
+      adapters: { dkim: { tableName: 'signal_facts_dkim' } },
+      runCollection: async () => ({ run: { id: 'run-1' }, observations: [{ ok: true, childError: 'insert failed: null value in column "selector"' }] }),
+    });
+    const result = await collectDnsSignal('example.com', 'dkim', deps);
+    assert.equal(result.observed, true);
+    assert.equal(result.scored, true);
+    assert.equal(result.childError, 'insert failed: null value in column "selector"');
+  });
+
+  test('no childError on the observation record surfaces as null, not undefined', async () => {
+    const result = await collectDnsSignal('example.com', 'spf', baseDeps());
+    assert.equal(result.childError, null);
   });
 
   test('CAA additionally invokes the ancestor-population lookup', async () => {

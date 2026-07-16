@@ -91,7 +91,8 @@ async function run({ orgIds = [], limit = null, dryRun = false } = {}, deps = {}
       log(`  ${organisationId}: no observation attempted — ${result.error}`);
     } else {
       for (const r of result.results) {
-        log(`  ${organisationId} / ${r.signal}: ${r.ok ? 'observed' : `failed (${r.error})`}`);
+        const childWarning = r.ok && r.childError ? ` [WARNING: supplementary evidence did not persist: ${r.childError}]` : '';
+        log(`  ${organisationId} / ${r.signal}: ${r.ok ? 'observed' : `failed (${r.error})`}${childWarning}`);
       }
     }
   }

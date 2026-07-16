@@ -89,6 +89,26 @@ describe('observeOneSignal — successful first observation', () => {
     assert.equal(result.observationState.attemptCount, 0);
   });
 
+  test('a childError from collection is surfaced on the result without affecting the Observation State itself', async () => {
+    const client = fakeClient();
+    const result = await observeOneSignal('ORG-1', 'example.com', 'dkim', {
+      client, adapters: { dkim: { tableName: 'signal_facts_dkim' } },
+      collectDnsSignal: async () => successResult({ childError: 'insert failed: null value in column "selector"' }),
+    });
+    assert.equal(result.ok, true);
+    assert.equal(result.childError, 'insert failed: null value in column "selector"');
+    assert.equal(result.observationState.status, 'observed'); // primary Evidence + score are genuinely complete
+  });
+
+  test('no childError surfaces as null, not undefined', async () => {
+    const client = fakeClient();
+    const result = await observeOneSignal('ORG-1', 'example.com', 'spf', {
+      client, adapters: ADAPTERS,
+      collectDnsSignal: async () => successResult(),
+    });
+    assert.equal(result.childError, null);
+  });
+
   test('sets next_due_at per the assigned cadence policy (spf = daily)', async () => {
     const client = fakeClient();
     const result = await observeOneSignal('ORG-1', 'example.com', 'spf', {
