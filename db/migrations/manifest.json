@@ -72,6 +72,7 @@
     "047_trust_profile_instances.sql",
     "048_trust_intelligence_sweep_runs.sql",
     "049_compliance_evidence_events.sql",
-    "051_domain_discovery_pilot.sql"
+    "051_domain_discovery_pilot.sql",
+    "052_observation_state.sql"
   ]
 }
