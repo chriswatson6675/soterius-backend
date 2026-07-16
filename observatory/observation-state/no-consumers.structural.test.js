@@ -1,9 +1,14 @@
 'use strict';
 
-// OBS-101 guardrail: mechanical proof that WP-1 introduces zero behavioural
-// change. No existing production file may reference this module or its table
-// yet — reading/writing observation_states is reserved for future work
-// packages (WP-2 onward) to wire in deliberately, one at a time.
+// Approved-consumers guardrail for Observation State — originally OBS-101's
+// "zero consumers" proof (mechanical evidence that WP-1 introduced no
+// behavioural change), now evolved as intended: OBS-102 (DNS collection
+// integration, within this same directory) and OBS-103 (the scheduler,
+// observatory/observation-scheduler/) are the approved, deliberate
+// consumers. This guardrail's ongoing job is to catch any OTHER, unapproved
+// file quietly starting to read/write observation_states outside that
+// explicit allowlist — e.g. a future TLS/MTA-STS collector or a Trust
+// Profile generator reaching in before it's meant to.
 //
 // Mirrors the CT-1 structural guardrail already used in
 // trust-intelligence/triggers/scheduled-regeneration.test.js.
@@ -24,6 +29,14 @@ const THIS_DIR = __dirname;
 // several minutes.
 const SKIP_DIR_NAMES = new Set(['node_modules', '.git', 'coverage', 'runs']);
 
+// Directories explicitly approved to consume Observation State. Adding a new
+// entry here is itself the thing this guardrail should make deliberate —
+// each addition should correspond to an approved work package (OBS-10x),
+// not a silent expansion.
+const APPROVED_CONSUMER_DIRS = [
+  path.join(__dirname, '..', 'observation-scheduler'), // OBS-103
+];
+
 function listJsFiles(dir) {
   let results = [];
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -31,6 +44,7 @@ function listJsFiles(dir) {
     if (entry.isDirectory()) {
       if (SKIP_DIR_NAMES.has(entry.name)) continue;
       if (fullPath === THIS_DIR) continue; // this module's own files reference themselves; not a "consumer"
+      if (APPROVED_CONSUMER_DIRS.includes(fullPath)) continue;
       results = results.concat(listJsFiles(fullPath));
     } else if (entry.isFile() && entry.name.endsWith('.js') && !entry.name.endsWith('.test.js')) {
       results.push(fullPath);
@@ -39,8 +53,8 @@ function listJsFiles(dir) {
   return results;
 }
 
-describe('OBS-101 zero-consumers guardrail', () => {
-  test('no existing production file references observation-state/ or observation_states', () => {
+describe('Observation State — approved-consumers guardrail', () => {
+  test('no file outside the approved consumer list references observation-state/ or observation_states', () => {
     const offenders = [];
     for (const file of listJsFiles(BACKEND_ROOT)) {
       const src = fs.readFileSync(file, 'utf8');
@@ -48,6 +62,12 @@ describe('OBS-101 zero-consumers guardrail', () => {
         offenders.push(path.relative(BACKEND_ROOT, file));
       }
     }
-    assert.deepStrictEqual(offenders, [], `expected zero consumers of Observation State, found: ${offenders.join(', ')}`);
+    assert.deepStrictEqual(offenders, [], `expected no unapproved consumers of Observation State, found: ${offenders.join(', ')}`);
+  });
+
+  test('the approved consumer list itself points at real, existing directories', () => {
+    for (const dir of APPROVED_CONSUMER_DIRS) {
+      assert.ok(fs.existsSync(dir) && fs.statSync(dir).isDirectory(), `expected ${dir} to exist`);
+    }
   });
 });

@@ -148,4 +148,56 @@ function toPartialRow(patch) {
   return out;
 }
 
-module.exports = { insert, getByOrganisationAndType, update };
+/**
+ * getAllByOrganisation(organisationId, observationTypes, deps) →
+ * every existing Observation State row for this organisation, restricted to
+ * the given observation types. Used by OBS-103's claim logic to see what
+ * already exists before attempting to claim it — a never-yet-observed type
+ * has no row and needs no claim (insert-time uniqueness already protects it).
+ */
+async function getAllByOrganisation(organisationId, observationTypes, deps = {}) {
+  const client = deps.client || getClient();
+  const { data, error } = await client
+    .from('observation_states')
+    .select('*')
+    .eq('organisation_id', organisationId)
+    .in('observation_type', observationTypes);
+
+  if (error) throw new Error(`observation_states read failed: ${error.message}`);
+  return (data || []).map(fromRow);
+}
+
+/**
+ * claim(organisationId, observationType, { nowIso, leaseMs }, deps) →
+ * the row (now status: 'running') if the claim succeeded, or null if it
+ * didn't — because another worker already holds a non-stale claim, or the
+ * row is suspended.
+ *
+ * This is the SKIP LOCKED equivalent available through the Supabase REST
+ * client (no raw SQL / `SELECT ... FOR UPDATE` access from here): a single
+ * conditional UPDATE whose WHERE clause only matches a row that is not
+ * suspended and is either not currently 'running' or has been 'running'
+ * for longer than the lease (a crashed worker's stale claim). Only one
+ * concurrent caller's UPDATE can ever match a given row — Postgres itself
+ * serializes concurrent UPDATEs to the same row, and a second caller's WHERE
+ * clause no longer matches once the first has flipped status to 'running'.
+ */
+async function claim(organisationId, observationType, { nowIso, leaseMs }, deps = {}) {
+  const client = deps.client || getClient();
+  const staleThreshold = new Date(Date.parse(nowIso) - leaseMs).toISOString();
+
+  const { data, error } = await client
+    .from('observation_states')
+    .update({ status: 'running', updated_at: nowIso })
+    .eq('organisation_id', organisationId)
+    .eq('observation_type', observationType)
+    .neq('status', 'suspended')
+    .or(`status.neq.running,updated_at.lt.${staleThreshold}`)
+    .select('*')
+    .maybeSingle();
+
+  if (error) throw new Error(`observation_states claim failed: ${error.message}`);
+  return fromRow(data);
+}
+
+module.exports = { insert, getByOrganisationAndType, update, getAllByOrganisation, claim };

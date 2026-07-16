@@ -20,7 +20,7 @@
 const { DNS_OBSERVATION_TYPES, collectDnsSignal } = require('./dns-signal-collection');
 const { createObservationState } = require('./observation-state');
 const { calculateMaterialChange } = require('./material-change');
-const { computeNextDueAt } = require('./cadence-policy');
+const { computeNextDueAt, computeRetryNextDueAt } = require('./cadence-policy');
 const store = require('./store');
 
 function getClient() { return require('../../infra/database').getClient(); }
@@ -122,11 +122,20 @@ async function observeOneSignal(organisationId, domain, signal, deps = {}) {
 
   // Failure — Unknown != Absent: never replace the last successful evidence
   // pointer or last_observed_at; only advance failure-tracking fields.
+  //
+  // next_due_at on failure — deferred to OBS-103 (the scheduler work
+  // package) when this file was first written; this is that deferred work.
+  // Uses computeRetryNextDueAt (exponential backoff, capped at the signal's
+  // own full cadence) rather than leaving next_due_at unchanged, so a failed
+  // signal actually becomes due again instead of waiting a full cycle.
+  const nowIso = now();
+  const attemptCount = (existing.attemptCount || 0) + 1;
   const failurePatch = {
     status: 'failed',
-    attemptCount: (existing.attemptCount || 0) + 1,
-    lastFailureAt: now(),
+    attemptCount,
+    lastFailureAt: nowIso,
     lastFailureReason: result.error || 'unknown collection failure',
+    nextDueAt: computeRetryNextDueAt(nowIso, attemptCount, signal),
   };
   const updated = await store.update(organisationId, signal, failurePatch, { client });
   return { signal, ok: false, observationState: updated, error: failurePatch.lastFailureReason };

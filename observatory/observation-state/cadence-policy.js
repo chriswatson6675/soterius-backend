@@ -50,9 +50,32 @@ function computeNextDueAt(observedAtIso, observationType) {
   return new Date(observedAtMs + durationMs).toISOString();
 }
 
+// Retry timing on failure — deliberately deferred from OBS-102 to OBS-103
+// (the scheduler work package) when this module was first written; this is
+// that deferred work. Reuses the existing, generic backoffMs primitive
+// (collection/sources/common/retry.js — verified source-agnostic, already
+// shared by the FCA/SRA collectors) rather than inventing a second backoff
+// formula. Capped at the observation type's own full cadence duration, so a
+// persistently-failing signal never waits longer to retry than its normal
+// cycle would have taken anyway.
+const RETRY_BASE_DELAY_MS = 5 * 60 * 1000; // 5 minutes
+
+/**
+ * computeRetryNextDueAt(nowIso, attemptCount, observationType) → ISO-8601 string
+ */
+function computeRetryNextDueAt(nowIso, attemptCount, observationType) {
+  const { backoffMs } = require('../../collection/sources/common/retry');
+  const cap = CADENCE_POLICIES[cadencePolicyFor(observationType)];
+  const nowMs = Date.parse(nowIso);
+  if (Number.isNaN(nowMs)) throw new Error(`computeRetryNextDueAt: invalid now "${nowIso}"`);
+  const delay = Math.min(backoffMs(Math.max(attemptCount, 1), { baseDelayMs: RETRY_BASE_DELAY_MS, maxDelayMs: cap }), cap);
+  return new Date(nowMs + delay).toISOString();
+}
+
 module.exports = {
   CADENCE_POLICIES,
   OBSERVATION_TYPE_CADENCE_POLICY,
   cadencePolicyFor,
   computeNextDueAt,
+  computeRetryNextDueAt,
 };

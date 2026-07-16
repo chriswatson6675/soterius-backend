@@ -2,7 +2,7 @@
 
 const { test, describe } = require('node:test');
 const assert = require('node:assert/strict');
-const { computeNextDueAt, cadencePolicyFor, OBSERVATION_TYPE_CADENCE_POLICY } = require('./cadence-policy');
+const { computeNextDueAt, computeRetryNextDueAt, cadencePolicyFor, OBSERVATION_TYPE_CADENCE_POLICY, CADENCE_POLICIES } = require('./cadence-policy');
 
 describe('cadence policy assignment', () => {
   test('SPF, DKIM, DMARC are daily-v1', () => {
@@ -44,5 +44,39 @@ describe('computeNextDueAt', () => {
 
   test('throws for an observation type with no assigned policy', () => {
     assert.throws(() => computeNextDueAt('2026-07-16T00:00:00.000Z', 'mtasts'));
+  });
+});
+
+describe('computeRetryNextDueAt', () => {
+  test('a first failure retries sooner than the full cadence', () => {
+    const next = computeRetryNextDueAt('2026-07-16T00:00:00.000Z', 1, 'spf');
+    const delayMs = Date.parse(next) - Date.parse('2026-07-16T00:00:00.000Z');
+    assert.ok(delayMs > 0);
+    assert.ok(delayMs < CADENCE_POLICIES['daily-v1']);
+  });
+
+  test('later attempts back off further, monotonically, but never past the signal\'s own cadence cap', () => {
+    const now = '2026-07-16T00:00:00.000Z';
+    const d1 = Date.parse(computeRetryNextDueAt(now, 1, 'spf')) - Date.parse(now);
+    const d2 = Date.parse(computeRetryNextDueAt(now, 2, 'spf')) - Date.parse(now);
+    const d10 = Date.parse(computeRetryNextDueAt(now, 10, 'spf')) - Date.parse(now);
+    assert.ok(d2 >= d1);
+    assert.ok(d10 <= CADENCE_POLICIES['daily-v1']);
+  });
+
+  test('the retry cap differs correctly between daily and weekly signals', () => {
+    const now = '2026-07-16T00:00:00.000Z';
+    const dailyDelay = Date.parse(computeRetryNextDueAt(now, 20, 'spf')) - Date.parse(now);
+    const weeklyDelay = Date.parse(computeRetryNextDueAt(now, 20, 'dnssec')) - Date.parse(now);
+    assert.ok(dailyDelay <= CADENCE_POLICIES['daily-v1']);
+    assert.ok(weeklyDelay <= CADENCE_POLICIES['weekly-v1']);
+  });
+
+  test('throws on an invalid now', () => {
+    assert.throws(() => computeRetryNextDueAt('not-a-date', 1, 'spf'));
+  });
+
+  test('throws for an observation type with no assigned policy', () => {
+    assert.throws(() => computeRetryNextDueAt('2026-07-16T00:00:00.000Z', 1, 'mtasts'));
   });
 });

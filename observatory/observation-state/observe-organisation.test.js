@@ -210,6 +210,25 @@ describe('observeOneSignal — failure handling (Unknown != Absent)', () => {
     assert.equal(failed.observationState.lastObservedAt, '2026-07-16T00:00:00.000Z');
   });
 
+  test('a failure sets a retry next_due_at (OBS-103) rather than leaving it unchanged', async () => {
+    const client = fakeClient();
+    await observeOneSignal('ORG-1', 'example.com', 'spf', { client, adapters: ADAPTERS, collectDnsSignal: async () => successResult() });
+    const firstNextDueAt = (await require('./store').getByOrganisationAndType('ORG-1', 'spf', { client })).nextDueAt;
+
+    const failed = await observeOneSignal('ORG-1', 'example.com', 'spf', {
+      client, adapters: ADAPTERS,
+      collectDnsSignal: async () => ({ observed: false, scored: false, factsRow: null, qualityRow: null, error: 'ETIMEDOUT' }),
+      now: () => '2026-07-18T00:00:00.000Z',
+    });
+
+    assert.ok(failed.observationState.nextDueAt);
+    assert.notEqual(failed.observationState.nextDueAt, firstNextDueAt);
+    // Retries sooner than a full daily cycle, not further out than it.
+    const delayMs = Date.parse(failed.observationState.nextDueAt) - Date.parse('2026-07-18T00:00:00.000Z');
+    assert.ok(delayMs > 0);
+    assert.ok(delayMs <= 24 * 60 * 60 * 1000);
+  });
+
   test('attempt_count accumulates across consecutive failures', async () => {
     const client = fakeClient();
     await observeOneSignal('ORG-1', 'example.com', 'spf', { client, adapters: ADAPTERS, collectDnsSignal: async () => successResult() });

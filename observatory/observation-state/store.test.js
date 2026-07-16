@@ -2,7 +2,7 @@
 
 const { test, describe } = require('node:test');
 const assert = require('node:assert/strict');
-const { insert, getByOrganisationAndType, update } = require('./store');
+const { insert, getByOrganisationAndType, update, getAllByOrganisation, claim } = require('./store');
 const { createObservationState } = require('./observation-state');
 
 // Minimal fake Supabase client: an in-memory array acting as the
@@ -42,8 +42,16 @@ function fakeClient() {
               filtered = filtered.filter((r) => r[col] === val);
               return builder;
             },
+            in(col, vals) {
+              filtered = filtered.filter((r) => vals.includes(r[col]));
+              return builder;
+            },
             maybeSingle() {
               return Promise.resolve({ data: filtered[0] || null, error: null });
+            },
+            then(onFulfilled) {
+              // Awaited directly (no terminal call) — e.g. getAllByOrganisation.
+              return Promise.resolve({ data: filtered, error: null }).then(onFulfilled);
             },
           };
           return builder;
@@ -53,6 +61,25 @@ function fakeClient() {
           const builder = {
             eq(col, val) {
               filtered = filtered.filter((r) => r[col] === val);
+              return builder;
+            },
+            neq(col, val) {
+              filtered = filtered.filter((r) => r[col] !== val);
+              return builder;
+            },
+            // Fake `.or('status.neq.running,updated_at.lt.X')` — parses just
+            // enough of the real PostgREST filter syntax for the two clauses
+            // claim() actually sends.
+            or(expr) {
+              const clauses = expr.split(',').map((c) => {
+                const [col, op, val] = c.split('.');
+                return { col, op, val };
+              });
+              filtered = filtered.filter((r) => clauses.some(({ col, op, val }) => {
+                if (op === 'neq') return r[col] !== val;
+                if (op === 'lt') return r[col] < val;
+                return false;
+              }));
               return builder;
             },
             select() {
@@ -142,5 +169,67 @@ describe('update', () => {
     assert.equal(second.status, 'failed');
     assert.equal(second.attemptCount, 1);
     assert.equal(second.lastFailureReason, 'NXDOMAIN');
+  });
+});
+
+describe('getAllByOrganisation', () => {
+  test('returns every row for the organisation restricted to the given observation types', async () => {
+    const client = fakeClient();
+    await insert(createObservationState({ organisationId: 'ORG-1', observationType: 'spf', collectionGroup: 'dns_batch' }), { client });
+    await insert(createObservationState({ organisationId: 'ORG-1', observationType: 'dkim', collectionGroup: 'dns_batch' }), { client });
+    await insert(createObservationState({ organisationId: 'ORG-2', observationType: 'spf', collectionGroup: 'dns_batch' }), { client });
+
+    const rows = await getAllByOrganisation('ORG-1', ['spf', 'dkim', 'dmarc', 'dnssec', 'caa'], { client });
+    assert.equal(rows.length, 2);
+    assert.deepStrictEqual(rows.map((r) => r.observationType).sort(), ['dkim', 'spf']);
+  });
+
+  test('returns an empty array, never an error, when nothing exists yet', async () => {
+    const client = fakeClient();
+    const rows = await getAllByOrganisation('ORG-1', ['spf'], { client });
+    assert.deepStrictEqual(rows, []);
+  });
+});
+
+describe('claim', () => {
+  test('claims a row whose status is not running or suspended', async () => {
+    const client = fakeClient();
+    await insert(createObservationState({ organisationId: 'ORG-1', observationType: 'spf', collectionGroup: 'dns_batch' }), { client });
+    const claimed = await claim('ORG-1', 'spf', { nowIso: '2026-07-16T00:00:00.000Z', leaseMs: 900000 }, { client });
+    assert.ok(claimed);
+    assert.equal(claimed.status, 'running');
+  });
+
+  test('refuses to claim a row already running and not yet stale', async () => {
+    const client = fakeClient();
+    await insert(createObservationState({ organisationId: 'ORG-1', observationType: 'spf', collectionGroup: 'dns_batch' }), { client });
+    await claim('ORG-1', 'spf', { nowIso: '2026-07-16T00:00:00.000Z', leaseMs: 900000 }, { client });
+    const secondClaim = await claim('ORG-1', 'spf', { nowIso: '2026-07-16T00:05:00.000Z', leaseMs: 900000 }, { client });
+    assert.equal(secondClaim, null);
+  });
+
+  test('reclaims a stale running row (crashed worker) past the lease duration', async () => {
+    const client = fakeClient();
+    await insert(createObservationState({ organisationId: 'ORG-1', observationType: 'spf', collectionGroup: 'dns_batch' }), { client });
+    await claim('ORG-1', 'spf', { nowIso: '2026-07-16T00:00:00.000Z', leaseMs: 900000 }, { client });
+    // 20 minutes later — past a 15-minute lease.
+    const reclaimed = await claim('ORG-1', 'spf', { nowIso: '2026-07-16T00:20:00.000Z', leaseMs: 900000 }, { client });
+    assert.ok(reclaimed);
+    assert.equal(reclaimed.status, 'running');
+  });
+
+  test('refuses to claim a suspended row', async () => {
+    const client = fakeClient();
+    const record = createObservationState({ organisationId: 'ORG-1', observationType: 'spf', collectionGroup: 'dns_batch' });
+    await insert(record, { client });
+    await update('ORG-1', 'spf', { status: 'suspended' }, { client });
+    const claimed = await claim('ORG-1', 'spf', { nowIso: '2026-07-16T00:00:00.000Z', leaseMs: 900000 }, { client });
+    assert.equal(claimed, null);
+  });
+
+  test('returns null, not an error, for a row that does not exist', async () => {
+    const client = fakeClient();
+    const claimed = await claim('ORG-1', 'spf', { nowIso: '2026-07-16T00:00:00.000Z', leaseMs: 900000 }, { client });
+    assert.equal(claimed, null);
   });
 });
