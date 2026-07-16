@@ -22,7 +22,14 @@ function routingClient(parentTable = 'signal_facts_demo', childTable = null) {
     if (table === 'collection_runs' && op === 'insert') return { data: { id: 'run-1', status: 'RUNNING', ...payload[0] }, error: null };
     if (table === 'collection_runs' && op === 'update') return { data: { id: 'run-1', ...payload }, error: null };
     if (table === parentTable) { const id = `obs-${++seq}`; inserted[parentTable].push({ id, ...payload[0] }); return { data: { id }, error: null }; }
-    if (childTable && table === childTable) { payload.forEach((r) => inserted[childTable].push(r)); return { data: null, error: null }; }
+    // Supabase's real .insert() accepts either a single object or an array —
+    // persistDkimKeys now inserts one row at a time (a single object), not
+    // the original bulk array; normalize here rather than assume one shape.
+    if (childTable && table === childTable && op === 'insert') { (Array.isArray(payload) ? payload : [payload]).forEach((r) => inserted[childTable].push(r)); return { data: null, error: null }; }
+    // A plain select/eq (no insert/update/upsert op) against the child table —
+    // persistDkimKeys' own idempotency pre-check. No pre-existing children in
+    // this harness, so it's always empty (fresh insert every time).
+    if (childTable && table === childTable) return { data: [], error: null };
     return { data: null, error: { message: 'unrouted ' + table } };
   }
   const b = {
@@ -73,7 +80,12 @@ describe('concurrency', () => {
 });
 
 describe('persistChildren (DKIM key fan-out)', () => {
-  test('DKIM keys are written to signal_facts_dkim_keys after the parent, run-linked', async () => {
+  test('DKIM keys are written to signal_facts_dkim_keys after the parent, PARENT-ROW-linked (not run-linked)', async () => {
+    // Regression test for the OBS-102 supervised-trial defect (2026-07-16):
+    // this assertion previously expected key.dkim_run_id === 'run-1' (the
+    // collection run's id) — which is exactly the bug. The column is a
+    // foreign key to signal_facts_dkim(id), the PARENT ROW's own id, and
+    // must reference that instead.
     const facts = {
       dkim_present: true, dkim_collection_status: null, dkim_record_count: 1,
       dkim_selectors_probed: ['google'], dkim_selectors_found: ['google'], dkim_probe_set_version: 1,
@@ -87,10 +99,12 @@ describe('persistChildren (DKIM key fan-out)', () => {
     assert.equal(result.counts.persisted, 1);
     // parent domain-level row has the envelope, NOT the keys
     assert.equal('dkim_keys' in inserted['signal_facts_dkim'][0], false);
-    // child keys fanned out, run-linked, timestamp-matched
+    const parentId = inserted['signal_facts_dkim'][0].id;
+    // child keys fanned out, PARENT-linked, timestamp-matched
     assert.equal(inserted['signal_facts_dkim_keys'].length, 1);
     const key = inserted['signal_facts_dkim_keys'][0];
-    assert.equal(key.dkim_run_id, 'run-1');
+    assert.equal(key.dkim_run_id, parentId);
+    assert.notEqual(key.dkim_run_id, 'run-1');
     assert.equal(key.collected_at, 'T');
     assert.equal(key.selector, 'google');
     assert.equal(key.key_bits, 2048);
