@@ -2,7 +2,7 @@
 
 const { test, describe } = require('node:test');
 const assert = require('node:assert/strict');
-const { insert, getByOrganisationAndType } = require('./store');
+const { insert, getByOrganisationAndType, update } = require('./store');
 const { createObservationState } = require('./observation-state');
 
 // Minimal fake Supabase client: an in-memory array acting as the
@@ -44,6 +44,25 @@ function fakeClient() {
             },
             maybeSingle() {
               return Promise.resolve({ data: filtered[0] || null, error: null });
+            },
+          };
+          return builder;
+        },
+        update(patch) {
+          let filtered = rows;
+          const builder = {
+            eq(col, val) {
+              filtered = filtered.filter((r) => r[col] === val);
+              return builder;
+            },
+            select() {
+              return {
+                maybeSingle() {
+                  if (!filtered.length) return Promise.resolve({ data: null, error: null });
+                  Object.assign(filtered[0], patch);
+                  return Promise.resolve({ data: filtered[0], error: null });
+                },
+              };
             },
           };
           return builder;
@@ -96,5 +115,32 @@ describe('insert / getByOrganisationAndType', () => {
     const ch = await getByOrganisationAndType('ORG-1', 'companies_house', { client });
     assert.equal(spf.collectionGroup, 'dns_batch');
     assert.equal(ch.collectionGroup, 'companies_house');
+  });
+});
+
+describe('update', () => {
+  test('updates only the fields present in the patch, leaving others untouched', async () => {
+    const client = fakeClient();
+    await insert(createObservationState({ organisationId: 'ORG-1', observationType: 'spf', collectionGroup: 'dns_batch' }), { client });
+
+    const updated = await update('ORG-1', 'spf', { status: 'observed', lastObservedAt: '2026-07-16T00:00:00.000Z' }, { client });
+    assert.equal(updated.status, 'observed');
+    assert.equal(updated.lastObservedAt, '2026-07-16T00:00:00.000Z');
+    assert.equal(updated.collectionGroup, 'dns_batch'); // untouched by the patch
+  });
+
+  test('throws when no row exists yet for the (organisationId, observationType) pair', async () => {
+    const client = fakeClient();
+    await assert.rejects(() => update('ORG-1', 'spf', { status: 'observed' }, { client }), /no existing row/);
+  });
+
+  test('a second update composes on top of the first (re-observation advances the same row)', async () => {
+    const client = fakeClient();
+    await insert(createObservationState({ organisationId: 'ORG-1', observationType: 'spf', collectionGroup: 'dns_batch' }), { client });
+    await update('ORG-1', 'spf', { status: 'observed', attemptCount: 0 }, { client });
+    const second = await update('ORG-1', 'spf', { status: 'failed', attemptCount: 1, lastFailureReason: 'NXDOMAIN' }, { client });
+    assert.equal(second.status, 'failed');
+    assert.equal(second.attemptCount, 1);
+    assert.equal(second.lastFailureReason, 'NXDOMAIN');
   });
 });

@@ -1,9 +1,12 @@
 'use strict';
 
-// Observation State store — OBS-101, WP-1. Thin persistence only: insert and
-// single-row lookup against observation_states (migration 052). No
-// due-selection query, no claim/lock semantics, no scheduling math — those
-// belong to later work packages (WP-4/WP-5), not this one.
+// Observation State store — OBS-101 (insert/read), extended by OBS-102 with
+// update() so a re-observation can advance an existing row rather than only
+// ever inserting one. observation_states (migration 052) is the one
+// deliberately mutable table in this model — update() is expected here, not
+// a schema change. Still no due-selection query, no claim/lock semantics, no
+// scheduling math — those belong to later work packages (WP-4/WP-5), not
+// this one.
 //
 // Mirrors trust-intelligence/store.js's own conventions: an injectable
 // `client` (defaulting to the real Supabase client) so callers/tests never
@@ -91,4 +94,58 @@ async function getByOrganisationAndType(organisationId, observationType, deps = 
   return fromRow(data);
 }
 
-module.exports = { insert, getByOrganisationAndType };
+/**
+ * update(organisationId, observationType, patch, deps) — updates the existing
+ * Observation State row for that pair with the given partial field set
+ * (camelCase keys, same shape as toRow() accepts). Throws if no row exists
+ * yet for that pair — callers create one via insert() first (the same
+ * get-or-create composition pattern getByOrganisationAndType()/insert()
+ * already establish).
+ */
+async function update(organisationId, observationType, patch, deps = {}) {
+  const client = deps.client || getClient();
+  const partialRow = toPartialRow(patch);
+  partialRow.updated_at = new Date().toISOString();
+
+  const { data, error } = await client
+    .from('observation_states')
+    .update(partialRow)
+    .eq('organisation_id', organisationId)
+    .eq('observation_type', observationType)
+    .select('*')
+    .maybeSingle();
+
+  if (error) throw new Error(`observation_states update failed: ${error.message}`);
+  if (!data) throw new Error(`observation_states update failed: no existing row for (${organisationId}, ${observationType})`);
+  return fromRow(data);
+}
+
+const FIELD_MAP = {
+  lastObservedAt: 'last_observed_at',
+  nextDueAt: 'next_due_at',
+  status: 'status',
+  collectorVersion: 'collector_version',
+  evidenceRef: 'evidence_ref',
+  provenanceRef: 'provenance_ref',
+  materialChange: 'material_change',
+  attemptCount: 'attempt_count',
+  lastFailureAt: 'last_failure_at',
+  lastFailureReason: 'last_failure_reason',
+};
+
+/**
+ * toPartialRow(patch) — translates only the camelCase keys actually present
+ * in `patch` into their snake_case column names, so update() never overwrites
+ * a field the caller didn't mention (unlike toRow(), which is only safe for
+ * a full insert where every field has an explicit, intentional value).
+ */
+function toPartialRow(patch) {
+  const out = {};
+  for (const [key, value] of Object.entries(patch)) {
+    const column = FIELD_MAP[key];
+    if (column) out[column] = value;
+  }
+  return out;
+}
+
+module.exports = { insert, getByOrganisationAndType, update };
