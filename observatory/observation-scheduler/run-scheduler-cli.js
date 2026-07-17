@@ -86,15 +86,32 @@ async function run({ orgIds = [], limit = null, dryRun = false, now = null, prod
   return outcome;
 }
 
+/**
+ * exitCodeFor(outcome) → 0 | 1 — the process exit code for a completed
+ * run() call. `outcome.ok` alone only tells us the invocation was accepted
+ * (not refused for bad args/unbounded execution/etc.) — it stays true even
+ * when individual claimed Observation States failed collection,
+ * persistence, or quality processing (summary.statesFailed > 0), because
+ * runScheduler()'s own result contract deliberately keeps "accepted" and
+ * "every state succeeded" as separate facts. A cron/CI caller watching only
+ * the process exit code needs both folded together, which is what this does
+ * without changing runScheduler()'s own return shape or meaning.
+ */
+function exitCodeFor(outcome) {
+  if (!outcome.ok) return 1;
+  if (outcome.summary && outcome.summary.statesFailed > 0) return 1;
+  return 0;
+}
+
 /* istanbul ignore next -- exercised via this module's exported run(), not this block */
 if (require.main === module) {
   const { orgIds, limit, dryRun, now, production, forceOrg } = parseArgs(process.argv.slice(2));
   run({ orgIds, limit, dryRun, now, production, forceOrg }).then((outcome) => {
-    process.exit(outcome.ok ? 0 : 1);
+    process.exit(exitCodeFor(outcome));
   }).catch((err) => {
     console.error('OBS-103: fatal error:', err.message);
     process.exit(1);
   });
 }
 
-module.exports = { run, parseArgs, logEnvironmentConfirmation };
+module.exports = { run, parseArgs, logEnvironmentConfirmation, exitCodeFor };

@@ -1,0 +1,14 @@
+{
+  "$schema": "https://railway.com/railway.schema.json",
+  "build": {
+    "builder": "DOCKERFILE",
+    "dockerfilePath": "Dockerfile"
+  },
+  "deploy": {
+    "startCommand": "node observatory/observation-scheduler/run-scheduler-cli.js --org ORG-111BB396F405 --org ORG-022966B7A563 --org ORG-008B5C6DDCA9 --org ORG-00A735D8BF71 --org ORG-FFE3D2E76F65",
+    "numReplicas": 1,
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 10,
+    "cronSchedule": "30 8,9 * * *"
+  }
+}
