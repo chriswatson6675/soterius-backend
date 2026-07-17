@@ -167,6 +167,8 @@ function toCandidate(row) {
   return {
     id: row.organisationId,
     name: row.organisationName || row.canonicalName,
+    domain: row.verifiedDomain || null,
+    regulator: Array.isArray(row.regulators) && row.regulators.length > 0 ? row.regulators[0] : null,
     sraNumber: ids.sraIdentifier || null,
     companiesHouseNumber: ids.companiesHouseNumber || null,
     frn: ids.frn || null,
