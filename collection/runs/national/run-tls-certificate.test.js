@@ -115,7 +115,18 @@ describe('TLS/Certificate dual-write runner', () => {
   });
 
   test('empty domains rejected', async () => {
-    await assert.rejects(() => runNationalTlsCertificate({ domains: [] }), /non-empty array/);
+    // Inject the fake client (as every other test in this file does — "no real
+    // handshake, no DB") so the empty-array guard is what fires. Without an
+    // injected client the deps default `client = getClient()` evaluates first
+    // and, in a DB-less environment (e.g. CI with no SUPABASE_* env), throws
+    // its own env-var error before validation is reached. The guarantee under
+    // test — empty domains are rejected with a "non-empty array" error — is
+    // unchanged.
+    const { client } = fakeClient();
+    await assert.rejects(
+      () => runNationalTlsCertificate({ domains: [], deps: { client } }),
+      /non-empty array/,
+    );
   });
 });
 

@@ -14,32 +14,48 @@ const path = require('path');
 
 const { loadPra, loadHmrcAmlImport } = require('./loaders');
 
-test('loadPra() never emits a phantom "Firm Name" organisation from a repeated embedded section header', () => {
+// The PRA reference CSVs (datasets/cohort data/pra/) live in the parent
+// monorepo, not in the backend repository — loadPra() reads them via
+// path.join(__dirname, '..', '..') by design. In the backend-only CI checkout
+// that data is intentionally absent, so loadPra() correctly returns []. Every
+// loadPra() assertion below only exercises a real guarantee when the source
+// data is present (the "never emits phantom/FRN/LEI-artifact" cases parse the
+// real multi-section CSVs; the "still emits real firms/LEI" cases assert their
+// presence). Skip — with justification — ONLY when the data is genuinely
+// absent; run in full wherever the parent monorepo data exists (dev).
+const PRA_DATA_PRESENT = fs.existsSync(
+  path.join(__dirname, '..', '..', 'datasets', 'cohort data', 'pra', 'pra-banks-2606.csv'),
+);
+const praSkip = PRA_DATA_PRESENT
+  ? false
+  : 'PRA reference CSVs (datasets/cohort data/pra/) are intentionally not committed to the backend repo — they live in the parent monorepo; the backend-only checkout has no data to load, so these loadPra() regression assertions cannot be meaningfully exercised here.';
+
+test('loadPra() never emits a phantom "Firm Name" organisation from a repeated embedded section header', { skip: praSkip }, () => {
   const records = loadPra();
   const phantoms = records.filter((r) => r.name === 'Firm Name');
   assert.deepStrictEqual(phantoms, [], 'no record should be named literally "Firm Name" (the header text)');
 });
 
-test('loadPra() never emits a record whose FRN is the literal header text "FRN"', () => {
+test('loadPra() never emits a record whose FRN is the literal header text "FRN"', { skip: praSkip }, () => {
   const records = loadPra();
   const withLiteralFrnText = records.filter((r) => r.frn === 'FRN');
   assert.deepStrictEqual(withLiteralFrnText, []);
 });
 
-test('loadPra() never emits the ENG-031 artifact LEI value ("Head Office LEI" as a literal string)', () => {
+test('loadPra() never emits the ENG-031 artifact LEI value ("Head Office LEI" as a literal string)', { skip: praSkip }, () => {
   const records = loadPra();
   const withArtifactLei = records.filter((r) => r.lei === 'Head Office LEI');
   assert.deepStrictEqual(withArtifactLei, []);
 });
 
-test('loadPra() still emits real firms unaffected by the fix', () => {
+test('loadPra() still emits real firms unaffected by the fix', { skip: praSkip }, () => {
   const records = loadPra();
   const names = records.map((r) => r.name);
   assert.ok(names.includes('ABN AMRO Bank NV'), 'a real bank from pra-banks-2606.csv must still be present');
   assert.ok(records.some((r) => r.source === 'pra-reference' && r.regulator === 'PRA'));
 });
 
-test('loadPra() still emits real LEI values (raw, unnormalised — loaders.js returns identifiers as found, per its own header comment)', () => {
+test('loadPra() still emits real LEI values (raw, unnormalised — loaders.js returns identifiers as found, per its own header comment)', { skip: praSkip }, () => {
   const records = loadPra();
   const withLei = records.filter((r) => r.lei);
   assert.ok(withLei.length > 0, 'sanity: at least one real record should carry a LEI');
