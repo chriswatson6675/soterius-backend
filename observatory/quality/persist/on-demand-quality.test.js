@@ -92,20 +92,38 @@ test('spf — unobserved facts are not persisted (Unknown ≠ Absent)', async ()
 // — dkim-observation.js strips it before insert and fans it out to the
 // child table signal_facts_dkim_keys. This is what .select('*') on
 // signal_facts_dkim actually returns.
-test('dkim — realistic persisted row (dkim_keys absent, read back from the child table) scores correctly', async () => {
-  const persistedRow = {
-    domain: 'example.com', collection_run_id: 'collection-run-1', collection_programme_id: 'programme-1',
+// Regression fixture for the DKIM Quality Model boundary audit (2026-07-17):
+// distinct id vs. collection_run_id, so a test asserting the WRONG one is
+// used (the actual historical defect) fails clearly rather than passing
+// vacuously. persistDkimKeys (dkim-observation.js, fixed in 99f66f0) writes
+// signal_facts_dkim_keys.dkim_run_id = the parent row's own id — this
+// module's reconstructFacts must read it back the same way.
+function dkimPersistedRow(overrides = {}) {
+  return {
+    id: 'facts-row-parent-id', domain: 'example.com',
+    collection_run_id: 'collection-run-1-NOT-THE-FK-VALUE', collection_programme_id: 'programme-1',
     collector: 'dkim', collector_version: 'dkim-collector@1.0.0', collection_method: 'DNS',
     organisation_id: null, repository_authority_ref: null, collection_outcome: 'OBSERVED_PRESENT',
     signal_version: 1, collected_at: '2026-07-12T00:00:00.000Z',
     dkim_present: true, dkim_collection_status: 'OK',
+    dkim_selectors_found: ['default'],
     // dkim_keys: intentionally ABSENT — not a column on this table at all.
+    ...overrides,
   };
-  const childKeyRows = [{
-    selector: 'default', raw_record: 'v=DKIM1; k=rsa; p=abc', parse_success: true, version: 'DKIM1',
+}
+
+function dkimKeyRow(selector, overrides = {}) {
+  return {
+    selector, raw_record: `v=DKIM1; k=rsa; p=${selector}`, parse_success: true, version: 'DKIM1',
     key_type: 'rsa', key_bits: 2048, public_key_present: true, hash_algorithms: ['sha256'],
     service_type: '*', flags: [], syntax_errors: [],
-  }];
+    ...overrides,
+  };
+}
+
+test('dkim — realistic persisted row (dkim_keys absent, read back from the child table) scores correctly', async () => {
+  const persistedRow = dkimPersistedRow();
+  const childKeyRows = [dkimKeyRow('default')];
 
   const expected = scoreDkimQuality({ ...persistedRow, dkim_keys: childKeyRows });
   assert.strictEqual(expected.scored, true);
@@ -133,6 +151,80 @@ test('dkim — realistic persisted row (dkim_keys absent, read back from the chi
   assert.strictEqual(insertedRow.max_key_bits, expected.maxBits);
   const childSelect = calls.find((c) => c[0] === 'from' && c[1] === 'signal_facts_dkim_keys');
   assert.ok(childSelect, 'must query the child table before scoring');
+
+  // The actual historical defect: reconstructFacts must join on the PARENT
+  // ROW's own id (the real dkim_run_id FK target), never collection_run_id.
+  // A test that only checks "some eq() call happened" would pass whichever
+  // value was used — this asserts the specific value.
+  const eqCall = calls.find((c) => c[0] === 'eq' && c[1] === 'dkim_run_id');
+  assert.ok(eqCall, 'must filter the child-table query by dkim_run_id');
+  assert.strictEqual(eqCall[2], persistedRow.id, 'must join on the parent row\'s own id (the real FK target)');
+  assert.notStrictEqual(eqCall[2], persistedRow.collection_run_id, 'must NOT join on collection_run_id — that was the historical defect');
+});
+
+test('dkim — no selector discovered at all: legitimate absence, scores as the existing governed "no usable key" outcome, NOT incomplete', async () => {
+  const persistedRow = dkimPersistedRow({ dkim_present: null, dkim_collection_status: 'NOT_DETECTED', dkim_selectors_found: [] });
+  const { client, calls } = fakeSequencedClient([
+    { data: [], error: null },                // child-table SELECT — genuinely nothing to find
+    { data: { id: 'row-2' }, error: null },
+  ]);
+
+  const r = await persistOnDemandQuality({ signal: 'dkim', facts: persistedRow, runId: 'run-1', runLabel: 'label' }, { client });
+
+  assert.strictEqual(r.ok, true, r.error);
+  assert.strictEqual(r.persisted, true, 'a genuine "nothing found" must still score — it is a valid scoreable observation, not incomplete evidence');
+  assert.strictEqual(r.result.primaryLabel, 'no usable key (bounded)');
+  assert.strictEqual(r.result.score, 0);
+});
+
+test('dkim — selectors discovered but child persistence completely failed: blocked from scoring as a false full success', async () => {
+  const persistedRow = dkimPersistedRow({ dkim_selectors_found: ['default', 'google'] });
+  const { client, calls } = fakeSequencedClient([
+    { data: [], error: null },                // child-table SELECT — nothing actually persisted (total failure)
+    { data: { id: 'row-2' }, error: null },
+  ]);
+
+  const r = await persistOnDemandQuality({ signal: 'dkim', facts: persistedRow, runId: 'run-1', runLabel: 'label' }, { client });
+
+  assert.strictEqual(r.ok, true, r.error);
+  assert.strictEqual(r.persisted, false, 'must NOT be scored as a clean success when the collector found selectors but zero were actually persisted');
+  assert.strictEqual(r.result.scored, false);
+  assert.strictEqual(r.result.reason, 'CHILD_EVIDENCE_INCOMPLETE');
+  assert.strictEqual(r.result.score, null);
+  assert.strictEqual(calls.some((c) => c[0] === 'insert'), false, 'no quality row is written for incomplete evidence');
+});
+
+test('dkim — selectors discovered but only some child rows persisted (partial failure): also blocked, not silently scored on the partial set', async () => {
+  const persistedRow = dkimPersistedRow({ dkim_selectors_found: ['default', 'google', 'k2'] });
+  const { client } = fakeSequencedClient([
+    { data: [dkimKeyRow('default')], error: null }, // only 1 of 3 discovered selectors actually persisted
+    { data: { id: 'row-2' }, error: null },
+  ]);
+
+  const r = await persistOnDemandQuality({ signal: 'dkim', facts: persistedRow, runId: 'run-1', runLabel: 'label' }, { client });
+
+  assert.strictEqual(r.persisted, false);
+  assert.strictEqual(r.result.reason, 'CHILD_EVIDENCE_INCOMPLETE');
+});
+
+test('dkim — a malformed/unusable key that DID fully persist is still scored via the existing governed model, not treated as incomplete', async () => {
+  // parse_success: false is a real, already-governed outcome (M1 multiplier /
+  // "no usable key" floor) inside scoreDkimQuality itself — this must remain
+  // untouched by the completeness gate, which only compares COUNTS, not
+  // key validity.
+  const persistedRow = dkimPersistedRow({ dkim_selectors_found: ['default'] });
+  const malformedKey = dkimKeyRow('default', { parse_success: false, public_key_present: false, key_bits: null });
+  const { client } = fakeSequencedClient([
+    { data: [malformedKey], error: null },   // the one discovered selector DID persist — just isn't usable
+    { data: { id: 'row-2' }, error: null },
+  ]);
+
+  const expected = scoreDkimQuality({ ...persistedRow, dkim_keys: [malformedKey] });
+  const r = await persistOnDemandQuality({ signal: 'dkim', facts: persistedRow, runId: 'run-1', runLabel: 'label' }, { client });
+
+  assert.strictEqual(r.persisted, true, 'a fully-persisted-but-unusable key is a valid scoreable observation, not incomplete evidence');
+  assert.strictEqual(r.result.primaryLabel, expected.primaryLabel);
+  assert.strictEqual(r.result.score, expected.score);
 });
 
 test('dmarc — byte-identical, and dmarc_policy is null for a floor state', async () => {

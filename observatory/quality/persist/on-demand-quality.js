@@ -68,17 +68,69 @@ const ADAPTERS = {
   // re-attaches them, mirroring the batch loaders' own read-the-real-
   // evidence-before-scoring discipline; async because this reconstruction
   // genuinely requires a query the tls/certificate cases do not.
+  //
+  // TWO DEFECTS FOUND AND FIXED HERE (DKIM Quality Model boundary audit,
+  // 2026-07-17, following the OBS-102 trial's child-persistence fix,
+  // commit 99f66f0):
+  //
+  // 1. Wrong join column. signal_facts_dkim_keys.dkim_run_id is a FOREIGN
+  //    KEY to signal_facts_dkim(id) — the PARENT ROW's own id (see
+  //    dkim-observation.js's persistDkimKeys, fixed in 99f66f0) — not to
+  //    collection_run_id. This function still filtered by
+  //    `row.collection_run_id`, the SAME misunderstanding persistDkimKeys
+  //    had, independently reintroduced here. Confirmed live in production:
+  //    every DKIM quality row scored after 99f66f0 (once child persistence
+  //    started actually succeeding) still read back zero keys and scored
+  //    "no usable key (bounded)" / 0, regardless of real key strength,
+  //    because this query was matching the wrong column the entire time.
+  //    The national batch loader (nob-dkim-001r/load.js) never had this bug
+  //    — it has always matched keys to observations by `o.id` correctly;
+  //    only this on-demand/OBS-102 path (they share this one function) did.
+  //
+  // 2. No completeness check. Even with (1) fixed, a genuine PARTIAL or
+  //    COMPLETE child-persistence failure (persistDkimKeys throwing, e.g. a
+  //    transient DB error) is indistinguishable from a domain that
+  //    genuinely has no DKIM keys — both read back zero (or fewer than
+  //    expected) child rows, and scoreDkimQuality cannot tell the
+  //    difference from inside the model (it only ever sees whatever
+  //    dkim_keys array it's handed). The completeness check below compares
+  //    the parent row's own dkim_selectors_found count (how many the
+  //    collector actually discovered) against how many child rows were
+  //    actually read back — if fewer, this is INCOMPLETE evidence, not a
+  //    legitimate "none found" result, and must not be scored as a clean
+  //    success (Unknown != Absent: this is Unknown, not Absent).
   dkim: {
     tableName: 'signal_quality_dkim',
-    scoreFn: (facts) => scoreDkimQuality(facts),
+    scoreFn: (facts) => {
+      // Reuses the existing {scored:false, reason, score:null} vocabulary
+      // shape scoreDkimQuality itself already uses for OBSERVATION_INCOMPLETE
+      // — a distinct reason string, since this is a different cause (evidence
+      // was discovered but did not fully persist, not a DNS-level
+      // non-observation) that callers must be able to tell apart.
+      if (facts.__dkimChildEvidenceIncomplete) {
+        return { scored: false, reason: 'CHILD_EVIDENCE_INCOMPLETE', score: null };
+      }
+      return scoreDkimQuality(facts);
+    },
     async reconstructFacts(row, client) {
       const { data, error } = await client
         .from('signal_facts_dkim_keys')
         .select('*')
         .eq('domain', row.domain)
-        .eq('dkim_run_id', row.collection_run_id);
+        .eq('dkim_run_id', row.id); // FIX: was row.collection_run_id (defect 1 above)
       if (error) throw new Error(`dkim key read-back failed: ${error.message}`);
-      return { ...row, dkim_keys: data || [] };
+      const persistedKeys = data || [];
+
+      // FIX: completeness gate (defect 2 above). dkim_selectors_found is the
+      // collector's own record of how many selectors it actually discovered
+      // (buildDkimObservation persists this on the parent row unmodified) —
+      // comparing it against what was actually read back from the child
+      // table is the only place a parent/child persistence mismatch is
+      // checkable, since neither side alone can see both counts.
+      const expectedCount = Array.isArray(row.dkim_selectors_found) ? row.dkim_selectors_found.length : 0;
+      const incomplete = persistedKeys.length < expectedCount;
+
+      return { ...row, dkim_keys: persistedKeys, __dkimChildEvidenceIncomplete: incomplete };
     },
     buildRow(result, ctx) {
       return {
