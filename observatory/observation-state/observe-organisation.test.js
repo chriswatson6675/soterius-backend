@@ -115,7 +115,7 @@ describe('observeOneSignal — successful first observation', () => {
       client, adapters: ADAPTERS,
       collectDnsSignal: async () => successResult(),
     });
-    assert.equal(result.observationState.nextDueAt, '2026-07-17T00:00:00.000Z');
+    assert.equal(result.observationState.nextDueAt, '2026-07-16T08:30:00.000Z'); // next 09:30 Europe/London (BST) after the observed instant
   });
 
   test('DNSSEC/CAA get a weekly next_due_at', async () => {
@@ -127,7 +127,7 @@ describe('observeOneSignal — successful first observation', () => {
         qualityRow: { id: 'quality-2' },
       }),
     });
-    assert.equal(result.observationState.nextDueAt, '2026-07-23T00:00:00.000Z');
+    assert.equal(result.observationState.nextDueAt, '2026-07-23T08:30:00.000Z'); // 7 days later, anchored to 09:30 Europe/London (BST)
   });
 });
 
