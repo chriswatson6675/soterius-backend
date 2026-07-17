@@ -2,7 +2,7 @@
 
 const { test, describe } = require('node:test');
 const assert = require('node:assert/strict');
-const { findDueCandidates, groupByOrganisation } = require('./due-selection');
+const { findDueCandidates, groupByOrganisation, groupDueTypesByOrganisation, classifyOrganisationDnsStates } = require('./due-selection');
 
 // Minimal fake client distinguishing the two queries findDueCandidates issues
 // by which terminal filter each one uses (.or(next_due_at...) vs
@@ -93,5 +93,84 @@ describe('groupByOrganisation', () => {
 
   test('an empty candidate list produces an empty result', () => {
     assert.deepStrictEqual(groupByOrganisation([]), []);
+  });
+});
+
+describe('groupDueTypesByOrganisation', () => {
+  test('preserves exactly which types are due per organisation (cadence-safety fix)', () => {
+    const candidates = [
+      { organisationId: 'ORG-1', observationType: 'spf' },
+      { organisationId: 'ORG-1', observationType: 'dkim' },
+      { organisationId: 'ORG-2', observationType: 'dnssec' },
+    ];
+    const result = groupDueTypesByOrganisation(candidates);
+    assert.deepStrictEqual(result, [
+      { organisationId: 'ORG-1', dueTypes: ['spf', 'dkim'] },
+      { organisationId: 'ORG-2', dueTypes: ['dnssec'] },
+    ]);
+  });
+
+  test('an organisation with only DNSSEC due reports only DNSSEC, not the other four', () => {
+    const candidates = [{ organisationId: 'ORG-1', observationType: 'dnssec' }];
+    assert.deepStrictEqual(groupDueTypesByOrganisation(candidates), [{ organisationId: 'ORG-1', dueTypes: ['dnssec'] }]);
+  });
+
+  test('an organisation with only CAA due reports only CAA', () => {
+    const candidates = [{ organisationId: 'ORG-1', observationType: 'caa' }];
+    assert.deepStrictEqual(groupDueTypesByOrganisation(candidates), [{ organisationId: 'ORG-1', dueTypes: ['caa'] }]);
+  });
+
+  test('all five due for one organisation reports all five', () => {
+    const candidates = ['spf', 'dkim', 'dmarc', 'dnssec', 'caa'].map((observationType) => ({ organisationId: 'ORG-1', observationType }));
+    assert.deepStrictEqual(groupDueTypesByOrganisation(candidates), [{ organisationId: 'ORG-1', dueTypes: ['spf', 'dkim', 'dmarc', 'dnssec', 'caa'] }]);
+  });
+
+  test('an empty candidate list produces an empty result', () => {
+    assert.deepStrictEqual(groupDueTypesByOrganisation([]), []);
+  });
+});
+
+describe('classifyOrganisationDnsStates', () => {
+  function fakeStoreClient(rows) {
+    return {
+      from(table) {
+        if (table !== 'observation_states') throw new Error(`unexpected table ${table}`);
+        let filtered = rows;
+        const builder = {
+          select() { return builder; },
+          eq(col, val) { filtered = filtered.filter((r) => r[col] === val); return builder; },
+          in(col, vals) { filtered = filtered.filter((r) => vals.includes(r[col])); return builder; },
+          then(onFulfilled) { return Promise.resolve({ data: filtered, error: null }).then(onFulfilled); },
+        };
+        return builder;
+      },
+    };
+  }
+  function osRow(observationType, status) {
+    return { organisation_id: 'ORG-1', observation_type: observationType, collection_group: 'dns_batch', status, attempt_count: 0 };
+  }
+
+  test('classifies due, future, and suspended types independently', async () => {
+    const client = fakeStoreClient([
+      osRow('spf', 'observed'), osRow('dkim', 'observed'), osRow('dmarc', 'observed'),
+      osRow('dnssec', 'observed'), osRow('caa', 'suspended'),
+    ]);
+    const result = await classifyOrganisationDnsStates('ORG-1', ['spf', 'dkim'], { client });
+    assert.deepStrictEqual(result.due.sort(), ['dkim', 'spf']);
+    assert.deepStrictEqual(result.future.sort(), ['dmarc', 'dnssec']);
+    assert.deepStrictEqual(result.suspended, ['caa']);
+  });
+
+  test('a suspended type is never classified as due even if named in dueTypes', async () => {
+    const client = fakeStoreClient([osRow('spf', 'suspended')]);
+    const result = await classifyOrganisationDnsStates('ORG-1', ['spf'], { client });
+    assert.deepStrictEqual(result.due, []);
+    assert.deepStrictEqual(result.suspended, ['spf']);
+  });
+
+  test('no existing rows classifies as entirely empty', async () => {
+    const client = fakeStoreClient([]);
+    const result = await classifyOrganisationDnsStates('ORG-1', [], { client });
+    assert.deepStrictEqual(result, { due: [], future: [], suspended: [] });
   });
 });

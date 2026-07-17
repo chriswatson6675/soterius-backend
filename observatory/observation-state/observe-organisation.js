@@ -53,6 +53,30 @@ async function fetchByRef(ref, client) {
 }
 
 /**
+ * resolveSignalTypes(requested) — validates an optional explicit subset of
+ * DNS observation types (OBS-103's cadence-safety fix). Undefined means
+ * "no subset requested" and defaults to all five, preserving every existing
+ * manual caller's behaviour unchanged (run-dns-observation-cli.js never
+ * passes this). Throws clearly on an unknown, duplicate, or empty selection
+ * rather than silently narrowing or widening what runs.
+ */
+function resolveSignalTypes(requested) {
+  if (requested === undefined) return DNS_OBSERVATION_TYPES;
+  if (!Array.isArray(requested) || requested.length === 0) {
+    throw new Error('signalTypes must be a non-empty array when provided');
+  }
+  const unique = new Set(requested);
+  if (unique.size !== requested.length) {
+    throw new Error(`signalTypes must not contain duplicates: ${requested.join(', ')}`);
+  }
+  const unsupported = requested.filter((t) => !DNS_OBSERVATION_TYPES.includes(t));
+  if (unsupported.length > 0) {
+    throw new Error(`signalTypes contains unsupported observation type(s): ${unsupported.join(', ')} (supported: ${DNS_OBSERVATION_TYPES.join(', ')})`);
+  }
+  return requested;
+}
+
+/**
  * observeOneSignal(organisationId, domain, signal, deps) →
  *   { signal, ok, observationState, error? }
  *
@@ -147,13 +171,18 @@ async function observeOneSignal(organisationId, domain, signal, deps = {}) {
  *   | { organisationId, ok: false, error }  — when the organisation has no
  *     resolvable domain at all (no signal is attempted in that case).
  *
- * Runs all five DNS_OBSERVATION_TYPES for one organisation. One signal's
- * failure never aborts another's (mirrors the on-demand pipeline's own
- * per-signal isolation).
+ * Runs all five DNS_OBSERVATION_TYPES for one organisation by default. Pass
+ * deps.signalTypes (a non-empty subset, e.g. ['spf','dkim']) to run only
+ * those — added for OBS-103, so a scheduler run triggered by one due daily
+ * signal never sweeps up an unrelated, not-yet-due weekly signal and resets
+ * its cadence. Every existing manual caller (run-dns-observation-cli.js)
+ * never sets this and is unaffected. One signal's failure never aborts
+ * another's (mirrors the on-demand pipeline's own per-signal isolation).
  */
 async function observeOrganisationDnsSignals(organisationId, deps = {}) {
   const client = deps.client || getClient();
   const resolveDomain = deps.resolveDomain || defaultResolveDomain;
+  const signalTypes = resolveSignalTypes(deps.signalTypes);
 
   const resolution = resolveDomain(organisationId, client);
   if (!resolution.ok) {
@@ -162,7 +191,7 @@ async function observeOrganisationDnsSignals(organisationId, deps = {}) {
   const { domain } = resolution;
 
   const results = [];
-  for (const signal of DNS_OBSERVATION_TYPES) {
+  for (const signal of signalTypes) {
     try {
       results.push(await observeOneSignal(organisationId, domain, signal, deps));
     } catch (err) {
@@ -178,4 +207,5 @@ module.exports = {
   observeOneSignal,
   parseRef,
   fetchByRef,
+  resolveSignalTypes,
 };

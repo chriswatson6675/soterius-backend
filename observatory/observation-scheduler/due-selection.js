@@ -69,6 +69,11 @@ async function findDueCandidates({ now, leaseMs = DEFAULT_LEASE_MS, overfetchLim
  * groupByOrganisation(candidates) → organisation ids, deduplicated, in
  * first-seen order (soonest-due-first, since candidates already arrive
  * sorted that way from findDueCandidates).
+ *
+ * Retained for callers that only need "which organisations have something
+ * due" (e.g. the aggregate log line) — groupDueTypesByOrganisation below is
+ * the one the scheduler's own selection/claim/collection logic uses, since
+ * it preserves exactly WHICH types are due, not just that some are.
  */
 function groupByOrganisation(candidates) {
   const seen = new Set();
@@ -82,4 +87,61 @@ function groupByOrganisation(candidates) {
   return order;
 }
 
-module.exports = { findDueCandidates, groupByOrganisation, DEFAULT_LEASE_MS, DEFAULT_OVERFETCH_LIMIT };
+/**
+ * groupDueTypesByOrganisation(candidates) →
+ *   Array<{ organisationId, dueTypes: string[] }>, soonest-due-first,
+ *   in first-seen organisation order.
+ *
+ * Cadence-safety fix (2026-07-17): the earlier grouping discarded which
+ * specific observation types were due for each organisation, which is
+ * exactly why every organisation ended up running all five DNS signals
+ * regardless of which one(s) actually triggered its selection — a daily
+ * SPF/DKIM/DMARC due-date was resetting weekly DNSSEC/CAA's cadence too.
+ * This preserves the due-type list per organisation so the caller can claim
+ * and collect only what's genuinely due.
+ */
+function groupDueTypesByOrganisation(candidates) {
+  const order = [];
+  const dueTypesByOrg = new Map();
+  for (const c of candidates) {
+    if (!dueTypesByOrg.has(c.organisationId)) {
+      dueTypesByOrg.set(c.organisationId, []);
+      order.push(c.organisationId);
+    }
+    dueTypesByOrg.get(c.organisationId).push(c.observationType);
+  }
+  return order.map((organisationId) => ({ organisationId, dueTypes: dueTypesByOrg.get(organisationId) }));
+}
+
+/**
+ * classifyOrganisationDnsStates(organisationId, dueTypes, deps) →
+ *   { due: string[], future: string[], suspended: string[] }
+ *
+ * For ONE already-selected organisation, fetches every existing DNS
+ * Observation State row and classifies each against the already-computed
+ * due-type list — purely for CLI reporting detail (which types were future/
+ * suspended, not just which were due). Never called population-wide; only
+ * for organisations already in the scheduler's selected cohort.
+ */
+async function classifyOrganisationDnsStates(organisationId, dueTypes, deps = {}) {
+  const client = deps.client || getClient();
+  const store = require('../observation-state/store');
+  const existing = await store.getAllByOrganisation(organisationId, DNS_OBSERVATION_TYPES, { client });
+  const dueSet = new Set(dueTypes);
+  const result = { due: [], future: [], suspended: [] };
+  for (const row of existing) {
+    if (row.status === 'suspended') result.suspended.push(row.observationType);
+    else if (dueSet.has(row.observationType)) result.due.push(row.observationType);
+    else result.future.push(row.observationType);
+  }
+  return result;
+}
+
+module.exports = {
+  findDueCandidates,
+  groupByOrganisation,
+  groupDueTypesByOrganisation,
+  classifyOrganisationDnsStates,
+  DEFAULT_LEASE_MS,
+  DEFAULT_OVERFETCH_LIMIT,
+};

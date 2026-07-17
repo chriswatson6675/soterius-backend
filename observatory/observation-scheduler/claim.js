@@ -1,66 +1,66 @@
 'use strict';
 
-// Organisation-level claiming — OBS-103.
+// Claiming — OBS-103, corrected for independent cadence (2026-07-17).
 //
-// OBS-102's observeOrganisationDnsSignals() always runs all five DNS signals
-// for one organisation together (see run-scheduler.js's own header for why
-// this work package does not change that). To prevent two overlapping
-// scheduler runs from both deciding the same organisation has a due signal
-// and both invoking collection for it concurrently, claiming is organisation-
-// scoped: every existing Observation State row for that organisation (across
-// the five DNS types) must be claimed before collection starts.
+// PREVIOUSLY: claiming was organisation-scoped and all-or-nothing — every
+// EXISTING DNS row for an organisation was claimed together, whether or not
+// it was actually due, specifically because observeOrganisationDnsSignals()
+// always ran all five signals as one unit. That coupling is exactly what
+// caused a daily-due SPF/DKIM/DMARC observation to sweep up and reset a
+// not-yet-due weekly DNSSEC/CAA observation's cadence.
 //
-// A never-yet-observed type has no row yet and needs no claim — the
-// UNIQUE(organisation_id, observation_type) constraint from migration 052
-// already prevents a genuine concurrent double-insert.
-//
-// If claiming succeeds for some but not all existing rows (lost a race
-// partway through), the ones already claimed are deliberately NOT reverted —
-// reverting risks clobbering a concurrent legitimate transition. They are
-// left as 'running' and self-heal via the stale-claim lease mechanism
-// (due-selection.js) on a future scheduler run. This organisation is skipped
-// for the current run either way.
+// NOW: OBS-102's observeOrganisationDnsSignals() accepts an explicit signal
+// subset (deps.signalTypes), so claiming only needs to cover exactly the
+// types the caller intends to collect — never "everything that happens to
+// exist for this organisation." Organisation-level all-or-nothing exclusivity
+// is no longer required for correctness: each (organisation_id,
+// observation_type) row is claimed independently via store.claim()'s own
+// atomic conditional UPDATE (the SKIP LOCKED equivalent), which already
+// fully prevents two workers from claiming the SAME row — two workers
+// claiming DIFFERENT types for the SAME organisation concurrently is safe,
+// since observeOneSignal touches only its own row, with no cross-type shared
+// state. A partial claim (some of the requested types lost a race) is not
+// reverted and is not fatal — the caller proceeds with whatever it
+// successfully claimed, which is itself always a fully safe, independently
+// correct unit of work.
 
-const { DNS_OBSERVATION_TYPES } = require('../observation-state/dns-signal-collection');
-const store = require('../observation-state/store');
 const { DEFAULT_LEASE_MS } = require('./due-selection');
+const store = require('../observation-state/store');
 
 function getClient() { return require('../../infra/database').getClient(); }
 
 /**
- * claimOrganisationDnsStates(organisationId, deps) →
- *   { claimed: true, claimedTypes: string[] }
- *   | { claimed: false, reason: string, claimedTypes: string[] }
+ * claimDueObservationStates(organisationId, observationTypes, deps) →
+ *   { claimed: boolean, claimedTypes: string[], skippedTypes: Array<{observationType, reason}> }
+ *
+ * `claimed` is true iff at least one type was successfully claimed — the
+ * caller should collect exactly claimedTypes, not the originally-requested
+ * list, since the two can differ under contention.
  */
-async function claimOrganisationDnsStates(organisationId, deps = {}) {
+async function claimDueObservationStates(organisationId, observationTypes, deps = {}) {
   const client = deps.client || getClient();
   const now = deps.now || (() => new Date().toISOString());
   const leaseMs = deps.leaseMs ?? DEFAULT_LEASE_MS;
   const nowIso = now();
 
-  const existing = await store.getAllByOrganisation(organisationId, DNS_OBSERVATION_TYPES, { client });
-  if (existing.length === 0) {
-    // Nothing persisted yet for this organisation — no claim needed;
-    // observeOrganisationDnsSignals will create fresh rows, and a genuine
-    // concurrent race is caught by the insert's own UNIQUE constraint.
-    return { claimed: true, claimedTypes: [] };
+  if (!Array.isArray(observationTypes) || observationTypes.length === 0) {
+    throw new Error('claimDueObservationStates: observationTypes must be a non-empty array');
   }
 
   const claimedTypes = [];
-  for (const row of existing) {
-    // eslint-disable-next-line no-await-in-loop -- claims must be attempted
-    // in sequence; each one's outcome decides whether to continue.
-    const claimedRow = await store.claim(organisationId, row.observationType, { nowIso, leaseMs }, { client });
-    if (!claimedRow) {
-      return {
-        claimed: false,
-        reason: `could not claim "${row.observationType}" — already running elsewhere (not yet stale) or suspended`,
-        claimedTypes,
-      };
+  const skippedTypes = [];
+  for (const observationType of observationTypes) {
+    // eslint-disable-next-line no-await-in-loop -- each claim's outcome is
+    // independent; sequential is simplest and matches the small (<=5) size.
+    const claimedRow = await store.claim(organisationId, observationType, { nowIso, leaseMs }, { client });
+    if (claimedRow) {
+      claimedTypes.push(claimedRow.observationType);
+    } else {
+      skippedTypes.push({ observationType, reason: 'already running elsewhere (not yet stale) or suspended' });
     }
-    claimedTypes.push(claimedRow.observationType);
   }
-  return { claimed: true, claimedTypes };
+
+  return { claimed: claimedTypes.length > 0, claimedTypes, skippedTypes };
 }
 
-module.exports = { claimOrganisationDnsStates };
+module.exports = { claimDueObservationStates };

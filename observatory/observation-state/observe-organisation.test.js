@@ -292,3 +292,68 @@ describe('observeOrganisationDnsSignals — per-organisation orchestration', () 
     assert.equal(collectCalled, false);
   });
 });
+
+describe('observeOrganisationDnsSignals — bounded signal subset (OBS-103 cadence-safety fix)', () => {
+  const ALL_ADAPTERS = { spf: { tableName: 'signal_facts_spf' }, dkim: { tableName: 'signal_facts_dkim' }, dmarc: { tableName: 'signal_facts_dmarc' }, dnssec: { tableName: 'signal_facts_dnssec' }, caa: { tableName: 'signal_facts_caa' } };
+
+  test('no signalTypes given — regression: still runs all five, unchanged from before this fix (manual OBS-102 callers unaffected)', async () => {
+    const client = fakeClient();
+    const collected = [];
+    const result = await observeOrganisationDnsSignals('ORG-1', {
+      client, adapters: ALL_ADAPTERS,
+      resolveDomain: () => ({ ok: true, domain: 'example.com' }),
+      collectDnsSignal: async (domain, signal) => { collected.push(signal); return successResult({ factsRow: { id: `facts-${signal}`, domain, collected_at: '2026-07-16T00:00:00.000Z', collector_version: `${signal}-collector@1.0.0` }, qualityRow: { id: `quality-${signal}` } }); },
+    });
+    assert.equal(result.results.length, 5);
+    assert.deepStrictEqual(collected.sort(), ['caa', 'dkim', 'dmarc', 'dnssec', 'spf']);
+  });
+
+  test('an explicit subset runs only that subset — the daily-only case', async () => {
+    const client = fakeClient();
+    const collected = [];
+    const result = await observeOrganisationDnsSignals('ORG-1', {
+      client, adapters: ALL_ADAPTERS, signalTypes: ['spf', 'dkim', 'dmarc'],
+      resolveDomain: () => ({ ok: true, domain: 'example.com' }),
+      collectDnsSignal: async (domain, signal) => { collected.push(signal); return successResult({ factsRow: { id: `facts-${signal}`, domain, collected_at: '2026-07-16T00:00:00.000Z', collector_version: `${signal}-collector@1.0.0` }, qualityRow: { id: `quality-${signal}` } }); },
+    });
+    assert.equal(result.results.length, 3);
+    assert.deepStrictEqual(collected.sort(), ['dkim', 'dmarc', 'spf']);
+    assert.ok(!collected.includes('dnssec'));
+    assert.ok(!collected.includes('caa'));
+  });
+
+  test('a single-signal subset (DNSSEC only) runs only DNSSEC', async () => {
+    const client = fakeClient();
+    const collected = [];
+    await observeOrganisationDnsSignals('ORG-1', {
+      client, adapters: ALL_ADAPTERS, signalTypes: ['dnssec'],
+      resolveDomain: () => ({ ok: true, domain: 'example.com' }),
+      collectDnsSignal: async (domain, signal) => { collected.push(signal); return successResult({ factsRow: { id: `facts-${signal}`, domain, collected_at: '2026-07-16T00:00:00.000Z', collector_version: `${signal}-collector@1.0.0` }, qualityRow: { id: `quality-${signal}` } }); },
+    });
+    assert.deepStrictEqual(collected, ['dnssec']);
+  });
+
+  test('rejects an empty signalTypes array', async () => {
+    const client = fakeClient();
+    await assert.rejects(
+      () => observeOrganisationDnsSignals('ORG-1', { client, signalTypes: [], resolveDomain: () => ({ ok: true, domain: 'example.com' }) }),
+      /non-empty array/,
+    );
+  });
+
+  test('rejects an unsupported observation type', async () => {
+    const client = fakeClient();
+    await assert.rejects(
+      () => observeOrganisationDnsSignals('ORG-1', { client, signalTypes: ['spf', 'mtasts'], resolveDomain: () => ({ ok: true, domain: 'example.com' }) }),
+      /unsupported observation type/,
+    );
+  });
+
+  test('rejects a duplicate observation type', async () => {
+    const client = fakeClient();
+    await assert.rejects(
+      () => observeOrganisationDnsSignals('ORG-1', { client, signalTypes: ['spf', 'spf'], resolveDomain: () => ({ ok: true, domain: 'example.com' }) }),
+      /duplicates/,
+    );
+  });
+});

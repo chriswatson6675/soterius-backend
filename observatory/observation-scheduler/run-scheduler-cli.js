@@ -4,7 +4,7 @@ require('dotenv').config();
 
 // Observation Scheduler CLI — OBS-103. A manual, bounded entrypoint that
 // finds due DNS Observation States and invokes the existing OBS-102
-// execution path for each due organisation.
+// execution path for each due organisation's genuinely due signal subset.
 //
 // Deliberately NOT a scheduler daemon, NOT a Railway cron target, and NOT
 // wired to any recurring trigger — this is a single bounded invocation, run
@@ -17,6 +17,15 @@ require('dotenv').config();
 //   node observatory/observation-scheduler/run-scheduler-cli.js --limit 10
 //   node observatory/observation-scheduler/run-scheduler-cli.js --org ORG-abc123 --org ORG-def456
 //   node observatory/observation-scheduler/run-scheduler-cli.js --now 2026-07-20T00:00:00.000Z --dry-run
+//
+// --org restricts selection to the named organisations while PRESERVING due
+// eligibility — a named-but-not-due organisation is skipped, not forced.
+// --force-org (requires --org) is the explicit, clearly-warned bypass for
+// when forcing a non-due organisation is genuinely needed (e.g. a
+// supervised corrective re-observation) — never for a recurring scheduler.
+//
+// --now is permitted ONLY together with --dry-run — a real run always uses
+// the real wall clock, so no future-dated claim can ever be stranded.
 //
 // Refuses to run with neither --org nor --limit given, UNLESS --production
 // is explicitly passed too (never the full registry even then — only
@@ -31,14 +40,16 @@ function parseArgs(argv) {
   let dryRun = false;
   let now = null;
   let production = false;
+  let forceOrg = false;
   for (let i = 0; i < argv.length; i += 1) {
     if (argv[i] === '--org') { orgIds.push(argv[i + 1]); i += 1; }
     else if (argv[i] === '--limit') { limit = parseInt(argv[i + 1], 10); i += 1; }
     else if (argv[i] === '--dry-run') { dryRun = true; }
     else if (argv[i] === '--now') { now = argv[i + 1]; i += 1; }
     else if (argv[i] === '--production') { production = true; }
+    else if (argv[i] === '--force-org') { forceOrg = true; }
   }
-  return { orgIds, limit, dryRun, now, production };
+  return { orgIds, limit, dryRun, now, production, forceOrg };
 }
 
 /**
@@ -55,29 +66,30 @@ function logEnvironmentConfirmation(deps = {}) {
 }
 
 /**
- * run({ orgIds, limit, dryRun, now, production }, deps) — the composable
- * core, independent of argv parsing/process.exit, so it can be tested
- * directly.
+ * run({ orgIds, limit, dryRun, now, production, forceOrg }, deps) — the
+ * composable core, independent of argv parsing/process.exit, so it can be
+ * tested directly.
  */
-async function run({ orgIds = [], limit = null, dryRun = false, now = null, production = false } = {}, deps = {}) {
+async function run({ orgIds = [], limit = null, dryRun = false, now = null, production = false, forceOrg = false } = {}, deps = {}) {
   const log = deps.log || console.log;
   const logEnv = deps.logEnvironmentConfirmation || logEnvironmentConfirmation;
   const scheduler = deps.runScheduler || runScheduler;
 
   logEnv(deps);
 
-  const outcome = await scheduler({ orgIds, limit, dryRun, now, productionUnbounded: production }, { ...deps, log });
+  const outcome = await scheduler({ orgIds, limit, dryRun, now, forceOrg, productionUnbounded: production }, { ...deps, log });
 
   if (!outcome.ok) return outcome;
 
-  log(`OBS-103: summary — selected ${outcome.summary.selected}, claimed ${outcome.summary.claimed}, completed ${outcome.summary.completed}, failed ${outcome.summary.failed}, skipped ${outcome.summary.skipped}`);
+  const s = outcome.summary;
+  log(`OBS-103: summary — organisations selected ${s.organisationsSelected}, states selected ${s.statesSelected}, claimed ${s.statesClaimed}, completed ${s.statesCompleted}, failed ${s.statesFailed}, skipped-future ${s.statesSkippedFuture}, skipped-suspended-or-claimed ${s.statesSkippedSuspendedOrClaimed}`);
   return outcome;
 }
 
 /* istanbul ignore next -- exercised via this module's exported run(), not this block */
 if (require.main === module) {
-  const { orgIds, limit, dryRun, now, production } = parseArgs(process.argv.slice(2));
-  run({ orgIds, limit, dryRun, now, production }).then((outcome) => {
+  const { orgIds, limit, dryRun, now, production, forceOrg } = parseArgs(process.argv.slice(2));
+  run({ orgIds, limit, dryRun, now, production, forceOrg }).then((outcome) => {
     process.exit(outcome.ok ? 0 : 1);
   }).catch((err) => {
     console.error('OBS-103: fatal error:', err.message);
