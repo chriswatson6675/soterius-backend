@@ -45,7 +45,11 @@ function enumerateEligibleOrganisations(deps = {}) {
     if (!domain) continue;
     const res = resolve.resolveOrganisationByDomain(domain);
     if (res.outcome === 'RESOLVED' && res.organisationId === organisationId) {
-      eligible.push({ organisationId, domain });
+      // organisationName is carried for manifest/audit only (OBS-103 cohort
+      // selection) — never used for eligibility or ordering. "where available":
+      // some authority rows have no display name and it stays null.
+      const organisationName = (rev.row.organisationName || rev.row.canonicalName) ?? null;
+      eligible.push({ organisationId, domain, organisationName });
     }
   }
   return eligible;

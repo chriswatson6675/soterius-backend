@@ -37,6 +37,16 @@ const DAILY_SALT = ':daily:v1';
 const WEEKLY_SALT = ':weekly:v1';
 const RETRY_SALT = ':retry:v1';
 
+// Cohort selection salt (OBS-103 controlled rollout). Distinct from the
+// scheduling salts above: this one ranks organisations for PROVISIONING order
+// (which orgs enter the population, and in what deterministic global order),
+// never for WHEN an already-provisioned org is observed. Keeping it a separate
+// salt means the provisioning cohort order is statistically independent of the
+// daily/weekly/retry slot assignment — an org's rollout rank tells you nothing
+// about its shard, and vice versa. Versioned: a future re-rank ships `:cohort:v2`
+// and never silently reorders an existing cohort.
+const COHORT_SALT = ':cohort:v1';
+
 // Retry spreading: a failed observation is not simply re-queued at the very next
 // quarter-hour wake (which would synchronise an entire mass DNS/network outage
 // onto one wake), but at a deterministic per-organisation offset of 0..N-1
@@ -121,6 +131,21 @@ function retrySpreadOffsetSlots(organisationId) {
 }
 
 /**
+ * cohortRank(orgId) → unsigned 32-bit FNV-1a rank over the immutable canonical
+ * organisation id under the COHORT_SALT. This is the deterministic GLOBAL
+ * provisioning rank used to choose which organisations enter a controlled
+ * rollout cohort and in what order — lowest rank first. It is NOT a modulo
+ * bucket (unlike the slot functions): the full 32-bit value is the sort key, so
+ * ranking is total and stable across machines, Node versions, authority-file
+ * order, and database-return order. Ties (astronomically unlikely for a 32-bit
+ * space over a few thousand ids, but handled for total-order correctness) are
+ * broken by the caller on organisationId — see cohort-ranking.js.
+ */
+function cohortRank(organisationId) {
+  return fnv1a32(String(organisationId) + COHORT_SALT);
+}
+
+/**
  * nextRetryInstantAfter(orgId, ms) → the org's deterministic retry instant: the
  * next quarter-hour boundary strictly after `ms`, plus a per-org offset of
  * 0..RETRY_SPREAD_BUCKETS-1 quarter-hours. Still perfectly grid-aligned, but a
@@ -142,10 +167,12 @@ module.exports = {
   DAILY_SLOTS,
   WEEKLY_SLOTS,
   RETRY_SPREAD_BUCKETS,
+  COHORT_SALT,
   fnv1a32,
   dailySlotIndex,
   weeklySlotIndex,
   retrySpreadOffsetSlots,
+  cohortRank,
   nextDailySlotInstantAfter,
   nextWeeklySlotInstantAfter,
   nextQuarterHourAfter,

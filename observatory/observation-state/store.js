@@ -200,4 +200,23 @@ async function claim(organisationId, observationType, { nowIso, leaseMs }, deps 
   return fromRow(data);
 }
 
-module.exports = { insert, getByOrganisationAndType, update, getAllByOrganisation, claim };
+/**
+ * listProvisionedOrganisationIds(deps) → the DISTINCT set of organisation ids
+ * that already have at least one observation_states row, as a string[]. Used by
+ * OBS-103 cohort provisioning to exclude already-provisioned organisations
+ * (including the pilot) BEFORE deterministic rank selection, so `--cohort-size N`
+ * selects N genuinely NEW organisations. Read-only; never mutates.
+ */
+async function listProvisionedOrganisationIds(deps = {}) {
+  const client = deps.client || getClient();
+  const { data, error } = await client
+    .from('observation_states')
+    .select('organisation_id');
+
+  if (error) throw new Error(`observation_states provisioned-ids read failed: ${error.message}`);
+  return Array.from(new Set((data || []).map((r) => r.organisation_id)));
+}
+
+module.exports = {
+  insert, getByOrganisationAndType, update, getAllByOrganisation, claim, listProvisionedOrganisationIds,
+};

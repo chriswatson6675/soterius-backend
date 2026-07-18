@@ -123,3 +123,47 @@ describe('shard-assignment — next-slot instant math', () => {
     assert.equal(s.WEEKLY_SLOTS * s.SLOT_MS, WEEK_MS);
   });
 });
+
+describe('cohortRank — deterministic provisioning rank (OBS-103)', () => {
+  test('same organisation id always returns the same unsigned 32-bit rank', () => {
+    assert.equal(s.cohortRank('ORG-111BB396F405'), s.cohortRank('ORG-111BB396F405'));
+    const v = s.cohortRank('ORG-ANYTHING');
+    assert.ok(Number.isInteger(v) && v >= 0 && v <= 0xffffffff);
+  });
+
+  // Fixed regression vectors — lock the exact cohort rank for the five pilots so
+  // any change to the hash or the :cohort:v1 salt is caught.
+  test('fixed cohort-rank vectors for the five pilot organisations do not silently change', () => {
+    const expected = {
+      'ORG-111BB396F405': 2386223014,
+      'ORG-022966B7A563': 953460703,
+      'ORG-008B5C6DDCA9': 1670045937,
+      'ORG-00A735D8BF71': 2649440398,
+      'ORG-FFE3D2E76F65': 1935211745,
+    };
+    for (const [id, r] of Object.entries(expected)) {
+      assert.equal(s.cohortRank(id), r, `${id} cohort rank`);
+    }
+  });
+
+  test('cohort rank is statistically independent of the scheduling salts (different salt → different value)', () => {
+    // Not a claim of cryptographic independence; just proof the cohort salt is
+    // actually applied and not accidentally reusing a scheduling salt output.
+    const id = 'ORG-SALT-CHECK';
+    assert.notEqual(s.cohortRank(id), s.fnv1a32(id + ':daily:v1'));
+    assert.notEqual(s.cohortRank(id), s.fnv1a32(id + ':weekly:v1'));
+    assert.notEqual(s.cohortRank(id), s.fnv1a32(id + ':retry:v1'));
+    assert.equal(s.cohortRank(id), s.fnv1a32(id + s.COHORT_SALT));
+  });
+
+  test('adding cohortRank left daily/weekly/retry outputs unchanged (regression, 2000 ids)', () => {
+    // Independent recomputation of the exact formulas the scheduler relies on —
+    // catches any accidental cross-contamination from the new export.
+    for (let i = 0; i < 2000; i += 1) {
+      const id = `ORG-REG-${i}`;
+      assert.equal(s.dailySlotIndex(id), s.fnv1a32(id + ':daily:v1') % s.DAILY_SLOTS);
+      assert.equal(s.weeklySlotIndex(id), s.fnv1a32(id + ':weekly:v1') % s.WEEKLY_SLOTS);
+      assert.equal(s.retrySpreadOffsetSlots(id), s.fnv1a32(id + ':retry:v1') % s.RETRY_SPREAD_BUCKETS);
+    }
+  });
+});
