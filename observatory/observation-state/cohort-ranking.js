@@ -212,10 +212,35 @@ function validateManifest(obj) {
   if (typeof obj.cohortDigest !== 'string' || !/^[0-9a-f]{64}$/.test(obj.cohortDigest)) {
     throw new ManifestError('manifest cohortDigest must be a 64-hex sha256 string');
   }
+
+  // Cross-field consistency: a manifest must not be able to disagree with itself
+  // even when its digest is valid (a digest only proves the content is unchanged,
+  // not that the content is coherent).
+  if (!Number.isInteger(obj.selectedCount) || obj.selectedCount < 0) {
+    throw new ManifestError(`manifest selectedCount must be a non-negative integer, got ${JSON.stringify(obj.selectedCount)}`);
+  }
+  if (typeof obj.sufficient !== 'boolean') {
+    throw new ManifestError(`manifest sufficient must be a boolean, got ${JSON.stringify(obj.sufficient)}`);
+  }
+  if (obj.selectedCount > obj.requestedSize) {
+    throw new ManifestError(`manifest selectedCount ${obj.selectedCount} exceeds requestedSize ${obj.requestedSize} — impossible`);
+  }
+  if (obj.sufficient && obj.selectedCount !== obj.requestedSize) {
+    throw new ManifestError(`manifest marked sufficient but selectedCount ${obj.selectedCount} !== requestedSize ${obj.requestedSize}`);
+  }
+  if (!obj.sufficient && obj.selectedCount >= obj.requestedSize) {
+    throw new ManifestError(`manifest marked not-sufficient but selectedCount ${obj.selectedCount} is not fewer than requestedSize ${obj.requestedSize}`);
+  }
+
   if (!Array.isArray(obj.entries)) {
     throw new ManifestError('manifest entries must be an array');
   }
+  if (obj.entries.length !== obj.selectedCount) {
+    throw new ManifestError(`manifest entries.length ${obj.entries.length} !== selectedCount ${obj.selectedCount}`);
+  }
+
   const seen = new Set();
+  let prev = null;
   obj.entries.forEach((e, i) => {
     if (e == null || typeof e !== 'object') throw new ManifestError(`entry ${i} must be an object`);
     if (typeof e.organisationId !== 'string' || e.organisationId.length === 0) {
@@ -224,8 +249,27 @@ function validateManifest(obj) {
     if (!Number.isInteger(e.position) || !Number.isInteger(e.rank)) {
       throw new ManifestError(`entry ${i} (${e.organisationId}) has a non-integer position/rank`);
     }
+    if (e.rank < 0 || e.rank > 0xffffffff) {
+      throw new ManifestError(`entry ${i} (${e.organisationId}) rank ${e.rank} is out of unsigned-32-bit range`);
+    }
+    // Positions must be contiguous from 1, unique, and already in order — which
+    // position === index + 1 enforces in one check.
+    if (e.position !== i + 1) {
+      throw new ManifestError(`entry ${i} (${e.organisationId}) has position ${e.position}, expected ${i + 1} (positions must be contiguous from 1, unique and ordered)`);
+    }
+    // Ranks must be ordered consistently with positions — the same total order
+    // the selector emits: ascending rank, then ascending organisationId on ties.
+    if (prev) {
+      if (e.rank < prev.rank) {
+        throw new ManifestError(`entry ${i} (${e.organisationId}) rank ${e.rank} is lower than the previous entry's rank ${prev.rank} — ordering inconsistent with position`);
+      }
+      if (e.rank === prev.rank && !(prev.organisationId < e.organisationId)) {
+        throw new ManifestError(`entries ${i - 1} and ${i} share rank ${e.rank} but are not in ascending organisationId tie-break order`);
+      }
+    }
     if (seen.has(e.organisationId)) throw new ManifestError(`entry ${i} duplicates organisationId ${e.organisationId}`);
     seen.add(e.organisationId);
+    prev = e;
   });
   return obj;
 }
@@ -300,12 +344,16 @@ function reconcileManifestAgainstLive(manifest, eligibleOrganisations = [], prov
 
 function csvCell(value) {
   let str = value === null || value === undefined ? '' : String(value);
-  // Neutralise spreadsheet formula injection: a value an operator opens in
-  // Excel/Sheets that begins with = + - @ (or a leading tab/CR that shifts the
-  // parse) is prefixed with a single quote so it is treated as literal text.
-  // Organisation names/domains come from external authority data, so this is a
-  // real vector for the exact human-review step the manifest exists for.
-  if (/^[=+\-@\t\r]/.test(str)) str = `'${str}`;
+  // Neutralise spreadsheet formula injection: if the FIRST non-whitespace/
+  // control character is = + - @, the cell can be evaluated as a formula/DDE
+  // when opened in Excel/Sheets. Spreadsheets trim leading whitespace and
+  // control characters, so "\t=SUM(...)", "  -2+3" and "\r@cmd" are just as
+  // dangerous as "=SUM(...)" — strip those before testing, then prefix with a
+  // single quote so the whole value is treated as literal text. Organisation
+  // names/domains come from external authority data, so this is a real vector
+  // for the exact human-review step the manifest exists for.
+  const firstMeaningful = str.replace(/^[\s\u0000-\u001F]+/, '');
+  if (/^[=+\-@]/.test(firstMeaningful)) str = `'${str}`;
   return /[",\r\n]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
 }
 

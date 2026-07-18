@@ -207,9 +207,61 @@ describe('cohort manifest identity + validation', () => {
     assert.throws(() => cr.validateManifest({ ...good, cohortSalt: ':cohort:v2' }), /cohortSalt/);
     assert.throws(() => cr.validateManifest({ ...good, requestedSize: 0 }), /requestedSize/);
     assert.throws(() => cr.validateManifest({ ...good, cohortDigest: 'nothex' }), /cohortDigest/);
+    // Duplicate id (kept otherwise well-formed so it reaches the duplicate check).
     const dupe = JSON.parse(JSON.stringify(good));
-    dupe.entries.push({ ...dupe.entries[0] });
+    dupe.entries[1].organisationId = dupe.entries[0].organisationId;
     assert.throws(() => cr.validateManifest(dupe), /duplicate/);
+  });
+
+  test('validateManifest rejects internally-inconsistent manifests even with a valid digest', () => {
+    const good = () => buildCohortManifest(selectCohortByRank(makeEligible(50), { size: 10 }));
+
+    // entries.length must equal selectedCount
+    const lenMismatch = good();
+    lenMismatch.entries.pop();
+    assert.throws(() => cr.validateManifest(lenMismatch), /entries\.length .* selectedCount/);
+
+    // sufficient === true ⇒ entries.length === requestedSize
+    const suffMismatch = good();
+    suffMismatch.selectedCount = 9;
+    suffMismatch.entries.pop();
+    assert.throws(() => cr.validateManifest(suffMismatch), /sufficient but selectedCount/);
+
+    // selectedCount cannot exceed requestedSize
+    const tooMany = good();
+    tooMany.requestedSize = 5;
+    assert.throws(() => cr.validateManifest(tooMany), /exceeds requestedSize/);
+
+    // not-sufficient must mean selectedCount < requestedSize
+    const badNotSuff = good();
+    badNotSuff.sufficient = false;
+    assert.throws(() => cr.validateManifest(badNotSuff), /not-sufficient but selectedCount/);
+
+    // positions must be contiguous from 1, unique and ordered
+    const gapPos = good();
+    gapPos.entries[3].position = 99;
+    assert.throws(() => cr.validateManifest(gapPos), /position 99, expected 4/);
+
+    const swappedPos = good();
+    [swappedPos.entries[0].position, swappedPos.entries[1].position] = [swappedPos.entries[1].position, swappedPos.entries[0].position];
+    assert.throws(() => cr.validateManifest(swappedPos), /position/);
+
+    // ranks must be non-decreasing with position
+    const unordered = good();
+    unordered.entries[5].rank = unordered.entries[0].rank - 1;
+    assert.throws(() => cr.validateManifest(unordered), /lower than the previous entry|position/);
+
+    // sufficient must be a boolean; selectedCount a non-negative integer
+    assert.throws(() => cr.validateManifest({ ...good(), sufficient: 'yes' }), /sufficient must be a boolean/);
+    assert.throws(() => cr.validateManifest({ ...good(), selectedCount: -1 }), /selectedCount must be a non-negative/);
+  });
+
+  test('validateManifest accepts a legitimately not-sufficient (fewer-than-N) manifest', () => {
+    // 6 eligible-unprovisioned, requesting 100 → 6 selected, sufficient false.
+    const m = buildCohortManifest(selectCohortByRank(makeEligible(6), { size: 100 }));
+    assert.equal(m.sufficient, false);
+    assert.equal(m.selectedCount, 6);
+    assert.doesNotThrow(() => cr.validateManifest(m));
   });
 
   test('verifyManifestIdentity rejects a tampered digest and an inconsistent rank', () => {
@@ -269,5 +321,33 @@ describe('manifestToCsv — spreadsheet formula-injection neutralised', () => {
     assert.ok(csv.includes("'=SUM(A1:A9)"), 'formula name neutralised');
     assert.ok(csv.includes("'-evil.example"), 'leading-dash domain neutralised');
     assert.ok(csv.includes("'@cmd"), 'leading-at neutralised');
+  });
+
+  test('neutralises when the first non-whitespace/control character is a formula char', () => {
+    const csvFor = (name) => cr.manifestToCsv({
+      entries: [{ position: 1, rank: 1, organisationId: 'ORG-X', organisationName: name, domain: 'd.example', eligibilityBasis: 'b' }],
+    });
+    // Leading spaces / tabs / CR / LF before a formula char → still neutralised.
+    assert.ok(csvFor(' =SUM(1)').includes("' =SUM(1)"), 'leading space');
+    assert.ok(csvFor('  +2').includes("'  +2"), 'leading spaces + plus');
+    assert.ok(csvFor('\t=A1').includes("'\t=A1"), 'leading tab');
+    assert.ok(csvFor('\r=A1').includes("'\r=A1"), 'leading CR');
+    assert.ok(csvFor('\n=A1').includes("'\n=A1"), 'leading LF');
+    assert.ok(csvFor('-2+3').includes("'-2+3"), 'leading dash');
+    assert.ok(csvFor('@x').includes("'@x"), 'leading at');
+  });
+
+  test('does NOT alter ordinary safe values', () => {
+    const csvFor = (name) => cr.manifestToCsv({
+      entries: [{ position: 1, rank: 1, organisationId: 'ORG-X', organisationName: name, domain: 'org-x.example', eligibilityBasis: 'b' }],
+    });
+    for (const safe of ['Safe Ltd', 'Acme & Co', 'org_123', 'A. B. Solicitors']) {
+      const csv = csvFor(safe);
+      assert.ok(csv.includes(safe), `${safe} present`);
+      assert.ok(!csv.includes(`'${safe}`), `${safe} not prefixed`);
+    }
+    // Standard CSV escaping is unchanged for commas/quotes.
+    const csvComma = csvFor('Smith, Jones & Co');
+    assert.ok(csvComma.includes('"Smith, Jones & Co"'), 'comma value quoted');
   });
 });
