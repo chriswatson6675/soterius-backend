@@ -133,7 +133,7 @@ async function observeOneSignal(organisationId, domain, signal, deps = {}) {
       attemptCount: 0,
       lastFailureAt: null,
       lastFailureReason: null,
-      nextDueAt: computeNextDueAt(lastObservedAt, signal),
+      nextDueAt: computeNextDueAt(lastObservedAt, signal, organisationId),
     };
 
     const updated = await store.update(organisationId, signal, patch, { client });
@@ -159,7 +159,7 @@ async function observeOneSignal(organisationId, domain, signal, deps = {}) {
     attemptCount,
     lastFailureAt: nowIso,
     lastFailureReason: result.error || 'unknown collection failure',
-    nextDueAt: computeRetryNextDueAt(nowIso, attemptCount, signal),
+    nextDueAt: computeRetryNextDueAt(nowIso, attemptCount, signal, organisationId),
   };
   const updated = await store.update(organisationId, signal, failurePatch, { client });
   return { signal, ok: false, observationState: updated, error: failurePatch.lastFailureReason };

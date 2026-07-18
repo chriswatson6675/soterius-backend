@@ -109,13 +109,15 @@ describe('observeOneSignal — successful first observation', () => {
     assert.equal(result.childError, null);
   });
 
-  test('sets next_due_at per the assigned cadence policy (spf = daily)', async () => {
+  test('sets next_due_at per the assigned cadence policy (spf = daily UTC shard)', async () => {
     const client = fakeClient();
     const result = await observeOneSignal('ORG-1', 'example.com', 'spf', {
       client, adapters: ADAPTERS,
       collectDnsSignal: async () => successResult(),
     });
-    assert.equal(result.observationState.nextDueAt, '2026-07-16T08:30:00.000Z'); // next 09:30 Europe/London (BST) after the observed instant
+    // ORG-1's deterministic daily shard is slot 23 = 05:45 UTC; observed at
+    // 2026-07-16T00:00Z (before the slot) → today's slot. Fixed UTC, no DST.
+    assert.equal(result.observationState.nextDueAt, '2026-07-16T05:45:00.000Z');
   });
 
   test('DNSSEC/CAA get a weekly next_due_at', async () => {
@@ -127,7 +129,9 @@ describe('observeOneSignal — successful first observation', () => {
         qualityRow: { id: 'quality-2' },
       }),
     });
-    assert.equal(result.observationState.nextDueAt, '2026-07-23T08:30:00.000Z'); // 7 days later, anchored to 09:30 Europe/London (BST)
+    // ORG-1's deterministic weekly shard is slot 235 = Wed 10:45 UTC in the
+    // seven-day epoch cycle; first occurrence strictly after 2026-07-16T00:00Z.
+    assert.equal(result.observationState.nextDueAt, '2026-07-22T10:45:00.000Z');
   });
 });
 
