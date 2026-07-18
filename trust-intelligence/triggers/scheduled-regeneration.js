@@ -24,6 +24,31 @@ function isNonEmptyString(v) {
   return typeof v === 'string' && v.length > 0;
 }
 
+// Deterministic per-Organisation staleness spreading (pre-production
+// validation phase, 2026-07-16). A flat policyThresholdMs applied identically
+// to every Organisation means the population resynchronizes onto the same
+// staleness day indefinitely — the very first sweep stamps ~all of them with
+// the same generatedAt, so they'd all go stale together again exactly one
+// policyThresholdMs later, forever. Deriving each Organisation's own
+// effective threshold from a stable hash of its id spreads due-dates across
+// the window instead: never above the configured policyThresholdMs (so the
+// nominal cadence is never loosened) and never below half of it (so no
+// Organisation is regenerated needlessly often). Pure function of
+// organisationId — same id always yields the same spread (CT-11 determinism
+// is unaffected).
+function hashUnitInterval(str) {
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i += 1) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return (h >>> 0) / 4294967296; // deterministic value in [0, 1)
+}
+
+function effectiveThresholdMs(organisationId, policyThresholdMs) {
+  return policyThresholdMs * (0.5 + 0.5 * hashUnitInterval(organisationId));
+}
+
 /**
  * runScheduledSweep({ policyThresholdMs, deps }) → Promise<{
  *   processed: Array<{ organisationId, generatedAt }>,
@@ -113,7 +138,8 @@ async function runScheduledSweep({ policyThresholdMs, deps = {} } = {}) {
 
     // Classification (§3 step 3) — "none generated yet" is always stale.
     const nowMs = Date.parse(now());
-    const isStale = !current.exists || (nowMs - Date.parse(current.generatedAt)) > policyThresholdMs;
+    const orgThresholdMs = effectiveThresholdMs(organisationId, policyThresholdMs);
+    const isStale = !current.exists || (nowMs - Date.parse(current.generatedAt)) > orgThresholdMs;
     if (!isStale) continue; // current — no action taken this sweep.
 
     // Invoke ENG-029's generation function exactly once for this Organisation
@@ -142,4 +168,4 @@ async function runScheduledSweep({ policyThresholdMs, deps = {} } = {}) {
   return { processed, skipped, failed };
 }
 
-module.exports = { runScheduledSweep, SweepMalformedConfigError };
+module.exports = { runScheduledSweep, SweepMalformedConfigError, effectiveThresholdMs, hashUnitInterval };

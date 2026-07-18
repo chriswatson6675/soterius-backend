@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const { test, describe } = require('node:test');
 const assert = require('node:assert/strict');
-const { runScheduledSweep, SweepMalformedConfigError } = require('./scheduled-regeneration');
+const { runScheduledSweep, SweepMalformedConfigError, effectiveThresholdMs, hashUnitInterval } = require('./scheduled-regeneration');
 
 const MODULE_PATH = path.join(__dirname, 'scheduled-regeneration.js');
 
@@ -124,6 +124,51 @@ describe('§9 idempotency (CT-2)', () => {
     assert.strictEqual(first.processed.length, 1);
     const second = await runScheduledSweep({ policyThresholdMs: 3600 * 1000, deps });
     assert.strictEqual(second.processed.length, 0);
+  });
+});
+
+describe('deterministic staleness spreading (pre-production validation phase, 2026-07-16)', () => {
+  test('the same organisationId always yields the same effective threshold', () => {
+    const a = effectiveThresholdMs('ORG-CONSISTENCY-CHECK', 7 * 24 * 60 * 60 * 1000);
+    const b = effectiveThresholdMs('ORG-CONSISTENCY-CHECK', 7 * 24 * 60 * 60 * 1000);
+    assert.strictEqual(a, b);
+  });
+
+  test('effective threshold is always within [0.5x, 1.0x] of the configured policy threshold', () => {
+    const policyThresholdMs = 7 * 24 * 60 * 60 * 1000;
+    for (let i = 0; i < 200; i += 1) {
+      const t = effectiveThresholdMs(`ORG-${i}`, policyThresholdMs);
+      assert.ok(t >= policyThresholdMs * 0.5, `ORG-${i} threshold ${t} below floor`);
+      assert.ok(t <= policyThresholdMs, `ORG-${i} threshold ${t} above configured policy`);
+    }
+  });
+
+  test('distinct organisationIds spread across the window rather than clustering at one value', () => {
+    const policyThresholdMs = 7 * 24 * 60 * 60 * 1000;
+    const values = Array.from({ length: 200 }, (_, i) => effectiveThresholdMs(`ORG-${i}`, policyThresholdMs));
+    const distinctBuckets = new Set(values.map((v) => Math.floor((v / policyThresholdMs) * 10)));
+    assert.ok(distinctBuckets.size >= 3, `expected spread across multiple buckets, got ${distinctBuckets.size}`);
+  });
+
+  test('a population sharing one generatedAt (the first-ever sweep) desynchronizes on the next sweep instead of all going stale on the same day', async () => {
+    const policyThresholdMs = 7 * 24 * 60 * 60 * 1000;
+    const organisationIds = Array.from({ length: 50 }, (_, i) => `ORG-${i}`);
+    const sharedGeneratedAt = '2026-07-01T00:00:00.000Z';
+    const store = new Map(organisationIds.map((id) => [id, sharedGeneratedAt]));
+
+    // 6 days after the shared generation — with a flat threshold, zero would
+    // be stale yet; with spreading, some Organisations (effective threshold
+    // below 6 days) are already due.
+    const deps = mockDeps({
+      listOrganisationIds: async () => organisationIds,
+      getCurrent: async (id) => ({ exists: true, generatedAt: store.get(id) }),
+      generateTrustProfile: async (id, { generatedAt }) => { store.set(id, generatedAt); return { organisationId: id }; },
+      save: async () => {},
+      now: () => '2026-07-07T00:00:00.000Z', // +6 days
+    });
+    const result = await runScheduledSweep({ policyThresholdMs, deps });
+    assert.ok(result.processed.length > 0, 'expected at least one Organisation to have desynchronized ahead of the full 7-day mark');
+    assert.ok(result.processed.length < organisationIds.length, 'expected the population to desynchronize, not regenerate all at once');
   });
 });
 
