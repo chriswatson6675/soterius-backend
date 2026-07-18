@@ -233,3 +233,103 @@ describe('claim', () => {
     assert.equal(claimed, null);
   });
 });
+
+// ---- OBS-103 BLOCKER 1: truncation-proof provisioned-id retrieval ----
+
+const { listProvisionedOrganisationIds } = require('./store');
+
+// A faithful paging client: honours .select(cols,{count}).order().range(a,b),
+// returning the exact window and an exact total count — like PostgREST when you
+// page correctly.
+function pagingClient(rows, { countOverride = null } = {}) {
+  return {
+    from(table) {
+      if (table !== 'observation_states') throw new Error(`unexpected table ${table}`);
+      const q = {
+        _count: false,
+        _range: null,
+        select(_cols, opts) { if (opts && opts.count) q._count = true; return q; },
+        order() { return q; },
+        range(a, b) { q._range = [a, b]; return q; },
+        then(res, rej) {
+          const [a, b] = q._range;
+          const data = rows.slice(a, b + 1);
+          const count = q._count ? (countOverride ?? rows.length) : null;
+          return Promise.resolve({ data, error: null, count }).then(res, rej);
+        },
+      };
+      return q;
+    },
+  };
+}
+
+// A BROKEN client that IGNORES .range() and always returns the first `cap` rows
+// — exactly the silent-truncation defect the old unbounded .select() hit against
+// Supabase's default 1000-row cap.
+function truncatingClient(rows, cap = 1000) {
+  return {
+    from() {
+      const q = {
+        _count: false,
+        select(_cols, opts) { if (opts && opts.count) q._count = true; return q; },
+        order() { return q; },
+        range() { return q; },
+        then(res, rej) {
+          const count = q._count ? rows.length : null;
+          return Promise.resolve({ data: rows.slice(0, cap), error: null, count }).then(res, rej);
+        },
+      };
+      return q;
+    },
+  };
+}
+
+function makeStateRows(orgCount, perOrg = 5) {
+  const rows = [];
+  let id = 0;
+  for (let o = 0; o < orgCount; o += 1) {
+    for (let s = 0; s < perOrg; s += 1) {
+      rows.push({ id: String(id).padStart(8, '0'), organisation_id: `ORG-${String(o).padStart(6, '0')}` });
+      id += 1;
+    }
+  }
+  return rows;
+}
+
+describe('listProvisionedOrganisationIds — truncation-proof', () => {
+  test('retrieves EVERY distinct organisation id beyond 80,835 states (16,167 orgs × 5)', async () => {
+    const rows = makeStateRows(16167, 5); // 80,835 rows
+    assert.equal(rows.length, 80835);
+    const ids = await listProvisionedOrganisationIds({ client: pagingClient(rows), pageSize: 1000 });
+    assert.equal(ids.length, 16167);
+    assert.ok(ids.includes('ORG-000000'));
+    assert.ok(ids.includes('ORG-016166'));
+  });
+
+  test('small page size still returns the complete distinct set', async () => {
+    const rows = makeStateRows(250, 5); // 1,250 rows
+    const ids = await listProvisionedOrganisationIds({ client: pagingClient(rows), pageSize: 100 });
+    assert.equal(ids.length, 250);
+  });
+
+  test('reproduces the previous defect: a client that ignores range FAILS LOUDLY (never silently truncates)', async () => {
+    const rows = makeStateRows(1000, 5); // 5,000 rows, cap 1000
+    await assert.rejects(
+      () => listProvisionedOrganisationIds({ client: truncatingClient(rows, 1000), pageSize: 1000 }),
+      /stalled|incomplete/,
+    );
+  });
+
+  test('detects short coverage: retrieved rows fewer than the reported exact count → throws', async () => {
+    const rows = makeStateRows(500, 5); // 2,500 rows, but pretend the table really has 3,000
+    await assert.rejects(
+      () => listProvisionedOrganisationIds({ client: pagingClient(rows, { countOverride: 3000 }), pageSize: 1000 }),
+      /incomplete/,
+    );
+  });
+
+  test('surfaces a client error rather than returning a partial set', async () => {
+    const errClient = { from() { return { select() { return this; }, order() { return this; }, range() { return this; }, then(res, rej) { return Promise.resolve({ data: null, error: { message: 'boom' } }).then(res, rej); } }; } };
+    await assert.rejects(() => listProvisionedOrganisationIds({ client: errClient, pageSize: 1000 }), /provisioned-ids read failed: boom/);
+  });
+});

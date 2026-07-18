@@ -200,23 +200,71 @@ async function claim(organisationId, observationType, { nowIso, leaseMs }, deps 
   return fromRow(data);
 }
 
+// Page size for the exhaustive provisioned-id scan. PostgREST caps a single
+// response at the project's "Max Rows" (Supabase default 1000), so a plain
+// unbounded .select() silently returns only the first page. We therefore page
+// explicitly with .range() and cross-check total coverage against an exact
+// count so a truncated read fails LOUDLY instead of silently omitting already-
+// provisioned organisations (which would corrupt cohort exclusion at scale).
+const PROVISIONED_PAGE_SIZE = 1000;
+
 /**
  * listProvisionedOrganisationIds(deps) → the DISTINCT set of organisation ids
  * that already have at least one observation_states row, as a string[]. Used by
  * OBS-103 cohort provisioning to exclude already-provisioned organisations
- * (including the pilot) BEFORE deterministic rank selection, so `--cohort-size N`
- * selects N genuinely NEW organisations. Read-only; never mutates.
+ * (including the pilot) BEFORE deterministic rank selection.
+ *
+ * Truncation-proof: pages the full table via ordered .range() windows, measures
+ * true coverage by the unique row `id` (not organisation_id, which repeats five
+ * times per org), and asserts the number of rows actually retrieved equals the
+ * server's exact `count`. Throws if a full page fails to advance (a server
+ * ignoring range) or if coverage is short of the reported total. Read-only;
+ * never mutates. `deps.pageSize` overridable for tests.
  */
 async function listProvisionedOrganisationIds(deps = {}) {
   const client = deps.client || getClient();
-  const { data, error } = await client
-    .from('observation_states')
-    .select('organisation_id');
+  const pageSize = deps.pageSize || PROVISIONED_PAGE_SIZE;
 
-  if (error) throw new Error(`observation_states provisioned-ids read failed: ${error.message}`);
-  return Array.from(new Set((data || []).map((r) => r.organisation_id)));
+  const organisationIds = new Set();
+  const seenRowIds = new Set();
+  let expectedCount = null;
+  let from = 0;
+
+  for (let page = 0; ; page += 1) {
+    // eslint-disable-next-line no-await-in-loop
+    const { data, error, count } = await client
+      .from('observation_states')
+      .select('id, organisation_id', { count: 'exact' })
+      .order('id', { ascending: true })
+      .range(from, from + pageSize - 1);
+    if (error) throw new Error(`observation_states provisioned-ids read failed: ${error.message}`);
+    if (expectedCount === null && typeof count === 'number') expectedCount = count;
+
+    const rows = data || [];
+    let newRowsThisPage = 0;
+    for (const r of rows) {
+      if (!seenRowIds.has(r.id)) { seenRowIds.add(r.id); newRowsThisPage += 1; }
+      organisationIds.add(r.organisation_id);
+    }
+
+    if (rows.length < pageSize) break; // final (short) page → complete
+    if (newRowsThisPage === 0) {
+      throw new Error(`observation_states provisioned-ids retrieval stalled at offset ${from}: a full page advanced 0 new rows (server ignoring range?)`);
+    }
+    from += pageSize;
+    // Runaway guard: never loop more than the reported table can justify.
+    if (expectedCount !== null && page > Math.ceil(expectedCount / pageSize) + 2) {
+      throw new Error(`observation_states provisioned-ids retrieval exceeded expected page count at offset ${from}`);
+    }
+  }
+
+  if (expectedCount !== null && seenRowIds.size !== expectedCount) {
+    throw new Error(`observation_states provisioned-ids retrieval incomplete: retrieved ${seenRowIds.size} of ${expectedCount} rows — refusing to return a truncated provisioned set`);
+  }
+  return Array.from(organisationIds);
 }
 
 module.exports = {
   insert, getByOrganisationAndType, update, getAllByOrganisation, claim, listProvisionedOrganisationIds,
+  PROVISIONED_PAGE_SIZE,
 };

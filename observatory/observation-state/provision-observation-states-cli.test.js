@@ -91,19 +91,26 @@ describe('provision CLI --cohort-size (group C)', () => {
     for (const p of deps.resolve._pilots) assert.ok(!res.selection.selected.some((s) => s.organisationId === p));
   });
 
-  test('production write creates exactly 500 new states and leaves the five pilots byte-for-byte untouched', async () => {
+  test('governed workflow: select → manifest → --from-manifest production write creates exactly 500; pilots untouched', async () => {
     const deps = baseDeps();
     const pilotSnapshot = JSON.stringify(deps.store.rows.filter((r) => r.organisationId.startsWith('ORG-PILOT-')));
-    const res = await cli.run(
-      { cohortSize: 100, now: '2026-03-10T12:00:00.000Z', batchSize: 500, production: true, confirm: 'PROVISION-STATES' },
-      deps,
-    );
+
+    // Step 1 — selection produces the reviewed manifest (no writes).
+    const sel = await cli.run({ cohortSize: 100, now: '2026-03-10T12:00:00.000Z' }, deps);
+    assert.equal(deps.store.rows.length, 25); // selection wrote nothing
+    const manifestJson = JSON.stringify(sel.manifest);
+
+    // Step 2 — provision ONLY that manifest (same live store/deps).
+    const res = await cli.run({
+      fromManifest: 'phase1a.json', production: true, confirm: 'PROVISION-STATES',
+      approveDigest: sel.manifest.cohortDigest, now: '2026-03-10T12:00:00.000Z',
+      __readFile: () => manifestJson,
+    }, deps);
+
     assert.equal(res.dryRun, false);
     assert.equal(res.summary.statesCreated, 500);
     assert.equal(deps.store.rows.length, 25 + 500);
-    // Pilot rows unchanged.
     assert.equal(JSON.stringify(deps.store.rows.filter((r) => r.organisationId.startsWith('ORG-PILOT-'))), pilotSnapshot);
-    // Exactly 100 distinct NEW organisations, 5 states each.
     const created = deps.store.rows.filter((r) => r.organisationId.startsWith('ORG-NEW-'));
     assert.equal(created.length, 500);
     assert.equal(new Set(created.map((r) => r.organisationId)).size, 100);
@@ -127,11 +134,12 @@ describe('provision CLI --cohort-size (group C)', () => {
     await assert.rejects(() => cli.run({ limit: 100, cohortSize: 100 }, deps), /mutually exclusive/);
   });
 
-  test('production without --confirm stays a dry-run (guard unchanged); nothing written', async () => {
+  test('--cohort-size --production is refused (selection-only; directs to the manifest flow); nothing written', async () => {
     const deps = baseDeps();
-    const res = await cli.run({ cohortSize: 10, production: true, confirm: null, now: '2026-03-10T12:00:00.000Z' }, deps);
-    assert.equal(res.dryRun, true);
-    assert.equal(res.summary.statesCreated, 0);
+    await assert.rejects(
+      () => cli.run({ cohortSize: 10, production: true, confirm: 'PROVISION-STATES', now: '2026-03-10T12:00:00.000Z' }, deps),
+      /does not write in production|from-manifest/,
+    );
     assert.equal(deps.store.rows.length, 25);
   });
 
@@ -179,5 +187,143 @@ describe('provision CLI argument parsing', () => {
     // dry-run legacy over the full eligible population, first-3-considered semantics preserved.
     assert.equal(res.dryRun, true);
     assert.equal(res.summary.eligibleOrganisations, 155);
+  });
+});
+
+describe('provision CLI manifest overwrite protection', () => {
+  test('refuses to overwrite an existing manifest path without --force', async () => {
+    const deps = baseDeps();
+    await assert.rejects(
+      () => cli.run({ cohortSize: 10, manifest: 'exists.json', __existsFile: () => true, __writeFile: () => { throw new Error('should not have written'); } }, deps),
+      /already exists|--force/,
+    );
+  });
+  test('--force permits overwrite', async () => {
+    const deps = baseDeps();
+    const writes = [];
+    await cli.run({ cohortSize: 10, manifest: 'exists.json', force: true, __existsFile: () => true, __writeFile: (p, b) => writes.push([p, b]) }, deps);
+    assert.equal(writes.length, 1);
+  });
+});
+
+describe('provision CLI --from-manifest (BLOCKER 2 — governed production write)', () => {
+  const NOW = '2026-03-10T12:00:00.000Z';
+
+  // Produce a reviewed manifest against a fresh baseline (5 provisioned pilots).
+  async function selectManifest() {
+    const deps = baseDeps();
+    const sel = await cli.run({ cohortSize: 100, now: NOW }, deps);
+    return { manifestJson: JSON.stringify(sel.manifest), manifest: sel.manifest };
+  }
+
+  test('dry-run validates, reconciles, reports the plan, and writes nothing', async () => {
+    const { manifestJson } = await selectManifest();
+    const deps = baseDeps();
+    const res = await cli.run({ fromManifest: 'p.json', now: NOW, __readFile: () => manifestJson }, deps);
+    assert.equal(res.dryRun, true);
+    assert.equal(res.mode, 'from-manifest');
+    assert.equal(res.summary.statesToCreate, 500);
+    assert.equal(res.summary.statesCreated, 0);
+    assert.equal(deps.store.rows.length, 25);
+    assert.equal(res.reconciliation.drift, false);
+  });
+
+  test('production write requires --approve-digest', async () => {
+    const { manifestJson } = await selectManifest();
+    const deps = baseDeps();
+    await assert.rejects(
+      () => cli.run({ fromManifest: 'p.json', production: true, confirm: 'PROVISION-STATES', now: NOW, __readFile: () => manifestJson }, deps),
+      /approve-digest/,
+    );
+    assert.equal(deps.store.rows.length, 25);
+  });
+
+  test('production write refuses a mismatched --approve-digest', async () => {
+    const { manifestJson } = await selectManifest();
+    const deps = baseDeps();
+    const wrong = 'a'.repeat(64);
+    await assert.rejects(
+      () => cli.run({ fromManifest: 'p.json', production: true, confirm: 'PROVISION-STATES', approveDigest: wrong, now: NOW, __readFile: () => manifestJson }, deps),
+      /does not match/,
+    );
+    assert.equal(deps.store.rows.length, 25);
+  });
+
+  test('refuses a tampered manifest (digest no longer matches content)', async () => {
+    const { manifest } = await selectManifest();
+    const tampered = JSON.parse(JSON.stringify(manifest));
+    tampered.entries[0].organisationId = 'ORG-NEW-9999'; // alter content, stale digest
+    const deps = baseDeps();
+    await assert.rejects(
+      () => cli.run({ fromManifest: 'p.json', __readFile: () => JSON.stringify(tampered) }, deps),
+      /digest mismatch|inconsistent ranking/,
+    );
+  });
+
+  test('refuses invalid JSON, wrong schema, and wrong cohort salt', async () => {
+    const deps = baseDeps();
+    await assert.rejects(() => cli.run({ fromManifest: 'p.json', __readFile: () => '{not json' }, deps), /not valid JSON/);
+    await assert.rejects(() => cli.run({ fromManifest: 'p.json', __readFile: () => JSON.stringify({ schema: 'nope' }) }, deps), /schema/);
+    const { manifest } = await selectManifest();
+    const wrongSalt = { ...JSON.parse(JSON.stringify(manifest)), cohortSalt: ':cohort:v2' };
+    await assert.rejects(() => cli.run({ fromManifest: 'p.json', __readFile: () => JSON.stringify(wrongSalt) }, deps), /cohortSalt/);
+  });
+
+  test('DRIFT: refuses when a manifest org has lost eligibility (live selection differs)', async () => {
+    const { manifest, manifestJson } = await selectManifest();
+    const dropped = manifest.entries[0].organisationId;
+    const r = makeResolve();
+    const baseResolve = r.resolveOrganisationByDomain;
+    const driftResolve = {
+      ...r,
+      resolveOrganisationByDomain: (d) => (d === `${dropped.toLowerCase()}.example`
+        ? { outcome: 'AMBIGUOUS', organisationId: null } // dropped org no longer resolvable
+        : baseResolve(d)),
+    };
+    const deps = baseDeps({ resolve: driftResolve });
+    await assert.rejects(
+      () => cli.run({ fromManifest: 'p.json', __readFile: () => manifestJson }, deps),
+      /drift/,
+    );
+  });
+
+  test('RETRY after partial write completes ONLY the reviewed cohort — never expands to 160', async () => {
+    const { manifest, manifestJson } = await selectManifest();
+    const deps = baseDeps();
+    // Simulate a partial prior write: the first 60 manifest orgs already have all 5 states.
+    const first60 = manifest.entries.slice(0, 60).map((e) => e.organisationId);
+    for (const id of first60) for (const t of DNS_TYPES) deps.store.rows.push({ organisationId: id, observationType: t, status: 'observed', evidenceRef: `ev:${id}:${t}` });
+
+    const res = await cli.run({
+      fromManifest: 'p.json', production: true, confirm: 'PROVISION-STATES',
+      approveDigest: manifest.cohortDigest, now: NOW, __readFile: () => manifestJson,
+    }, deps);
+
+    assert.equal(res.summary.statesCreated, 200); // only the remaining 40 orgs × 5
+    const newOrgs = new Set(deps.store.rows.filter((rr) => rr.organisationId.startsWith('ORG-NEW-')).map((rr) => rr.organisationId));
+    assert.equal(newOrgs.size, 100); // EXACTLY the reviewed 100 — not 160
+    const manifestSet = new Set(manifest.entries.map((e) => e.organisationId));
+    for (const id of newOrgs) assert.ok(manifestSet.has(id), `${id} must be within the reviewed manifest`);
+    assert.equal(deps.store.rows.length, 25 + 60 * 5 + 40 * 5); // 525
+  });
+
+  test('idempotent: re-running the production write from the same manifest creates nothing new', async () => {
+    const { manifest, manifestJson } = await selectManifest();
+    const deps = baseDeps();
+    const common = {
+      fromManifest: 'p.json', production: true, confirm: 'PROVISION-STATES',
+      approveDigest: manifest.cohortDigest, now: NOW, __readFile: () => manifestJson,
+    };
+    const first = await cli.run(common, deps);
+    assert.equal(first.summary.statesCreated, 500);
+    const second = await cli.run(common, deps);
+    assert.equal(second.summary.statesCreated, 0);
+    assert.equal(deps.store.rows.length, 25 + 500);
+  });
+
+  test('--from-manifest is mutually exclusive with --cohort-size and --limit', async () => {
+    const deps = baseDeps();
+    await assert.rejects(() => cli.run({ fromManifest: 'p.json', cohortSize: 10 }, deps), /mutually exclusive/);
+    await assert.rejects(() => cli.run({ fromManifest: 'p.json', limit: 10 }, deps), /mutually exclusive/);
   });
 });

@@ -59,34 +59,82 @@ Because the rank is global, this is **cumulative**: selecting 100, provisioning
 them, then selecting the next 900 yields exactly the same first 1,000 as a single
 1,000-selection from the original baseline.
 
-## Production guard is unchanged
+`store.listProvisionedOrganisationIds` retrieves the provisioned set **exhaustively
+by explicit pagination** and cross-checks against the exact row count — it can
+never silently truncate at the PostgREST 1000-row cap. A truncated or stalled
+read fails loudly rather than returning a partial exclusion set.
 
-Dry-run is still the default. A real write still requires **both**
-`--production` **and** `--confirm PROVISION-STATES`; `--production` alone refuses
-and runs a dry-run. `--limit` and `--cohort-size` are **mutually exclusive** —
-supplying both fails with a validation error.
+## Governed rollout workflow (select → manifest → approve → provision)
+
+Production provisioning **never regenerates** a cohort. It provisions only a
+manifest that a human has reviewed and approved:
+
+```
+--cohort-size N   (selection, dry-run only)
+      ↓ emits
+reviewed manifest (JSON, carries an identity digest)
+      ↓ human review + approval (note the cohortDigest)
+--from-manifest <path> --production --confirm PROVISION-STATES --approve-digest <digest>
+```
+
+- **`--cohort-size N` is selection-only.** It never writes in production
+  (`--cohort-size --production` is refused and points you here); it produces the
+  manifest to review.
+- **`--from-manifest <path>` is the only production write path.** It:
+  1. loads and validates the manifest (schema + current `:cohort:v1` salt);
+  2. **verifies identity** — recomputes the `cohortDigest` and each entry's rank;
+     a tampered/edited manifest is refused;
+  3. **reconciles against live state** and **refuses on drift** — if the current
+     deterministic selection no longer matches the reviewed cohort (a manifest
+     org lost eligibility, or a lower-ranked org would now displace it), it stops
+     and asks for a fresh reviewed manifest;
+  4. provisions **exactly** the manifest's organisation ids, idempotently.
+- **The write can only ever complete or refuse — never expand.** The target is
+  always the manifest's fixed id set, so a retry (or a concurrent run of the same
+  manifest) cannot add organisations beyond the reviewed cohort.
+
+Dry-run is still the default; `--from-manifest` without `--production --confirm`
+validates + reconciles + reports the plan and writes nothing. A production write
+additionally requires `--approve-digest <digest>` matching the manifest's
+`cohortDigest`, so a swapped file cannot be provisioned even if internally
+consistent. `--limit`, `--cohort-size`, and `--from-manifest` are mutually
+exclusive.
 
 ## Manifest review
 
 `--manifest <path>` writes a deterministic, credential-free, timestamp-free
-manifest (`--manifest-format json|csv`, default `json`). Without a path a JSON
-manifest is printed to stdout between markers. Repeated dry runs over identical
-inputs produce **byte-equivalent** manifests. Each entry carries: cohort
-position, global hash rank, organisation id, organisation name (where
-available), domain, and eligibility basis — and nothing mutable or secret.
+manifest (`--manifest-format json|csv`, default `json`). It **refuses to
+overwrite** an existing path unless `--force` is given (so a reviewed manifest is
+never silently replaced). Without a path a JSON manifest is printed to stdout
+between markers. Repeated selections over identical inputs produce
+**byte-equivalent** manifests. Each entry carries: cohort position, global hash
+rank, organisation id, organisation name (where available), domain, and
+eligibility basis — and nothing mutable or secret. The `cohortDigest` is the
+manifest identity to approve. CSV cells beginning with `= + - @` are prefixed
+with `'` to neutralise spreadsheet formula injection from external organisation
+names/domains.
 
-## Dry-run examples
+## Recovery after a partial or failed provisioning run
 
-```bash
-# Governed Phase 1A dry-run (plan only, writes nothing) + manifest for review
-node provision-observation-states-cli.js --cohort-size 100 --manifest phase1a.json
+Provisioning is idempotent per `(organisation, observation_type)`, and the
+manifest write targets a fixed id set, so recovery is simply **re-running the
+same `--from-manifest` command**:
 
-# Inspect the CSV form instead
-node provision-observation-states-cli.js --cohort-size 100 --manifest phase1a.csv --manifest-format csv
+- **Partial write** (some cohort orgs fully provisioned, one interrupted
+  mid-way): re-run `--from-manifest <same file> --production --confirm
+  PROVISION-STATES --approve-digest <same digest>`. Already-complete orgs are
+  no-ops; the partially-provisioned org's missing states are filled; **no org
+  outside the manifest is ever added**. The run completes only the reviewed 100.
+- **Drift refusal on retry:** if the tool refuses with a drift message, the live
+  population changed since the manifest was reviewed. Do **not** override — select
+  again (`--cohort-size N --manifest new.json`), review the new manifest and
+  digest, and provision that.
+- **Manifest lost/corrupted:** re-select to regenerate it; the deterministic rank
+  makes the cohort reproducible, and the digest confirms you have the same one.
 
-# Governed production write (only after the dry-run + manifest are accepted)
-node provision-observation-states-cli.js --cohort-size 100 --production --confirm PROVISION-STATES
-```
+Never use `--limit` or a fresh `--cohort-size` production attempt to "finish" a
+partially provisioned cohort — only `--from-manifest` guarantees the cohort does
+not expand.
 
 ## Expected counts
 
@@ -101,9 +149,10 @@ node provision-observation-states-cli.js --cohort-size 100 --production --confir
 
 The existing five-organisation pilot (25 states) is untouched.
 
-**Phase 1B** (intended expansion) selects the **next 900** new organisations
-(`--cohort-size 900` after Phase 1A is provisioned), for a controlled cohort
-total of **1,000 new organisations plus the separate five-org pilot**.
+**Phase 1B** (intended expansion) selects the **next 900** new organisations via
+the same governed workflow — `--cohort-size 900 --manifest phase1b.json` after
+Phase 1A is provisioned, then `--from-manifest phase1b.json …` — for a controlled
+cohort total of **1,000 new organisations plus the separate five-org pilot**.
 
 > This document describes tooling behaviour only. It does not assert that any
 > production provisioning has been performed.

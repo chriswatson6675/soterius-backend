@@ -177,3 +177,97 @@ describe('buildCohortManifest / manifestToCsv — deterministic, credential-free
     assert.equal(lines.length, 4); // header + 3
   });
 });
+
+// ---- OBS-103 BLOCKER 2 + CSV injection: manifest identity, validation, reconcile ----
+const cr = require('./cohort-ranking');
+
+describe('cohort manifest identity + validation', () => {
+  test('buildCohortManifest embeds a deterministic 64-hex sha256 digest', () => {
+    const sel = selectCohortByRank(makeEligible(120), { size: 100 });
+    const m1 = buildCohortManifest(sel);
+    const m2 = buildCohortManifest(selectCohortByRank(makeEligible(120), { size: 100 }));
+    assert.match(m1.cohortDigest, /^[0-9a-f]{64}$/);
+    assert.equal(m1.cohortDigest, m2.cohortDigest); // deterministic
+  });
+
+  test('computeCohortDigest changes when any entry changes', () => {
+    const sel = selectCohortByRank(makeEligible(50), { size: 20 });
+    const m = buildCohortManifest(sel);
+    const tampered = JSON.parse(JSON.stringify(m));
+    tampered.entries[0].organisationId = 'ORG-DIFFERENT';
+    const d = cr.computeCohortDigest({ cohortSalt: tampered.cohortSalt, requestedSize: tampered.requestedSize, entries: tampered.entries });
+    assert.notEqual(d, m.cohortDigest);
+  });
+
+  test('validateManifest accepts a good manifest and rejects malformed ones', () => {
+    const good = buildCohortManifest(selectCohortByRank(makeEligible(30), { size: 10 }));
+    assert.doesNotThrow(() => cr.validateManifest(good));
+    assert.throws(() => cr.validateManifest(null), cr.ManifestError);
+    assert.throws(() => cr.validateManifest({ ...good, schema: 'x' }), /schema/);
+    assert.throws(() => cr.validateManifest({ ...good, cohortSalt: ':cohort:v2' }), /cohortSalt/);
+    assert.throws(() => cr.validateManifest({ ...good, requestedSize: 0 }), /requestedSize/);
+    assert.throws(() => cr.validateManifest({ ...good, cohortDigest: 'nothex' }), /cohortDigest/);
+    const dupe = JSON.parse(JSON.stringify(good));
+    dupe.entries.push({ ...dupe.entries[0] });
+    assert.throws(() => cr.validateManifest(dupe), /duplicate/);
+  });
+
+  test('verifyManifestIdentity rejects a tampered digest and an inconsistent rank', () => {
+    const good = buildCohortManifest(selectCohortByRank(makeEligible(30), { size: 10 }));
+    assert.doesNotThrow(() => cr.verifyManifestIdentity(good));
+    const tamperedDigest = { ...good, cohortDigest: 'f'.repeat(64) };
+    assert.throws(() => cr.verifyManifestIdentity(tamperedDigest), /digest mismatch/);
+    // Alter a rank but re-digest so the digest check passes → rank check must catch it.
+    const badRank = JSON.parse(JSON.stringify(good));
+    badRank.entries[0].rank += 1;
+    badRank.cohortDigest = cr.computeCohortDigest({ cohortSalt: badRank.cohortSalt, requestedSize: badRank.requestedSize, entries: badRank.entries });
+    assert.throws(() => cr.verifyManifestIdentity(badRank), /inconsistent ranking/);
+  });
+});
+
+describe('reconcileManifestAgainstLive', () => {
+  test('no drift for a fresh run and for a partial-write retry', () => {
+    const eligible = makeEligible(300);
+    const manifest = buildCohortManifest(selectCohortByRank(eligible, { size: 100 }));
+    const fresh = cr.reconcileManifestAgainstLive(manifest, eligible, []);
+    assert.equal(fresh.drift, false);
+    assert.equal(fresh.targetOrgIds.length, 100);
+    // Partial: 60 manifest orgs already provisioned → still no drift, same target.
+    const provisioned = manifest.entries.slice(0, 60).map((e) => e.organisationId);
+    const retry = cr.reconcileManifestAgainstLive(manifest, eligible, provisioned);
+    assert.equal(retry.drift, false);
+    assert.deepEqual(retry.targetOrgIds, manifest.entries.map((e) => e.organisationId));
+  });
+
+  test('DRIFT when a manifest org has dropped out of eligibility', () => {
+    const eligible = makeEligible(300);
+    const manifest = buildCohortManifest(selectCohortByRank(eligible, { size: 100 }));
+    const dropped = manifest.entries[0].organisationId;
+    const shrunk = eligible.filter((o) => o.organisationId !== dropped);
+    const r = cr.reconcileManifestAgainstLive(manifest, shrunk, []);
+    assert.equal(r.drift, true);
+    assert.match(r.driftReason, /no longer in the deterministic top-100/);
+  });
+
+  test('DRIFT when a lower-ranked eligible org would now displace the manifest', () => {
+    const small = makeEligible(150);
+    const manifest = buildCohortManifest(selectCohortByRank(small, { size: 100 }));
+    const larger = makeEligible(300); // superset with 150 extra orgs, some ranking lower
+    const r = cr.reconcileManifestAgainstLive(manifest, larger, []);
+    assert.equal(r.drift, true);
+  });
+});
+
+describe('manifestToCsv — spreadsheet formula-injection neutralised', () => {
+  test('cells beginning with = + - @ are prefixed so a spreadsheet treats them as text', () => {
+    const manifest = {
+      entries: [
+        { position: 1, rank: 1, organisationId: 'ORG-X', organisationName: '=SUM(A1:A9)', domain: '-evil.example', eligibilityBasis: '@cmd' },
+      ],
+    };
+    const csv = cr.manifestToCsv(manifest);
+    assert.ok(csv.includes("'=SUM(A1:A9)"), 'formula name neutralised');
+    assert.ok(csv.includes("'-evil.example"), 'leading-dash domain neutralised');
+    assert.ok(csv.includes("'@cmd"), 'leading-at neutralised');
+  });
+});
