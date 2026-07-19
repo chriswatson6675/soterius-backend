@@ -23,6 +23,8 @@ test('summariseById — projects id, name and domain from the Repository Authori
     id: 'ORG-000038AF3025',
     name: 'KALSI SOLICITORS LIMITED',
     domain: 'kalsisolicitors.co.uk',
+    primaryRegulatoryIdentifier: null,
+    fullPostcode: null,
     sector: null,
     location: null,
     lastScannedAt: null,
@@ -36,6 +38,8 @@ test('summariseById — falls back to canonicalName when organisationName is abs
 
   assert.strictEqual(summary.name, 'Fallback Name Ltd');
   assert.strictEqual(summary.domain, null);
+  assert.strictEqual(summary.primaryRegulatoryIdentifier, null);
+  assert.strictEqual(summary.fullPostcode, null);
 });
 
 test('summariseById — name is null (never fabricated) when the row carries no name', () => {

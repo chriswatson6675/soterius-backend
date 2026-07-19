@@ -125,6 +125,8 @@ async function runResilientNationalSignal({ signal, domains, concurrency = 8, ru
 // modules (collection-session.js / resilient-collection-session.js), which
 // already emit for every other national signal.
 async function runNationalTlsCertificate({ domains, concurrency = 8, runLabel, deps = {} }) {
+  if (!Array.isArray(domains) || domains.length === 0) throw new Error('domains must be a non-empty array');
+
   const {
     upsertProgramme = registry.upsertProgramme,
     openRun = registry.openRun,
@@ -137,7 +139,6 @@ async function runNationalTlsCertificate({ domains, concurrency = 8, runLabel, d
     now,
   } = deps;
 
-  if (!Array.isArray(domains) || domains.length === 0) throw new Error('domains must be a non-empty array');
   const stamp = () => (now ? now() : new Date().toISOString());
   const label = runLabel || `NOB-TLSCERT-${new Date().toISOString().slice(0, 10)}`;
 
