@@ -327,3 +327,109 @@ describe('provision CLI --from-manifest (BLOCKER 2 — governed production write
     await assert.rejects(() => cli.run({ fromManifest: 'p.json', limit: 10 }, deps), /mutually exclusive/);
   });
 });
+
+// WP-2 (TD-03) — Provisioning safety gate: --from-manifest is the SOLE
+// production-write path. The legacy no-mode (full-population) and --limit paths
+// must refuse to write in production; dry-run of those paths stays available;
+// the governed --from-manifest write and the existing --cohort-size production
+// refusal are unchanged.
+describe('provision CLI production-write safety gate (WP-2 / TD-03)', () => {
+  const NOW = '2026-03-10T12:00:00.000Z';
+
+  // baseDeps plus a provisioning-writer SPY, so a refused path can be proven to
+  // never invoke the writer. runLegacy/runFromManifest both use
+  // deps.provisionObservationStates when supplied.
+  function spyDeps(overrides = {}) {
+    let calls = 0;
+    const deps = baseDeps({
+      provisionObservationStates: async () => {
+        calls += 1;
+        return {
+          statesCreated: 0, statesToCreate: 0, eligibleOrganisations: 0,
+          consideredOrganisations: 0, organisationsAlreadyComplete: 0, statesExisting: 0,
+        };
+      },
+      ...overrides,
+    });
+    deps.provisionCalls = () => calls;
+    return deps;
+  }
+
+  const DIRECTS_TO_MANIFEST = /--from-manifest[\s\S]*--approve-digest|--cohort-size <N> --manifest/;
+
+  test('1+2+5: bare/no-mode --production --confirm is refused, writes nothing, and directs to the manifest workflow', async () => {
+    const deps = spyDeps();
+    await assert.rejects(
+      () => cli.run({ production: true, confirm: 'PROVISION-STATES', now: NOW }, deps),
+      (err) => {
+        assert.match(err.message, /refusing to write/);
+        assert.match(err.message, /--from-manifest/);
+        assert.match(err.message, DIRECTS_TO_MANIFEST);
+        return true;
+      },
+    );
+    assert.equal(deps.provisionCalls(), 0, 'the provisioning writer must never be invoked on a refused production attempt');
+    assert.equal(deps.store.rows.length, 25, 'no observation state may be written on refusal');
+  });
+
+  test('3+4: --limit N --production --confirm is refused, writes nothing (same safety message)', async () => {
+    const deps = spyDeps();
+    await assert.rejects(
+      () => cli.run({ limit: 50, production: true, confirm: 'PROVISION-STATES', now: NOW }, deps),
+      (err) => {
+        assert.match(err.message, /refusing to write/);
+        assert.match(err.message, DIRECTS_TO_MANIFEST);
+        return true;
+      },
+    );
+    assert.equal(deps.provisionCalls(), 0);
+    assert.equal(deps.store.rows.length, 25);
+  });
+
+  test('6: bare/no-mode dry-run remains permitted (no --production → legacy dry-run, no write)', async () => {
+    const deps = baseDeps();
+    const res = await cli.run({ now: NOW }, deps);
+    assert.equal(res.mode, 'legacy');
+    assert.equal(res.dryRun, true);
+    assert.equal(res.summary.statesCreated, 0);
+    assert.equal(deps.store.rows.length, 25);
+  });
+
+  test('6b: --production WITHOUT --confirm still downgrades to a dry-run (non-writing flow preserved)', async () => {
+    const deps = spyDeps();
+    const res = await cli.run({ production: true, now: NOW }, deps);
+    assert.equal(res.dryRun, true, 'no --confirm ⇒ not a write attempt ⇒ still runs as dry-run');
+    assert.equal(deps.store.rows.length, 25);
+  });
+
+  test('7: --limit dry-run remains permitted (no --production → legacy dry-run)', async () => {
+    const deps = baseDeps();
+    const res = await cli.run({ limit: 3, now: NOW }, deps);
+    assert.equal(res.mode, 'legacy');
+    assert.equal(res.dryRun, true);
+    assert.equal(deps.store.rows.length, 25);
+  });
+
+  test('8: the governed --from-manifest production write still succeeds (behaviourally unchanged)', async () => {
+    const sel = await cli.run({ cohortSize: 100, now: NOW }, baseDeps());
+    const manifestJson = JSON.stringify(sel.manifest);
+    const deps = baseDeps();
+    const res = await cli.run({
+      fromManifest: 'p.json', production: true, confirm: 'PROVISION-STATES',
+      approveDigest: sel.manifest.cohortDigest, now: NOW, __readFile: () => manifestJson,
+    }, deps);
+    assert.equal(res.mode, 'from-manifest');
+    assert.equal(res.dryRun, false);
+    assert.equal(res.summary.statesCreated, 500);
+    assert.equal(deps.store.rows.length, 525);
+  });
+
+  test('9: existing --cohort-size --production refusal remains intact (writes nothing)', async () => {
+    const deps = baseDeps();
+    await assert.rejects(
+      () => cli.run({ cohortSize: 10, production: true, confirm: 'PROVISION-STATES', now: NOW }, deps),
+      /does not write in production|from-manifest/,
+    );
+    assert.equal(deps.store.rows.length, 25);
+  });
+});

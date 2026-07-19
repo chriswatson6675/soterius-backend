@@ -271,11 +271,29 @@ async function runFromManifest(opts, deps = {}) {
   return { ok: true, dryRun, mode: 'from-manifest', manifest, reconciliation, summary };
 }
 
-// LEGACY path (--limit / full population) — semantics unchanged.
+// LEGACY path (--limit / full population). Dry-run/planning only — WP-2 (TD-03)
+// makes --from-manifest the SOLE production-write path, so this path refuses to
+// write in production (dry-run semantics otherwise unchanged).
 async function runLegacy(opts, deps = {}) {
   const log = deps.log || console.log;
   const provision = deps.provisionObservationStates || provisionObservationStates;
   (deps.logEnvironmentConfirmation || logEnvironmentConfirmation)({ log });
+
+  // WP-2 (TD-03) — SAFETY GATE: --from-manifest is the only production-write
+  // path. The legacy no-mode (whole eligible population) and --limit (first N)
+  // paths select an unreviewed, unpinned set with no cohort manifest and no
+  // approved digest, so they must NEVER write in production — this is exactly
+  // the accidental full-population write this gate prevents. Refused before any
+  // writer is invoked; dry-run remains available for planning (omit --production).
+  if (opts.production === true && opts.confirm === CONFIRM_TOKEN) {
+    throw new CliValidationError(
+      'refusing to write: the legacy full-population / --limit path cannot provision in production. '
+      + 'Production provisioning requires the governed workflow — select a reviewed cohort with '
+      + '`--cohort-size <N> --manifest <path>`, review the manifest and note its cohortDigest, then provision '
+      + 'exactly that reviewed cohort with `--from-manifest <path> --production --confirm PROVISION-STATES '
+      + '--approve-digest <digest>`. To preview the legacy plan without writing, omit --production (dry-run).',
+    );
+  }
 
   const dryRun = resolveMode(opts, log);
   log(`OBS-103 provision: mode = ${dryRun ? 'DRY-RUN (no writes)' : 'PRODUCTION WRITE'}; batchSize=${opts.batchSize}${opts.limit ? ` limit=${opts.limit}` : ''}`);
