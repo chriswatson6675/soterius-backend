@@ -40,11 +40,24 @@ function summariseById(orgId, { reverse = resolve.reverse } = {}) {
     id: row.organisationId,
     name: row.organisationName || row.canonicalName || null,
     domain: row.verifiedDomain || null,
+    primaryRegulatoryIdentifier: primaryRegulatoryIdentifier(row.identifiers || {}),
+    fullPostcode: null,
     // Not in the identity tier — resolved on the detail view, not the list.
     sector: null,
     location: null,
     lastScannedAt: null,
   };
+}
+
+function primaryRegulatoryIdentifier(ids) {
+  if (ids.frn) return `FCA ${ids.frn}`;
+  if (ids.sraIdentifier) return `SRA ${ids.sraIdentifier}`;
+  if (ids.praIdentifier) return `PRA ${ids.praIdentifier}`;
+  if (ids.frcAudit) return `FRC ${ids.frcAudit}`;
+  if (ids.hmrcAml) return `HMRC ${ids.hmrcAml}`;
+  if (ids.pbsFirm) return `PBS ${ids.pbsFirm}`;
+  if (ids.ukprn) return `UKPRN ${ids.ukprn}`;
+  return null;
 }
 
 module.exports = { summariseById };

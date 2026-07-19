@@ -74,7 +74,7 @@ function createGetComplianceEvidence(deps = {}) {
 
   return async function getComplianceEvidence(req, res, next) {
     try {
-      const events = await getEvents(req.params.organisationId);
+      const events = await getEvents(req.tenant.customer.id, req.params.organisationId);
       res.status(200).json({ success: true, events });
     } catch (err) {
       next(err);

@@ -111,7 +111,7 @@ describe('getEvents', () => {
     await recordEvent({ organisationId: 'ORG-1', customerId: 'cust-1', reviewedByUserId: 'user-1' }, { client });
     client._rows[1].reviewed_at = '2026-07-10T00:00:00.000Z';
 
-    const events = await getEvents('ORG-1', { client });
+    const events = await getEvents('cust-1', 'ORG-1', { client });
     assert.strictEqual(events.length, 2);
     assert.strictEqual(events[0].reviewedAt, '2026-07-10T00:00:00.000Z');
     assert.strictEqual(events[1].reviewedAt, '2026-07-01T00:00:00.000Z');
@@ -119,14 +119,21 @@ describe('getEvents', () => {
 
   test('an organisation with no events → empty array, never an error', async () => {
     const client = fakeClient();
-    const events = await getEvents('ORG-NEVER-REVIEWED', { client });
+    const events = await getEvents('cust-1', 'ORG-NEVER-REVIEWED', { client });
     assert.deepStrictEqual(events, []);
   });
 
   test('one organisation\'s events never leak into another\'s read', async () => {
     const client = fakeClient();
     await recordEvent({ organisationId: 'ORG-1', customerId: 'cust-1', reviewedByUserId: 'user-1' }, { client });
-    const events = await getEvents('ORG-2', { client });
+    const events = await getEvents('cust-1', 'ORG-2', { client });
+    assert.deepStrictEqual(events, []);
+  });
+
+  test('one customer never sees another customer\'s review for the same organisation', async () => {
+    const client = fakeClient();
+    await recordEvent({ organisationId: 'ORG-1', customerId: 'cust-1', reviewedByUserId: 'user-1' }, { client });
+    const events = await getEvents('cust-2', 'ORG-1', { client });
     assert.deepStrictEqual(events, []);
   });
 });
@@ -134,7 +141,7 @@ describe('getEvents', () => {
 describe('getLastReviewedAt — the derived value the Review Queue is built from', () => {
   test('no events yet → null, an honest state, never an error or a fabricated date', async () => {
     const client = fakeClient();
-    const result = await getLastReviewedAt('ORG-1', { client });
+    const result = await getLastReviewedAt('cust-1', 'ORG-1', { client });
     assert.strictEqual(result, null);
   });
 
@@ -145,7 +152,15 @@ describe('getLastReviewedAt — the derived value the Review Queue is built from
     await recordEvent({ organisationId: 'ORG-1', customerId: 'cust-1', reviewedByUserId: 'user-1' }, { client });
     client._rows[1].reviewed_at = '2026-07-10T00:00:00.000Z';
 
-    const result = await getLastReviewedAt('ORG-1', { client });
+    const result = await getLastReviewedAt('cust-1', 'ORG-1', { client });
     assert.strictEqual(result, '2026-07-10T00:00:00.000Z');
+  });
+
+  test('does not return another customer\'s last reviewed timestamp for the same organisation', async () => {
+    const client = fakeClient();
+    await recordEvent({ organisationId: 'ORG-1', customerId: 'cust-1', reviewedByUserId: 'user-1' }, { client });
+
+    const result = await getLastReviewedAt('cust-2', 'ORG-1', { client });
+    assert.strictEqual(result, null);
   });
 });

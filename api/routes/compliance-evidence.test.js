@@ -100,15 +100,35 @@ describe('POST /:organisationId — createPostComplianceEvidence', () => {
 });
 
 describe('GET /:organisationId — createGetComplianceEvidence', () => {
-  test('returns the event list for the requested organisation', async () => {
+  test('returns the event list for the requested organisation scoped to the authenticated customer', async () => {
     const events = [{ id: 'evt-1', organisationId: 'ORG-1', reviewedAt: '2026-07-10T00:00:00.000Z', type: 'review_completed', note: null }];
-    const handler = createGetComplianceEvidence({ getEvents: async (id) => (id === 'ORG-1' ? events : []) });
+    const calls = [];
+    const handler = createGetComplianceEvidence({
+      getEvents: async (customerId, id) => {
+        calls.push([customerId, id]);
+        return customerId === 'cust-1' && id === 'ORG-1' ? events : [];
+      },
+    });
     const res = fakeRes();
 
     await handler(tenantReq(), res, () => assert.fail());
 
     assert.strictEqual(res.statusCode, 200);
     assert.deepStrictEqual(res.body, { success: true, events });
+    assert.deepStrictEqual(calls, [['cust-1', 'ORG-1']]);
+  });
+
+  test('customer isolation: customer B cannot see customer A review events for the same organisation', async () => {
+    const customerAEvents = [{ id: 'evt-a', organisationId: 'ORG-1', customerId: 'cust-a', reviewedAt: '2026-07-10T00:00:00.000Z', type: 'review_completed', note: null }];
+    const handler = createGetComplianceEvidence({
+      getEvents: async (customerId, id) => (customerId === 'cust-a' && id === 'ORG-1' ? customerAEvents : []),
+    });
+    const res = fakeRes();
+
+    await handler(tenantReq({ tenant: { id: 'm2', tenantRole: 'owner', customer: { id: 'cust-b', name: 'Other Consultancy' } } }), res, () => assert.fail());
+
+    assert.strictEqual(res.statusCode, 200);
+    assert.deepStrictEqual(res.body.events, []);
   });
 
   test('an organisation never reviewed → empty array, 200, never an error', async () => {

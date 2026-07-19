@@ -19,6 +19,49 @@ const complianceEvidenceStore = require('../../compliance-evidence/store');
 // History via store.getHistory) keeps this endpoint's cost independent of
 // how much History an Organisation has accumulated.
 const CHANGE_INDICATOR_HISTORY_WINDOW = 2;
+const GOVERNED_TRUST_OUTCOMES = new Set([
+  'Critical Risk',
+  'High Risk',
+  'Moderate Risk',
+  'Good',
+  'Excellent',
+]);
+const GOVERNED_TRUST_OUTCOME_BY_KEY = {
+  'critical risk': 'Critical Risk',
+  critical: 'Critical Risk',
+  'high risk': 'High Risk',
+  high: 'High Risk',
+  'moderate risk': 'Moderate Risk',
+  moderate: 'Moderate Risk',
+  good: 'Good',
+  excellent: 'Excellent',
+};
+
+function normalizeTrustOutcome(value) {
+  if (GOVERNED_TRUST_OUTCOMES.has(value)) return value;
+  if (typeof value !== 'string') return null;
+  return GOVERNED_TRUST_OUTCOME_BY_KEY[value.trim().toLowerCase()] ?? null;
+}
+
+function trustOutcomeFromScore(value) {
+  const score = typeof value === 'number'
+    ? value
+    : (typeof value === 'string' && value.trim() !== '' ? Number(value) : NaN);
+  if (!Number.isFinite(score)) return null;
+  if (score >= 899) return 'Excellent';
+  if (score >= 749) return 'Good';
+  if (score >= 599) return 'Moderate Risk';
+  if (score >= 400) return 'High Risk';
+  return 'Critical Risk';
+}
+
+function portfolioTrustOutcome(trustScore) {
+  const band = trustScore?.band;
+  const normalized = normalizeTrustOutcome(band);
+  if (normalized) return normalized;
+  if (band !== undefined && band !== null) return null;
+  return trustOutcomeFromScore(trustScore?.value);
+}
 
 // Same non-oracle principle as requirePortfolio.js: /compare responds
 // identically (404) whether a requested id doesn't exist globally or simply
@@ -109,16 +152,22 @@ function createGetPortfolioScores(
   return async function getPortfolioScores(req, res, next) {
     try {
       const items = await getPortfolioItemsFn(req.tenant.customer.id);
+      const customerId = req.tenant.customer.id;
       const hydrated = await Promise.all(items.map(async (item) => {
         const [current, recentHistory, lastReviewedAt] = await Promise.all([
           getCurrentFn(item.organisationId),
           getRecentHistoryFn(item.organisationId, CHANGE_INDICATOR_HISTORY_WINDOW),
-          getLastReviewedAtFn(item.organisationId),
+          getLastReviewedAtFn(customerId, item.organisationId),
         ]);
+        const organisation = summariseFn(item.organisationId);
         return {
           ...item,
-          organisation: summariseFn(item.organisationId),
+          organisation,
           currentTrustScore: current.exists ? current.instance.trustScore.value : null,
+          primaryRegulatoryIdentifier: organisation?.primaryRegulatoryIdentifier ?? null,
+          fullPostcode: organisation?.fullPostcode ?? null,
+          trustOutcome: current.exists ? portfolioTrustOutcome(current.instance.trustScore) : null,
+          currentCohortPercentile: null,
           change: computeChangeIndicator(recentHistory),
           lastReviewedAt,
         };
@@ -207,3 +256,5 @@ module.exports.createPostPortfolio       = createPostPortfolio;
 module.exports.createDeletePortfolio     = createDeletePortfolio;
 module.exports.createGetPortfolioScores  = createGetPortfolioScores;
 module.exports.createGetPortfolioCompare = createGetPortfolioCompare;
+module.exports.normalizeTrustOutcome      = normalizeTrustOutcome;
+module.exports.portfolioTrustOutcome      = portfolioTrustOutcome;

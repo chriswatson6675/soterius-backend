@@ -45,14 +45,15 @@ async function recordEvent(event, deps = {}) {
 }
 
 /**
- * getEvents(organisationId, deps) → Array<Event>, newest-first — the full
- * audit trail for one organisation (GET .../compliance-activity).
+ * getEvents(customerId, organisationId, deps) → Array<Event>, newest-first —
+ * the customer-scoped audit trail for one organisation (GET .../compliance-activity).
  */
-async function getEvents(organisationId, deps = {}) {
+async function getEvents(customerId, organisationId, deps = {}) {
   const client = deps.client || getClient();
   const { data, error } = await client
     .from('compliance_evidence_events')
     .select('id, organisation_id, customer_id, reviewed_by_user_id, reviewed_at, trust_profile_generated_at, type, note')
+    .eq('customer_id', customerId)
     .eq('organisation_id', organisationId)
     .order('reviewed_at', { ascending: false });
 
@@ -61,16 +62,17 @@ async function getEvents(organisationId, deps = {}) {
 }
 
 /**
- * getLastReviewedAt(organisationId, deps) → ISO timestamp string | null.
+ * getLastReviewedAt(customerId, organisationId, deps) → ISO timestamp string | null.
  * A pure, bounded read (LIMIT 1) — the derived value the Review Queue/
  * portfolio "due" indicator is computed from, never itself stored
  * (mirrors change-indicator.js's "derive at read time" discipline).
  */
-async function getLastReviewedAt(organisationId, deps = {}) {
+async function getLastReviewedAt(customerId, organisationId, deps = {}) {
   const client = deps.client || getClient();
   const { data, error } = await client
     .from('compliance_evidence_events')
     .select('reviewed_at')
+    .eq('customer_id', customerId)
     .eq('organisation_id', organisationId)
     .order('reviewed_at', { ascending: false })
     .limit(1);

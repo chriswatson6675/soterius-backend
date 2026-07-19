@@ -11,7 +11,7 @@ const assert = require('node:assert');
 
 const {
   createGetPortfolio, createPostPortfolio, createDeletePortfolio,
-  createGetPortfolioScores, createGetPortfolioCompare,
+  createGetPortfolioScores, createGetPortfolioCompare, normalizeTrustOutcome, portfolioTrustOutcome,
 } = require('./portfolio');
 const { ValidationError, AppError } = require('../../infra/utils/errors');
 
@@ -42,7 +42,16 @@ test('getPortfolio — returns a bare array, hydrating each item with its canoni
   // The DB layer returns ids only (organisation: null); the route resolves the
   // summary through the canonical Organisation layer (the same source as detail).
   const items = [{ id: 'p1', organisationId: 'ORG-000000000001', isHome: true, organisation: null }];
-  const summarise = (id) => ({ id, name: 'Smith LLP', domain: 'smithllp.co.uk', sector: null, location: null, lastScannedAt: null });
+  const summarise = (id) => ({
+    id,
+    name: 'Smith LLP',
+    domain: 'smithllp.co.uk',
+    primaryRegulatoryIdentifier: 'FCA 123456',
+    fullPostcode: null,
+    sector: null,
+    location: null,
+    lastScannedAt: null,
+  });
   const getPortfolio = createGetPortfolio(async (customerId) => (customerId === 'c1' ? items : []), summarise);
   const req = tenantReq();
   const res = fakeRes();
@@ -52,7 +61,14 @@ test('getPortfolio — returns a bare array, hydrating each item with its canoni
   assert.strictEqual(res.body.length, 1);
   assert.strictEqual(res.body[0].organisationId, 'ORG-000000000001');
   assert.deepStrictEqual(res.body[0].organisation, {
-    id: 'ORG-000000000001', name: 'Smith LLP', domain: 'smithllp.co.uk', sector: null, location: null, lastScannedAt: null,
+    id: 'ORG-000000000001',
+    name: 'Smith LLP',
+    domain: 'smithllp.co.uk',
+    primaryRegulatoryIdentifier: 'FCA 123456',
+    fullPostcode: null,
+    sector: null,
+    location: null,
+    lastScannedAt: null,
   });
 });
 
@@ -211,7 +227,16 @@ test('deletePortfolio — a DB failure on removal surfaces as an AppError to nex
 
 test('getPortfolioScores — hydrates each item with organisation summary, currentTrustScore, change, and lastReviewedAt', async () => {
   const items = [{ id: 'p1', organisationId: 'ORG-000000000001', isHome: true, organisation: null }];
-  const summarise = (id) => ({ id, name: 'Smith LLP', domain: 'smithllp.co.uk', sector: null, location: null, lastScannedAt: null });
+  const summarise = (id) => ({
+    id,
+    name: 'Smith LLP',
+    domain: 'smithllp.co.uk',
+    primaryRegulatoryIdentifier: 'FCA 746291',
+    fullPostcode: null,
+    sector: null,
+    location: null,
+    lastScannedAt: null,
+  });
   const getCurrent = async (id) => (id === 'ORG-000000000001' ? { exists: true, instance: { trustScore: { value: 750, band: 'Good' } } } : { exists: false });
   const getRecentHistory = async (id) => (id === 'ORG-000000000001'
     ? [
@@ -219,7 +244,11 @@ test('getPortfolioScores — hydrates each item with organisation summary, curre
       { generatedAt: '2026-07-01T00:00:00.000Z', instance: { trustScore: { value: 750 } } },
     ]
     : []);
-  const getLastReviewedAt = async (id) => (id === 'ORG-000000000001' ? '2026-07-05T00:00:00.000Z' : null);
+  const reviewedCalls = [];
+  const getLastReviewedAt = async (customerId, id) => {
+    reviewedCalls.push([customerId, id]);
+    return customerId === 'c1' && id === 'ORG-000000000001' ? '2026-07-05T00:00:00.000Z' : null;
+  };
   const getPortfolioScores = createGetPortfolioScores(async () => items, summarise, getCurrent, getRecentHistory, getLastReviewedAt);
   const res = fakeRes();
 
@@ -228,8 +257,13 @@ test('getPortfolioScores — hydrates each item with organisation summary, curre
   assert.strictEqual(res.body.length, 1);
   assert.strictEqual(res.body[0].organisationId, 'ORG-000000000001');
   assert.strictEqual(res.body[0].currentTrustScore, 750);
+  assert.strictEqual(res.body[0].primaryRegulatoryIdentifier, 'FCA 746291');
+  assert.strictEqual(res.body[0].fullPostcode, null);
+  assert.strictEqual(res.body[0].trustOutcome, 'Good');
+  assert.strictEqual(res.body[0].currentCohortPercentile, null);
   assert.deepStrictEqual(res.body[0].change, { status: 'ok', current: 750, previous: 700, delta: 50, direction: 'up' });
   assert.strictEqual(res.body[0].lastReviewedAt, '2026-07-05T00:00:00.000Z');
+  assert.deepStrictEqual(reviewedCalls, [['c1', 'ORG-000000000001']]);
 });
 
 test('getPortfolioScores — an organisation with no Trust Profile yet hydrates to null/no-data, not an error', async () => {
@@ -261,6 +295,87 @@ test('getPortfolioScores — an organisation never reviewed hydrates lastReviewe
   const res = fakeRes();
 
   await getPortfolioScores(tenantReq(), res, () => assert.fail('next() should not be called'));
+
+  assert.strictEqual(res.body[0].lastReviewedAt, null);
+});
+
+test('normalizeTrustOutcome - passes through governed outcomes and nulls legacy or unrecognized labels', () => {
+  const governed = ['Critical Risk', 'High Risk', 'Moderate Risk', 'Good', 'Excellent'];
+
+  for (const outcome of governed) {
+    assert.strictEqual(normalizeTrustOutcome(outcome), outcome);
+  }
+
+  assert.strictEqual(normalizeTrustOutcome(null), null);
+  assert.strictEqual(normalizeTrustOutcome(undefined), null);
+  assert.strictEqual(normalizeTrustOutcome('Low Risk'), null);
+  assert.strictEqual(normalizeTrustOutcome(' MODERATE RISK '), 'Moderate Risk');
+  assert.strictEqual(normalizeTrustOutcome('Moderate'), 'Moderate Risk');
+  assert.strictEqual(normalizeTrustOutcome('HIGH RISK'), 'High Risk');
+  assert.strictEqual(normalizeTrustOutcome('High'), 'High Risk');
+  assert.strictEqual(normalizeTrustOutcome('Critical'), 'Critical Risk');
+  assert.strictEqual(normalizeTrustOutcome('Insufficient observation'), null);
+  assert.strictEqual(normalizeTrustOutcome('INSUFFICIENT_OBSERVATION'), null);
+});
+
+test('getPortfolioScores - emits only governed trustOutcome values or null', async () => {
+  const items = [
+    { id: 'p1', organisationId: 'ORG-000000000001', isHome: false, organisation: null },
+    { id: 'p2', organisationId: 'ORG-000000000002', isHome: false, organisation: null },
+    { id: 'p3', organisationId: 'ORG-000000000003', isHome: false, organisation: null },
+  ];
+  const bands = {
+    'ORG-000000000001': 'Good',
+    'ORG-000000000002': 'MODERATE RISK',
+    'ORG-000000000003': 'INSUFFICIENT_OBSERVATION',
+  };
+  const getPortfolioScores = createGetPortfolioScores(
+    async () => items,
+    (id) => ({ id, name: id, domain: null, primaryRegulatoryIdentifier: null, fullPostcode: null, sector: null, location: null, lastScannedAt: null }),
+    async (id) => ({ exists: true, instance: { trustScore: { value: 500, band: bands[id] } } }),
+    async () => [],
+    async () => null,
+  );
+  const res = fakeRes();
+
+  await getPortfolioScores(tenantReq(), res, () => assert.fail('next() should not be called'));
+
+  assert.deepStrictEqual(res.body.map((item) => item.trustOutcome), ['Good', 'Moderate Risk', null]);
+  for (const item of res.body) {
+    assert.ok(item.trustOutcome === null || ['Critical Risk', 'High Risk', 'Moderate Risk', 'Good', 'Excellent'].includes(item.trustOutcome));
+  }
+});
+
+test('portfolioTrustOutcome - derives from numeric score when no band is present', () => {
+  assert.strictEqual(portfolioTrustOutcome({ value: 950 }), 'Excellent');
+  assert.strictEqual(portfolioTrustOutcome({ value: 800 }), 'Good');
+  assert.strictEqual(portfolioTrustOutcome({ value: 627 }), 'Moderate Risk');
+  assert.strictEqual(portfolioTrustOutcome({ value: '627' }), 'Moderate Risk');
+  assert.strictEqual(portfolioTrustOutcome({ value: 575 }), 'High Risk');
+  assert.strictEqual(portfolioTrustOutcome({ value: 100 }), 'Critical Risk');
+  assert.strictEqual(portfolioTrustOutcome({ value: 'INSUFFICIENT_OBSERVATION' }), null);
+});
+
+test('portfolioTrustOutcome - does not derive from score when an explicit unrecognized band is present', () => {
+  assert.strictEqual(portfolioTrustOutcome({ value: 575, band: 'Low Risk' }), null);
+});
+
+test('getPortfolioScores — lastReviewedAt is scoped by customer, not global organisation history', async () => {
+  const items = [{ id: 'p1', organisationId: 'ORG-000000000001', isHome: false, organisation: null }];
+  const getPortfolioScores = createGetPortfolioScores(
+    async () => items,
+    (id) => ({ id, name: 'Shared Organisation', domain: null, primaryRegulatoryIdentifier: null, fullPostcode: null, sector: null, location: null, lastScannedAt: null }),
+    async () => ({ exists: false }),
+    async () => [],
+    async (customerId, organisationId) => (
+      customerId === 'customer-a' && organisationId === 'ORG-000000000001'
+        ? '2026-07-05T00:00:00.000Z'
+        : null
+    ),
+  );
+  const res = fakeRes();
+
+  await getPortfolioScores(tenantReq({ tenant: { id: 'm2', tenantRole: 'owner', customer: { id: 'customer-b', name: 'Other Consultancy' } } }), res, () => assert.fail('next() should not be called'));
 
   assert.strictEqual(res.body[0].lastReviewedAt, null);
 });
