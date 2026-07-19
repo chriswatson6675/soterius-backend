@@ -4,8 +4,11 @@ require('dotenv').config();
 
 // Full-population draining scheduler CLI — OBS-103 (full-coverage transition).
 //
-// The intended eventual PRODUCTION entrypoint, invoked by the Railway cron
-// (*/15 * * * *). Each invocation drains DUE observation states page by page up
+// THE deployed PRODUCTION entrypoint — it is the startCommand in the Railway
+// scheduler deploy config, invoked by the Railway cron (*/15 * * * *). This is
+// the only scheduler entry point that production runs; run-scheduler-cli.js is
+// a manual tool and must never be a deploy target (a regression test asserts
+// both). Each invocation drains DUE observation states page by page up
 // to an explicit work/runtime budget, then exits — leaving remaining work due
 // for the next 15-minute wake. It processes whatever is due (no --org scope);
 // run-scheduler-cli.js remains the targeted tool for local testing, controlled
