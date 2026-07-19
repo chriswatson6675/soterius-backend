@@ -12,6 +12,12 @@ require('dotenv').config();
 // run-dns-observation-cli.js (OBS-102) and run-scheduled-sweep-cli.js
 // (ENG-032) both already are.
 //
+// NOT THE DEPLOYED PRODUCTION SCHEDULER. Production runs run-drain-cli.js (the
+// full-coverage drain worker) as its Railway startCommand; this CLI is only for
+// local testing, controlled cohorts, single-organisation diagnosis, and
+// incident response, and must NEVER be set as a Railway startCommand. A
+// regression test (deployed-scheduler-config.regression.test.js) enforces this.
+//
 // Usage:
 //   node observatory/observation-scheduler/run-scheduler-cli.js --limit 10 --dry-run
 //   node observatory/observation-scheduler/run-scheduler-cli.js --limit 10
