@@ -6,6 +6,10 @@ parent repository's `DOCUMENT_REGISTER.md` is a follow-up (this branch does not
 modify the parent governance repo); the supersession notes below are authoritative
 for the code in this branch.
 
+> Programme status, the work-package and technical-debt registers, rollout evidence,
+> and cohort-manifest provenance are recorded in the companion
+> [OBS-103 — Remediation & Rollout Record](./OBS-103-REMEDIATION-AND-ROLLOUT-RECORD.md).
+
 ## Scheduling authority
 
 - **UTC is the sole scheduling authority.** No `Europe/London`, no DST logic. All
