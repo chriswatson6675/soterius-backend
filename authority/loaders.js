@@ -273,8 +273,8 @@ function loadHe() {
 
 // ── PRA reference lists (5 raw Bank of England CSVs) ──────────────────────────
 // Name + FRN (+ LEI on some). No domains. Header sits below a preamble.
-function loadPra() {
-  const dir = path.join(ROOT, 'datasets', 'cohort data', 'pra');
+function loadPra({ praDataDir } = {}) {
+  const dir = praDataDir ? path.resolve(praDataDir) : path.join(ROOT, 'datasets', 'cohort data', 'pra');
   const files = [
     'pra-banks-2606.csv', 'pra-building-societies-2606.csv',
     'pra-credit-unions-2606.csv', 'pra-insurers-2606.csv', 'pra-designated-firms.csv',

@@ -1,11 +1,8 @@
 'use strict';
 
-// loaders.test.js — regression coverage for the loadPra() fix identified by
-// ENG-031: repeated, embedded mid-file section-header rows in the real PRA
-// CSVs (datasets/cohort data/pra/) were being parsed as phantom "Firm Name"
-// organisations. Reads the real, committed source files (small — a few KB to
-// ~110KB each) rather than synthetic fixtures, so this is a direct regression
-// test against the exact data that produced the ENG-031 finding.
+// loaders.test.js — unit coverage for loadPra()'s CSV parsing and repeated
+// embedded section-header handling. The fixtures are backend-owned and
+// synthetic so this suite remains valid in a standalone backend checkout.
 
 const { test } = require('node:test');
 const assert = require('node:assert');
@@ -13,36 +10,48 @@ const fs = require('fs');
 const path = require('path');
 
 const { loadPra, loadHmrcAmlImport } = require('./loaders');
+const PRA_FIXTURE_DIR = path.join(__dirname, 'test-fixtures', 'pra');
+const loadFixturePra = () => loadPra({ praDataDir: PRA_FIXTURE_DIR });
 
 test('loadPra() never emits a phantom "Firm Name" organisation from a repeated embedded section header', () => {
-  const records = loadPra();
+  const records = loadFixturePra();
   const phantoms = records.filter((r) => r.name === 'Firm Name');
   assert.deepStrictEqual(phantoms, [], 'no record should be named literally "Firm Name" (the header text)');
 });
 
 test('loadPra() never emits a record whose FRN is the literal header text "FRN"', () => {
-  const records = loadPra();
+  const records = loadFixturePra();
   const withLiteralFrnText = records.filter((r) => r.frn === 'FRN');
   assert.deepStrictEqual(withLiteralFrnText, []);
 });
 
 test('loadPra() never emits the ENG-031 artifact LEI value ("Head Office LEI" as a literal string)', () => {
-  const records = loadPra();
+  const records = loadFixturePra();
   const withArtifactLei = records.filter((r) => r.lei === 'Head Office LEI');
   assert.deepStrictEqual(withArtifactLei, []);
 });
 
-test('loadPra() still emits real firms unaffected by the fix', () => {
-  const records = loadPra();
+test('loadPra() emits organisations from every supported PRA category', () => {
+  const records = loadFixturePra();
   const names = records.map((r) => r.name);
-  assert.ok(names.includes('ABN AMRO Bank NV'), 'a real bank from pra-banks-2606.csv must still be present');
-  assert.ok(records.some((r) => r.source === 'pra-reference' && r.regulator === 'PRA'));
+  assert.ok(names.includes('Northbridge Synthetic Bank'));
+  assert.deepStrictEqual(
+    new Set(records.map((r) => path.basename(r.provenance.file))),
+    new Set([
+      'pra-banks-2606.csv',
+      'pra-building-societies-2606.csv',
+      'pra-credit-unions-2606.csv',
+      'pra-insurers-2606.csv',
+      'pra-designated-firms.csv',
+    ]),
+  );
 });
 
-test('loadPra() still emits real LEI values (raw, unnormalised — loaders.js returns identifiers as found, per its own header comment)', () => {
-  const records = loadPra();
+test('loadPra() extracts valid-format LEI values without normalising them', () => {
+  const records = loadFixturePra();
   const withLei = records.filter((r) => r.lei);
-  assert.ok(withLei.length > 0, 'sanity: at least one real record should carry a LEI');
+  assert.ok(withLei.length > 0);
+  assert.ok(withLei.some((r) => r.lei === '549300SYNTHETIC00045'));
 });
 
 // --- loadHmrcAmlImport() (ENG-024 WP-3) -------------------------------------
