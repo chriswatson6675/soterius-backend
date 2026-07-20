@@ -1,4 +1,4 @@
-FROM node:22-slim
+FROM node:22.12.0-slim
 
 # Install system Chromium — apt resolves all required dependencies automatically.
 # This is more reliable than manually listing Chrome's runtime libs.
